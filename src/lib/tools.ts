@@ -7,14 +7,13 @@ export interface Tool {
 }
 
 export const tools: Tool[] = [
-  // ── Data (11) ──
+  // ── Data (10) ──
   { name: 'JSON Formatter',    slug: 'json-formatter',    icon: '{ }', description: 'Format, validate and minify JSON data',                     category: 'Data'      },
   { name: 'Base64',            slug: 'base64',            icon: 'B64', description: 'Encode and decode Base64 strings and files',                category: 'Data'      },
   { name: 'URL Encoder',       slug: 'url-encoder',       icon: '⊕',  description: 'Encode and decode URL components',                          category: 'Data'      },
   { name: 'JWT Decoder',       slug: 'jwt-decoder',       icon: 'JWT', description: 'Decode and inspect JWT tokens',                            category: 'Data'      },
   { name: 'YAML ↔ JSON',       slug: 'yaml-json',         icon: 'YML', description: 'Convert between YAML and JSON — great for KBs and CI/CD', category: 'Data'      },
   { name: 'JSON → TypeScript', slug: 'json-typescript',   icon: 'TS',  description: 'Generate TypeScript interfaces from any JSON object',      category: 'Data'      },
-  { name: 'String Escape',     slug: 'string-escape',     icon: '\\n', description: 'Escape and unescape JSON, HTML, RegEx, URL and SQL strings', category: 'Data'    },
   { name: 'SQL Formatter',     slug: 'sql-formatter',     icon: 'SQL', description: 'Beautify and indent SQL queries instantly',                 category: 'Data'      },
   { name: 'CSV ↔ JSON',        slug: 'csv-json',          icon: 'CSV', description: 'Convert between CSV and JSON formats',                     category: 'Data'      },
   { name: 'CSV Viewer',        slug: 'csv-viewer',        icon: '⊞',   description: 'Render CSV as a live sortable and searchable table',        category: 'Data'      },
@@ -37,13 +36,12 @@ export const tools: Tool[] = [
   { name: 'HTML Entities',     slug: 'html-entities',     icon: '&amp;', description: 'Encode and decode HTML entities',                        category: 'Text'      },
   { name: 'Slugify',           slug: 'slugify',           icon: '—',   description: 'Convert text to URL-friendly slugs',                       category: 'Text'      },
   { name: 'Line Sorter',       slug: 'line-sorter',       icon: '↕',   description: 'Sort, deduplicate and shuffle lines of text instantly',    category: 'Text'      },
-  // ── Utils (6) ──
+  // ── Utils (5) ──
   { name: 'Unix Timestamp',    slug: 'unix-timestamp',    icon: '⏱',   description: 'Convert between Unix timestamps and human-readable dates', category: 'Utils'     },
   { name: 'Curl Builder',      slug: 'curl-builder',      icon: '$',   description: 'Build and export curl commands from a visual form',         category: 'Utils'     },
   { name: 'HTTP Status Codes', slug: 'http-status-codes', icon: '404', description: 'Searchable reference for all HTTP 1xx–5xx status codes',   category: 'Utils'     },
   { name: 'Semver Checker',    slug: 'semver-checker',    icon: '~^',  description: 'Parse npm semantic version ranges and check compatibility', category: 'Utils'     },
   { name: 'Number Base',       slug: 'base-converter',    icon: '01',  description: 'Convert numbers between decimal, hex, binary, and octal',  category: 'Utils'     },
-  { name: 'Cron Parser',       slug: 'cron-parser',       icon: '⏲',   description: 'Parse cron expressions and preview next run times',        category: 'Utils'     },
   // ── Design (6) ──
   { name: 'Color Converter',   slug: 'color-converter',   icon: '◐',   description: 'Convert between HEX, RGB, HSL, and OKLCH formats',        category: 'Design'    },
   { name: 'Color Contrast',    slug: 'color-contrast',    icon: '◑',   description: 'Check WCAG AA/AAA contrast ratio between two colors',      category: 'Design'    },
@@ -54,6 +52,19 @@ export const tools: Tool[] = [
   // ── Media (2) ──
   { name: 'Image Compressor',  slug: 'image-compressor',  icon: '⊟',   description: 'Compress images in your browser, no upload needed',       category: 'Media'     },
   { name: 'Image → Base64',    slug: 'image-to-base64',   icon: 'IMG', description: 'Convert images to Base64 data URIs for use in CSS or HTML', category: 'Media'   },
+  { name: 'Base64 → Image',    slug: 'base64-to-image',   icon: 'B64', description: 'Decode a Base64 string or Data URI back into an image', category: 'Media'   },
+  // ── API & Network (1) ──
+  { name: 'REST Client',       slug: 'rest-client',       icon: '⚡',   description: 'Advanced REST client — send requests, manage collections, view responses', category: 'API' },
+  // ── Frontend (6) ──
+  { name: 'Flexbox Playground',slug: 'flexbox-playground',icon: '⊞',  description: 'Visually explore CSS flexbox properties with live preview', category: 'Frontend'  },
+  { name: 'Grid Playground',   slug: 'grid-playground',   icon: '⊟',  description: 'Build CSS Grid layouts visually with live preview',        category: 'Frontend'  },
+  { name: 'SVG Preview',       slug: 'svg-preview',       icon: 'SVG', description: 'Preview SVG files, remove bloat and export optimized code', category: 'Frontend' },
+  { name: 'Favicon Generator', slug: 'favicon-generator', icon: '★',   description: 'Create favicons from text or emoji in all required sizes', category: 'Frontend'  },
+  { name: 'Responsive Tester', slug: 'responsive-tester', icon: '📱',  description: 'Preview any URL at common device breakpoints',             category: 'Frontend'  },
+  // ── Backend (3) ──
+  { name: 'Log Prettifier',    slug: 'log-prettifier',    icon: '▤',   description: 'Colorize and parse JSON logs and stack traces',            category: 'Backend'   },
+  { name: 'NoSQL Viewer',      slug: 'nosql-viewer',      icon: '{}',  description: 'Explore JSON documents like a NoSQL database viewer',      category: 'Backend'   },
+  { name: 'Cron Parser',       slug: 'cron-parser',       icon: '⏲',   description: 'Parse cron expressions and preview next run times',        category: 'Backend'   },
 ]
 
 export const categories = [...new Set(tools.map(t => t.category))]
