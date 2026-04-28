@@ -18,13 +18,21 @@ import MarkdownPreview from './pages/MarkdownPreview'
 import RegexTester from './pages/RegexTester'
 import DiffChecker from './pages/DiffChecker'
 import ColorConverter from './pages/ColorConverter'
+import UnixTimestamp from './pages/UnixTimestamp'
+import BaseConverter from './pages/BaseConverter'
+import CsvJson from './pages/CsvJson'
+import CronParser from './pages/CronParser'
+import LoremIpsum from './pages/LoremIpsum'
+import HtmlEntities from './pages/HtmlEntities'
+import ColorPalette from './pages/ColorPalette'
+import Slugify from './pages/Slugify'
 
 export default function App() {
   return (
     <BrowserRouter>
       <div className="min-h-screen bg-slate-50 flex flex-col">
         <Navbar />
-        <main className="flex-1">
+        <main className="flex-1 flex flex-col">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/json-formatter" element={<JsonFormatter />} />
@@ -43,6 +51,14 @@ export default function App() {
             <Route path="/regex-tester" element={<RegexTester />} />
             <Route path="/diff-checker" element={<DiffChecker />} />
             <Route path="/color-converter" element={<ColorConverter />} />
+            <Route path="/unix-timestamp" element={<UnixTimestamp />} />
+            <Route path="/base-converter" element={<BaseConverter />} />
+            <Route path="/csv-json" element={<CsvJson />} />
+            <Route path="/cron-parser" element={<CronParser />} />
+            <Route path="/lorem-ipsum" element={<LoremIpsum />} />
+            <Route path="/html-entities" element={<HtmlEntities />} />
+            <Route path="/color-palette" element={<ColorPalette />} />
+            <Route path="/slugify" element={<Slugify />} />
           </Routes>
         </main>
         <Footer />

@@ -1,9 +1,10 @@
 export default function Footer() {
   return (
-    <footer className="border-t border-slate-200 bg-white mt-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center text-sm text-slate-500">
-        <p>All processing happens in your browser — your data never leaves your device.</p>
-        <p className="mt-1">Free forever &middot; No ads &middot; No tracking &middot; Open source</p>
+    <footer className="bg-slate-950 border-t border-slate-800">
+      <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+        <span className="font-semibold text-slate-400">DevToolbox</span>
+        <span>All processing happens in your browser — your data never leaves your device.</span>
+        <span>Free forever &middot; No ads &middot; No tracking</span>
       </div>
     </footer>
   )

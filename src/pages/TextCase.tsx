@@ -19,19 +19,39 @@ const conversions = [
   },
   {
     label: 'snake_case',
-    fn: (s: string) => s.trim().replace(/[^a-zA-Z0-9]+/g, '_').replace(/([A-Z])/g, '_$1').replace(/^_|_$/g, '').toLowerCase(),
+    fn: (s: string) => s.trim()
+      .replace(/([a-z])([A-Z])/g, '$1_$2')
+      .replace(/[^a-zA-Z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .replace(/_+/g, '_')
+      .toLowerCase(),
   },
   {
     label: 'kebab-case',
-    fn: (s: string) => s.trim().replace(/[^a-zA-Z0-9]+/g, '-').replace(/([A-Z])/g, '-$1').replace(/^-|-$/g, '').toLowerCase(),
+    fn: (s: string) => s.trim()
+      .replace(/([a-z])([A-Z])/g, '$1-$2')
+      .replace(/[^a-zA-Z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .replace(/-+/g, '-')
+      .toLowerCase(),
   },
   {
     label: 'CONSTANT_CASE',
-    fn: (s: string) => s.trim().replace(/[^a-zA-Z0-9]+/g, '_').replace(/([A-Z])/g, '_$1').replace(/^_|_$/g, '').toUpperCase(),
+    fn: (s: string) => s.trim()
+      .replace(/([a-z])([A-Z])/g, '$1_$2')
+      .replace(/[^a-zA-Z0-9]+/g, '_')
+      .replace(/^_+|_+$/g, '')
+      .replace(/_+/g, '_')
+      .toUpperCase(),
   },
   {
     label: 'dot.case',
-    fn: (s: string) => s.trim().replace(/[^a-zA-Z0-9]+/g, '.').replace(/([A-Z])/g, '.$1').replace(/^\.|\.$/g, '').toLowerCase(),
+    fn: (s: string) => s.trim()
+      .replace(/([a-z])([A-Z])/g, '$1.$2')
+      .replace(/[^a-zA-Z0-9]+/g, '.')
+      .replace(/^\.+|\.+$/g, '')
+      .replace(/\.+/g, '.')
+      .toLowerCase(),
   },
 ]
 
