@@ -72,7 +72,7 @@ export default function Base64() {
               spellCheck={false}
             />
             <div className="flex gap-2 mt-2">
-              <button onClick={encode} className="btn-primary">Encode</button>
+              <button onClick={encode} className="btn-secondary">Encode</button>
               <button onClick={decode} className="btn-secondary">Decode</button>
               <button onClick={clear} className="btn-secondary ml-auto">Clear</button>
             </div>
