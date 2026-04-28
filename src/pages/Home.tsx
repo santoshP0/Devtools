@@ -3,10 +3,11 @@ import ToolCard from '../components/ToolCard'
 import HeroCanvas from '../components/HeroCanvas'
 import { tools, categories } from '../lib/tools'
 
-const ALL_CATS = ['All', ...categories]
+const ALL_CATS = categories // already contains 'All' from tools.ts
 
 const CAT_STYLE: Record<string, { color: string; bg: string; border: string; activeBg: string }> = {
   All:       { color: 'var(--bg)',       bg: 'var(--accent)',     border: 'var(--accent)',    activeBg: 'var(--accent)'    },
+  API:       { color: 'var(--accent)',   bg: 'var(--accent-bg)',  border: 'var(--accent-dim)',activeBg: 'var(--accent-bg)' },
   Data:      { color: 'var(--cat-data)', bg: 'var(--cat-data-bg)',border: 'oklch(0.72 0.15 220 / 0.5)', activeBg: 'var(--cat-data-bg)' },
   Security:  { color: 'var(--cat-sec)',  bg: 'var(--cat-sec-bg)', border: 'oklch(0.72 0.16 25  / 0.5)', activeBg: 'var(--cat-sec-bg)'  },
   Generator: { color: 'var(--cat-gen)',  bg: 'var(--cat-gen-bg)', border: 'oklch(0.72 0.15 145 / 0.5)', activeBg: 'var(--cat-gen-bg)' },
@@ -14,6 +15,8 @@ const CAT_STYLE: Record<string, { color: string; bg: string; border: string; act
   Design:    { color: 'var(--cat-des)',  bg: 'var(--cat-des-bg)', border: 'oklch(0.72 0.16 300 / 0.5)', activeBg: 'var(--cat-des-bg)' },
   Media:     { color: 'var(--cat-med)',  bg: 'var(--cat-med-bg)', border: 'oklch(0.72 0.16 195 / 0.5)', activeBg: 'var(--cat-med-bg)' },
   Utils:     { color: 'var(--cat-utl)',  bg: 'var(--cat-utl-bg)', border: 'oklch(0.72 0.14 260 / 0.5)', activeBg: 'var(--cat-utl-bg)' },
+  Frontend:  { color: 'oklch(0.70 0.18 190)', bg: 'oklch(0.70 0.18 190 / 0.1)', border: 'oklch(0.70 0.18 190 / 0.5)', activeBg: 'oklch(0.70 0.18 190 / 0.1)' },
+  Backend:   { color: 'oklch(0.65 0.12 160)', bg: 'oklch(0.65 0.12 160 / 0.1)', border: 'oklch(0.65 0.12 160 / 0.5)', activeBg: 'oklch(0.65 0.12 160 / 0.1)' },
 }
 
 interface Props {
