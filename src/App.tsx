@@ -30,7 +30,6 @@ import Slugify from './pages/Slugify'
 // New tools
 import YamlJson from './pages/YamlJson'
 import JsonTypeScript from './pages/JsonTypeScript'
-import StringEscape from './pages/StringEscape'
 import SqlFormatter from './pages/SqlFormatter'
 import CsvViewer from './pages/CsvViewer'
 import MockDataGenerator from './pages/MockDataGenerator'
@@ -44,6 +43,18 @@ import CssUnitConverter from './pages/CssUnitConverter'
 import GradientBuilder from './pages/GradientBuilder'
 import BoxShadowBuilder from './pages/BoxShadowBuilder'
 import ImageToBase64 from './pages/ImageToBase64'
+import Base64ToImage from './pages/Base64ToImage'
+// API & Network tools
+import RestClient from './pages/RestClient'
+// Frontend tools
+import FlexboxPlayground from './pages/FlexboxPlayground'
+import GridPlayground from './pages/GridPlayground'
+import SvgPreview from './pages/SvgPreview'
+import FaviconGenerator from './pages/FaviconGenerator'
+import ResponsiveTester from './pages/ResponsiveTester'
+// Backend tools
+import LogPrettifier from './pages/LogPrettifier'
+import NoSqlViewer from './pages/NoSqlViewer'
 
 export default function App() {
   // Persisted home state — survives navigation to tool pages and back
@@ -96,7 +107,6 @@ export default function App() {
             {/* New tools */}
             <Route path="/yaml-json"         element={<YamlJson />} />
             <Route path="/json-typescript"   element={<JsonTypeScript />} />
-            <Route path="/string-escape"     element={<StringEscape />} />
             <Route path="/sql-formatter"     element={<SqlFormatter />} />
             <Route path="/csv-viewer"        element={<CsvViewer />} />
             <Route path="/mock-data-generator" element={<MockDataGenerator />} />
@@ -110,6 +120,18 @@ export default function App() {
             <Route path="/gradient-builder"  element={<GradientBuilder />} />
             <Route path="/box-shadow-builder" element={<BoxShadowBuilder />} />
             <Route path="/image-to-base64"   element={<ImageToBase64 />} />
+            <Route path="/base64-to-image"   element={<Base64ToImage />} />
+            {/* API & Network tools */}
+            <Route path="/rest-client"       element={<RestClient />} />
+            {/* Frontend tools */}
+            <Route path="/flexbox-playground" element={<FlexboxPlayground />} />
+            <Route path="/grid-playground"   element={<GridPlayground />} />
+            <Route path="/svg-preview"       element={<SvgPreview />} />
+            <Route path="/favicon-generator" element={<FaviconGenerator />} />
+            <Route path="/responsive-tester" element={<ResponsiveTester />} />
+            {/* Backend tools */}
+            <Route path="/log-prettifier"    element={<LogPrettifier />} />
+            <Route path="/nosql-viewer"      element={<NoSqlViewer />} />
           </Routes>
         </main>
         <Footer />
