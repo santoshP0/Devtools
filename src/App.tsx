@@ -27,6 +27,23 @@ import LoremIpsum from './pages/LoremIpsum'
 import HtmlEntities from './pages/HtmlEntities'
 import ColorPalette from './pages/ColorPalette'
 import Slugify from './pages/Slugify'
+// New tools
+import YamlJson from './pages/YamlJson'
+import JsonTypeScript from './pages/JsonTypeScript'
+import StringEscape from './pages/StringEscape'
+import SqlFormatter from './pages/SqlFormatter'
+import CsvViewer from './pages/CsvViewer'
+import MockDataGenerator from './pages/MockDataGenerator'
+import MetaTagGenerator from './pages/MetaTagGenerator'
+import LineSorter from './pages/LineSorter'
+import CurlBuilder from './pages/CurlBuilder'
+import HttpStatusCodes from './pages/HttpStatusCodes'
+import SemverChecker from './pages/SemverChecker'
+import ColorContrast from './pages/ColorContrast'
+import CssUnitConverter from './pages/CssUnitConverter'
+import GradientBuilder from './pages/GradientBuilder'
+import BoxShadowBuilder from './pages/BoxShadowBuilder'
+import ImageToBase64 from './pages/ImageToBase64'
 
 export default function App() {
   // Persisted home state — survives navigation to tool pages and back
@@ -51,6 +68,7 @@ export default function App() {
                 setActiveCat={setHomeActiveCat}
               />
             } />
+            {/* Existing tools */}
             <Route path="/json-formatter"   element={<JsonFormatter />} />
             <Route path="/json-xml"         element={<JsonXml />} />
             <Route path="/base64"           element={<Base64 />} />
@@ -75,6 +93,23 @@ export default function App() {
             <Route path="/html-entities"    element={<HtmlEntities />} />
             <Route path="/color-palette"    element={<ColorPalette />} />
             <Route path="/slugify"          element={<Slugify />} />
+            {/* New tools */}
+            <Route path="/yaml-json"         element={<YamlJson />} />
+            <Route path="/json-typescript"   element={<JsonTypeScript />} />
+            <Route path="/string-escape"     element={<StringEscape />} />
+            <Route path="/sql-formatter"     element={<SqlFormatter />} />
+            <Route path="/csv-viewer"        element={<CsvViewer />} />
+            <Route path="/mock-data-generator" element={<MockDataGenerator />} />
+            <Route path="/meta-tag-generator"  element={<MetaTagGenerator />} />
+            <Route path="/line-sorter"       element={<LineSorter />} />
+            <Route path="/curl-builder"      element={<CurlBuilder />} />
+            <Route path="/http-status-codes" element={<HttpStatusCodes />} />
+            <Route path="/semver-checker"    element={<SemverChecker />} />
+            <Route path="/color-contrast"    element={<ColorContrast />} />
+            <Route path="/css-unit-converter" element={<CssUnitConverter />} />
+            <Route path="/gradient-builder"  element={<GradientBuilder />} />
+            <Route path="/box-shadow-builder" element={<BoxShadowBuilder />} />
+            <Route path="/image-to-base64"   element={<ImageToBase64 />} />
           </Routes>
         </main>
         <Footer />

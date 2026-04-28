@@ -368,6 +368,132 @@
 }
 
 /* ══════════════════════════════════════════════════
+   REFERENCE UI COMPATIBILITY CLASSES
+   These match the class names used in the reference JSX
+   ══════════════════════════════════════════════════ */
+
+/* Layout helpers */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.one-col { display: flex; flex-direction: column; gap: 14px; }
+@media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+/* Section label — matching reference .section-label */
+.section-label {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.09em;
+  text-transform: uppercase; color: var(--text-muted);
+  margin-bottom: 8px; font-family: var(--font-sans);
+  display: block;
+}
+
+/* Panel */
+.panel {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 20px;
+}
+
+/* Stat grid */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+
+/* btn — base class matching reference .btn */
+.btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 9px 18px; border-radius: var(--radius);
+  font-family: var(--font-sans); font-size: 14px; font-weight: 500;
+  cursor: pointer; border: 1px solid transparent;
+  transition: var(--transition); white-space: nowrap; user-select: none;
+}
+.btn.btn-primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+.btn.btn-primary:hover { filter: brightness(1.05); }
+.btn.btn-ghost { background: transparent; color: var(--text-dim); border-color: var(--border); }
+.btn.btn-ghost:hover { background: var(--surface2); color: var(--text); border-color: var(--border-hi); }
+.btn.btn-sm { padding: 6px 13px; font-size: 13px; }
+.btn:active { transform: scale(0.97); }
+.btn:disabled { opacity: 0.4; pointer-events: none; }
+
+/* option-row */
+.option-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+
+/* Tool page layout */
+.tool-page { min-height: 100vh; display: flex; flex-direction: column; }
+.tool-topbar {
+  border-bottom: 1px solid var(--border);
+  padding: 0 32px; height: 58px;
+  display: flex; align-items: center; gap: 16px;
+  background: var(--bg2); position: sticky; top: 0; z-index: 10;
+  backdrop-filter: blur(12px);
+}
+.tool-topbar-left { display: flex; align-items: center; gap: 14px; flex: 1; }
+.back-btn {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 13px; color: var(--text-muted); cursor: pointer;
+  background: none; border: none; font-family: var(--font-sans);
+  transition: color var(--transition); padding: 4px 0;
+}
+.back-btn:hover { color: var(--accent); }
+.tool-topbar-name { font-size: 16px; font-weight: 600; }
+.tool-body { flex: 1; padding: 32px; max-width: 1200px; width: 100%; margin: 0 auto; }
+.tool-desc-text { font-size: 14px; color: var(--text-dim); margin-bottom: 24px; }
+@media (max-width: 768px) { .tool-body { padding: 20px 16px; } .tool-topbar { padding: 0 16px; } }
+
+/* cat-badge with flat classnames (reference uses cat-Data, cat-Security etc.) */
+.cat-Data     { color: var(--cat-data); background: var(--cat-data-bg); }
+.cat-Security { color: var(--cat-sec);  background: var(--cat-sec-bg); }
+.cat-Generator{ color: var(--cat-gen);  background: var(--cat-gen-bg); }
+.cat-Text     { color: var(--cat-txt);  background: var(--cat-txt-bg); }
+.cat-Design   { color: var(--cat-des);  background: var(--cat-des-bg); }
+.cat-Media    { color: var(--cat-med);  background: var(--cat-med-bg); }
+.cat-Utils    { color: var(--cat-utl);  background: var(--cat-utl-bg); }
+
+/* Form elements — global (matching reference) */
+textarea, input[type="text"], input[type="number"], input[type="url"],
+input[type="email"], input[type="password"], select {
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  font-family: var(--font-mono); font-size: 13px;
+  padding: 10px 13px; width: 100%;
+  transition: border-color var(--transition), box-shadow var(--transition);
+  outline: none; resize: vertical;
+}
+textarea:focus, input[type="text"]:focus, input[type="number"]:focus,
+input[type="url"]:focus, input[type="email"]:focus, input[type="password"]:focus, select:focus {
+  border-color: var(--accent-dim);
+  box-shadow: 0 0 0 3px oklch(0.78 0.18 195 / 0.12);
+}
+textarea { min-height: 120px; line-height: 1.6; }
+select { resize: none; cursor: pointer; }
+option { background: var(--surface2); }
+label { font-size: 13px; font-weight: 500; color: var(--text-dim); display: block; margin-bottom: 6px; font-family: var(--font-sans); }
+input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer; }
+input[type="checkbox"] { accent-color: var(--accent); width: 16px; height: 16px; cursor: pointer; }
+
+/* Diff output */
+.diff-line { font-family: var(--font-mono); font-size: 13px; padding: 2px 12px; line-height: 1.7; white-space: pre-wrap; word-break: break-all; }
+
+/* JWT panels */
+.jwt-part { border-radius: var(--radius); overflow: hidden; }
+.jwt-part-hdr { font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; padding: 8px 14px; display: flex; align-items: center; gap: 8px; }
+.jwt-part-body { padding: 14px; background: var(--bg); font-family: var(--font-mono); font-size: 13px; line-height: 1.8; }
+
+/* Color palette card */
+.palette-card { border-radius: 10px; overflow: hidden; border: 1px solid var(--border); transition: var(--transition); cursor: pointer; }
+.palette-card:hover { border-color: var(--border-hi); transform: translateY(-2px); }
+.palette-strip { height: 72px; }
+.palette-info { padding: 10px 12px; background: var(--surface); }
+
+/* Success badge */
+.success-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--cat-gen); padding: 4px 10px;
+  background: var(--cat-gen-bg); border-radius: 100px;
+}
+
+/* Error msg — plain (not the Tailwind one) */
+.error-msg-plain { color: oklch(0.72 0.16 25); font-size: 13px; font-family: var(--font-mono); padding: 8px 0; }
+
+/* code-out large */
+.code-out.large { min-height: 200px; }
+
+/* ══════════════════════════════════════════════════
    OVERRIDE TAILWIND LIGHT UTILITIES → DARK
    Placed after @tailwind utilities so these win in the cascade
    ══════════════════════════════════════════════════ */
