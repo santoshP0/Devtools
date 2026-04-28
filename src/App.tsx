@@ -14,6 +14,9 @@ import ImageCompressor from './pages/ImageCompressor'
 import QrGenerator from './pages/QrGenerator'
 import UuidGenerator from './pages/UuidGenerator'
 import WordCounter from './pages/WordCounter'
+import GlassmorphismBuilder from './pages/GlassmorphismBuilder'
+import KeyframeBuilder from './pages/KeyframeBuilder'
+import JsSandbox from './pages/JsSandbox'
 import TextCase from './pages/TextCase'
 import MarkdownPreview from './pages/MarkdownPreview'
 import RegexTester from './pages/RegexTester'
@@ -129,6 +132,9 @@ export default function App() {
             <Route path="/svg-preview"       element={<SvgPreview />} />
             <Route path="/favicon-generator" element={<FaviconGenerator />} />
             <Route path="/responsive-tester" element={<ResponsiveTester />} />
+            <Route path="/glassmorphism-builder" element={<GlassmorphismBuilder />} />
+            <Route path="/keyframe-builder"  element={<KeyframeBuilder />} />
+            <Route path="/js-sandbox"        element={<JsSandbox />} />
             {/* Backend tools */}
             <Route path="/log-prettifier"    element={<LogPrettifier />} />
             <Route path="/nosql-viewer"      element={<NoSqlViewer />} />
