@@ -42,6 +42,7 @@ export const tools: Tool[] = [
   { name: 'HTTP Status Codes', slug: 'http-status-codes', icon: '404', description: 'Searchable reference for all HTTP 1xx–5xx status codes',   category: 'Utils'     },
   { name: 'Semver Checker',    slug: 'semver-checker',    icon: '~^',  description: 'Parse npm semantic version ranges and check compatibility', category: 'Utils'     },
   { name: 'Number Base',       slug: 'base-converter',    icon: '01',  description: 'Convert numbers between decimal, hex, binary, and octal',  category: 'Utils'     },
+  { name: 'JavaScript Sandbox',slug: 'js-sandbox',         icon: 'JS',  description: 'A lightweight playground to run and test JS snippets in browser', category: 'Utils'     },
   // ── Design (6) ──
   { name: 'Color Converter',   slug: 'color-converter',   icon: '◐',   description: 'Convert between HEX, RGB, HSL, and OKLCH formats',        category: 'Design'    },
   { name: 'Color Contrast',    slug: 'color-contrast',    icon: '◑',   description: 'Check WCAG AA/AAA contrast ratio between two colors',      category: 'Design'    },
@@ -49,6 +50,7 @@ export const tools: Tool[] = [
   { name: 'Gradient Builder',  slug: 'gradient-builder',  icon: '▣',   description: 'Visual CSS gradient editor with live preview and copy',    category: 'Design'    },
   { name: 'Box Shadow Builder',slug: 'box-shadow-builder', icon: '▢',  description: 'Visual multi-layer CSS box-shadow generator',              category: 'Design'    },
   { name: 'Color Palette',     slug: 'color-palette',     icon: '✦',   description: 'Generate complementary, triadic, and analogous palettes',  category: 'Design'    },
+  { name: 'Glassmorphism',     slug: 'glassmorphism-builder',icon: '◰', description: 'Visually design modern glassmorphism UI elements',         category: 'Design'    },
   // ── Media (2) ──
   { name: 'Image Compressor',  slug: 'image-compressor',  icon: '⊟',   description: 'Compress images in your browser, no upload needed',       category: 'Media'     },
   { name: 'Image → Base64',    slug: 'image-to-base64',   icon: 'IMG', description: 'Convert images to Base64 data URIs for use in CSS or HTML', category: 'Media'   },
@@ -61,6 +63,7 @@ export const tools: Tool[] = [
   { name: 'SVG Preview',       slug: 'svg-preview',       icon: 'SVG', description: 'Preview SVG files, remove bloat and export optimized code', category: 'Frontend' },
   { name: 'Favicon Generator', slug: 'favicon-generator', icon: '★',   description: 'Create favicons from text or emoji in all required sizes', category: 'Frontend'  },
   { name: 'Responsive Tester', slug: 'responsive-tester', icon: '📱',  description: 'Preview any URL at common device breakpoints',             category: 'Frontend'  },
+  { name: 'Keyframe Builder',  slug: 'keyframe-builder',  icon: '⏲',   description: 'Visually build CSS @keyframes animations and export code', category: 'Frontend'  },
   // ── Backend (3) ──
   { name: 'Log Prettifier',    slug: 'log-prettifier',    icon: '▤',   description: 'Colorize and parse JSON logs and stack traces',            category: 'Backend'   },
   { name: 'NoSQL Viewer',      slug: 'nosql-viewer',      icon: '{}',  description: 'Explore JSON documents like a NoSQL database viewer',      category: 'Backend'   },
