@@ -71,7 +71,7 @@ export default function PasswordGenerator() {
           <label className="label">Generate</label>
           <div className="flex items-center gap-2">
             {[1, 5, 10].map(n => (
-              <button key={n} onClick={() => setCount(n)} className={count === n ? 'btn-primary' : 'btn-secondary'}>
+              <button key={n} onClick={() => setCount(n)} className={count === n ? 'btn-toggle btn-toggle-active' : 'btn-toggle'}>
                 {n} {n === 1 ? 'password' : 'passwords'}
               </button>
             ))}

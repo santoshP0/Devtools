@@ -48,7 +48,7 @@ export default function Base64() {
             <button
               key={m}
               onClick={() => setMode(m)}
-              className={mode === m ? 'btn-primary' : 'btn-secondary'}
+              className={mode === m ? 'btn-toggle btn-toggle-active' : 'btn-toggle'}
             >
               {m === 'text' ? 'Text' : 'File → Base64'}
             </button>

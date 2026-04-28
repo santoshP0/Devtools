@@ -31,7 +31,7 @@ export default function UuidGenerator() {
             <label className="label">How many?</label>
             <div className="flex gap-2 flex-wrap">
               {[1, 5, 10, 25, 50].map(n => (
-                <button key={n} onClick={() => setCount(n)} className={count === n ? 'btn-primary' : 'btn-secondary'}>
+                <button key={n} onClick={() => setCount(n)} className={count === n ? 'btn-toggle btn-toggle-active' : 'btn-toggle'}>
                   {n}
                 </button>
               ))}

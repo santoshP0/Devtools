@@ -68,7 +68,7 @@ export default function QrGenerator() {
               <label className="label">Error Correction</label>
               <div className="flex gap-1">
                 {ERROR_LEVELS.map(l => (
-                  <button key={l} onClick={() => setErrorLevel(l)} className={`flex-1 py-1.5 text-xs font-medium rounded border transition-colors ${errorLevel === l ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:border-blue-400'}`}>{l}</button>
+                  <button key={l} onClick={() => setErrorLevel(l)} className={`btn-toggle flex-1 ${errorLevel === l ? 'btn-toggle-active' : ''}`}>{l}</button>
                 ))}
               </div>
             </div>
