@@ -1,99 +1,211 @@
-import { useState } from 'react'
+import { useRef, useEffect, useMemo } from 'react'
 import ToolCard from '../components/ToolCard'
+import HeroCanvas from '../components/HeroCanvas'
 import { tools, categories } from '../lib/tools'
 
-export default function Home() {
-  const [search, setSearch] = useState('')
-  const [activeCategory, setActiveCategory] = useState<string | null>(null)
+const ALL_CATS = ['All', ...categories]
 
-  const filtered = tools.filter(tool => {
-    const q = search.toLowerCase()
-    const matchesSearch = !q || tool.name.toLowerCase().includes(q) || tool.description.toLowerCase().includes(q)
-    const matchesCategory = !activeCategory || tool.category === activeCategory
-    return matchesSearch && matchesCategory
-  })
+const CAT_STYLE: Record<string, { color: string; bg: string; border: string; activeBg: string }> = {
+  All:       { color: 'var(--bg)',       bg: 'var(--accent)',     border: 'var(--accent)',    activeBg: 'var(--accent)'    },
+  Data:      { color: 'var(--cat-data)', bg: 'var(--cat-data-bg)',border: 'oklch(0.72 0.15 220 / 0.5)', activeBg: 'var(--cat-data-bg)' },
+  Security:  { color: 'var(--cat-sec)',  bg: 'var(--cat-sec-bg)', border: 'oklch(0.72 0.16 25  / 0.5)', activeBg: 'var(--cat-sec-bg)'  },
+  Generator: { color: 'var(--cat-gen)',  bg: 'var(--cat-gen-bg)', border: 'oklch(0.72 0.15 145 / 0.5)', activeBg: 'var(--cat-gen-bg)' },
+  Text:      { color: 'var(--cat-txt)',  bg: 'var(--cat-txt-bg)', border: 'oklch(0.80 0.14 75  / 0.5)', activeBg: 'var(--cat-txt-bg)'  },
+  Design:    { color: 'var(--cat-des)',  bg: 'var(--cat-des-bg)', border: 'oklch(0.72 0.16 300 / 0.5)', activeBg: 'var(--cat-des-bg)' },
+  Media:     { color: 'var(--cat-med)',  bg: 'var(--cat-med-bg)', border: 'oklch(0.72 0.16 195 / 0.5)', activeBg: 'var(--cat-med-bg)' },
+  Utils:     { color: 'var(--cat-utl)',  bg: 'var(--cat-utl-bg)', border: 'oklch(0.72 0.14 260 / 0.5)', activeBg: 'var(--cat-utl-bg)' },
+}
+
+interface Props {
+  search: string
+  setSearch: (v: string) => void
+  activeCat: string
+  setActiveCat: (v: string) => void
+}
+
+export default function Home({ search, setSearch, activeCat, setActiveCat }: Props) {
+  const searchRef = useRef<HTMLInputElement>(null)
+
+  const catCounts = useMemo(() => {
+    const c: Record<string, number> = { All: tools.length }
+    tools.forEach(t => { c[t.category] = (c[t.category] || 0) + 1 })
+    return c
+  }, [])
+
+  const filtered = useMemo(() => {
+    return tools.filter(t => {
+      const matchCat = activeCat === 'All' || t.category === activeCat
+      const q = search.toLowerCase()
+      const matchQ = !q || t.name.toLowerCase().includes(q) || t.description.toLowerCase().includes(q)
+      return matchCat && matchQ
+    })
+  }, [search, activeCat])
+
+  // ⌘K / Ctrl+K focuses search
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault()
+        searchRef.current?.focus()
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [])
 
   return (
-    <div className="flex-1 flex flex-col">
+    <div style={{ paddingTop: 54 }}>
 
-      {/* Dark hero */}
-      <div className="bg-slate-950 text-white">
-        <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
-          <div className="inline-flex items-center gap-2 bg-blue-500/15 text-blue-400 text-xs font-semibold px-3 py-1.5 rounded-full ring-1 ring-blue-500/25 mb-6 select-none">
-            <span className="w-1.5 h-1.5 bg-blue-400 rounded-full" />
-            {tools.length} tools &middot; Free forever &middot; No sign-up
+      {/* ── Hero ── */}
+      <div style={{
+        position: 'relative', overflow: 'hidden',
+        background: 'linear-gradient(180deg, oklch(0.10 0.025 250) 0%, oklch(0.12 0.03 250) 100%)',
+        padding: '80px 32px 70px',
+        display: 'flex', flexDirection: 'column', alignItems: 'center',
+        borderBottom: '1px solid var(--border)',
+      }}>
+        <HeroCanvas bgStyle="particles" />
+
+        <div style={{ position: 'relative', zIndex: 2, textAlign: 'center', maxWidth: 600 }}>
+          {/* Badge */}
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            background: 'var(--accent-bg)', border: '1px solid var(--accent-dim)',
+            borderRadius: 100, padding: '6px 16px', marginBottom: 28,
+            fontSize: 13, fontWeight: 500, color: 'var(--accent)',
+            fontFamily: 'var(--font-sans)',
+            animation: 'fadeUp 0.5s ease both',
+          }}>
+            <span style={{
+              width: 6, height: 6, borderRadius: '50%',
+              background: 'var(--accent)',
+              animation: 'pulseRing 2s infinite',
+              display: 'inline-block',
+            }} />
+            {tools.length} tools · Free forever · No sign-up
           </div>
-          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight text-white mb-4">
+
+          {/* Heading */}
+          <h1 style={{
+            fontSize: 'clamp(38px, 6vw, 64px)', fontWeight: 700,
+            lineHeight: 1.1, letterSpacing: '-0.03em', marginBottom: 16,
+            background: 'linear-gradient(135deg, var(--text) 0%, var(--text-dim) 100%)',
+            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+            animation: 'fadeUp 0.5s 0.1s ease both',
+            fontFamily: 'var(--font-sans)',
+          }}>
             Developer Toolbox
           </h1>
-          <p className="text-slate-400 max-w-lg mx-auto text-base mb-8">
-            Fast, free browser tools for developers. No ads, no tracking, no data leaves your device.
+
+          <p style={{
+            fontSize: 17, color: 'var(--text-dim)', marginBottom: 36, lineHeight: 1.6,
+            animation: 'fadeUp 0.5s 0.2s ease both',
+            fontFamily: 'var(--font-sans)',
+          }}>
+            Fast, free browser tools for developers.<br />
+            No ads, no tracking, no data leaves your device.
           </p>
 
           {/* Search */}
-          <div className="relative max-w-md mx-auto">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none select-none">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
-              </svg>
-            </span>
+          <div style={{
+            position: 'relative', maxWidth: 480, margin: '0 auto',
+            animation: 'fadeUp 0.5s 0.3s ease both',
+          }}>
+            <span style={{
+              position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)',
+              color: 'var(--text-muted)', fontSize: 16, pointerEvents: 'none',
+            }}>⌕</span>
             <input
-              type="search"
-              placeholder="Search tools…"
+              ref={searchRef}
+              type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full rounded-xl bg-white/8 border border-white/12 text-white placeholder-slate-500 pl-10 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white/12 transition-all"
+              placeholder="Search tools…"
+              style={{
+                width: '100%', padding: '14px 52px', fontSize: 15,
+                background: 'oklch(0.15 0.025 250 / 0.8)',
+                border: '1px solid var(--border-hi)',
+                borderRadius: 12, color: 'var(--text)',
+                fontFamily: 'var(--font-sans)',
+                backdropFilter: 'blur(8px)',
+                outline: 'none',
+                transition: 'box-shadow var(--transition), border-color var(--transition)',
+              }}
+              onFocus={e => {
+                e.currentTarget.style.borderColor = 'var(--accent-dim)'
+                e.currentTarget.style.boxShadow = '0 0 0 4px oklch(0.78 0.18 195 / 0.12)'
+              }}
+              onBlur={e => {
+                e.currentTarget.style.borderColor = 'var(--border-hi)'
+                e.currentTarget.style.boxShadow = 'none'
+              }}
             />
+            <kbd style={{
+              position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)',
+              fontSize: 11, color: 'var(--text-muted)', background: 'var(--surface)',
+              border: '1px solid var(--border)', borderRadius: 5, padding: '2px 6px',
+              fontFamily: 'var(--font-mono)',
+            }}>⌘K</kbd>
           </div>
         </div>
       </div>
 
-      {/* Category filter + grid */}
-      <div className="flex-1 max-w-screen-xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-10">
+      {/* ── Category filter ── */}
+      <div style={{
+        padding: '24px 32px 0',
+        display: 'flex', gap: 8, flexWrap: 'wrap',
+        maxWidth: 1200, margin: '0 auto',
+        animation: 'fadeIn 0.5s 0.4s ease both',
+      }}>
+        {ALL_CATS.map(cat => {
+          const active = activeCat === cat
+          const s = CAT_STYLE[cat] ?? CAT_STYLE.Utils
+          return (
+            <button
+              key={cat}
+              onClick={() => setActiveCat(cat)}
+              style={{
+                padding: '8px 16px', borderRadius: 100,
+                fontSize: 13, fontWeight: 500,
+                cursor: 'pointer',
+                fontFamily: 'var(--font-sans)',
+                transition: 'all var(--transition)',
+                border: `1px solid ${active ? s.border : 'var(--border)'}`,
+                background: active ? (cat === 'All' ? 'var(--accent)' : s.bg) : 'transparent',
+                color: active ? (cat === 'All' ? 'var(--bg)' : s.color) : 'var(--text-dim)',
+              }}
+            >
+              {cat}
+              <span style={{ opacity: 0.65, marginLeft: 6, fontSize: 12 }}>
+                {catCounts[cat] ?? 0}
+              </span>
+            </button>
+          )
+        })}
+      </div>
 
-        {/* Filters */}
-        <div className="flex flex-wrap gap-2 mb-8">
-          <button
-            onClick={() => setActiveCategory(null)}
-            className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all select-none ${
-              !activeCategory
-                ? 'bg-slate-900 text-white shadow-sm'
-                : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-900'
-            }`}
-          >
-            All
-            <span className="ml-1.5 text-xs opacity-60">{tools.length}</span>
-          </button>
-          {categories.map(cat => {
-            const count = tools.filter(t => t.category === cat).length
-            return (
-              <button
-                key={cat}
-                onClick={() => setActiveCategory(activeCategory === cat ? null : cat)}
-                className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all select-none ${
-                  activeCategory === cat
-                    ? 'bg-slate-900 text-white shadow-sm'
-                    : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-300 hover:text-slate-900'
-                }`}
-              >
-                {cat}
-                <span className="ml-1.5 text-xs opacity-60">{count}</span>
-              </button>
-            )
-          })}
-        </div>
-
-        {/* Grid */}
+      {/* ── Tool grid ── */}
+      <div style={{
+        padding: '20px 32px 60px',
+        maxWidth: 1200, margin: '0 auto',
+      }}>
         {filtered.length === 0 ? (
-          <div className="text-center py-24">
-            <div className="text-4xl mb-4">🔍</div>
-            <p className="text-slate-700 font-semibold text-lg">No tools found for &ldquo;{search}&rdquo;</p>
-            <p className="text-slate-400 text-sm mt-1">Try a different search term</p>
+          <div style={{
+            textAlign: 'center', padding: '60px 0',
+            color: 'var(--text-muted)', fontSize: 15,
+            fontFamily: 'var(--font-sans)',
+          }}>
+            No tools match "{search}"
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {filtered.map(tool => (
-              <ToolCard key={tool.slug} tool={tool} />
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+            gap: 14,
+          }}>
+            {filtered.map((tool, i) => (
+              <ToolCard key={tool.slug} tool={tool} index={i} />
             ))}
           </div>
         )}

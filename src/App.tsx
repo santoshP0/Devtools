@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
@@ -28,37 +29,52 @@ import ColorPalette from './pages/ColorPalette'
 import Slugify from './pages/Slugify'
 
 export default function App() {
+  // Persisted home state — survives navigation to tool pages and back
+  const [homeSearch, setHomeSearch] = useState('')
+  const [homeActiveCat, setHomeActiveCat] = useState('All')
+
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-slate-50 flex flex-col">
+      <div style={{
+        minHeight: '100vh',
+        background: 'var(--bg)',
+        display: 'flex', flexDirection: 'column',
+      }}>
         <Navbar />
-        <main className="flex-1 flex flex-col">
+        <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
           <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/json-formatter" element={<JsonFormatter />} />
-            <Route path="/json-xml" element={<JsonXml />} />
-            <Route path="/base64" element={<Base64 />} />
-            <Route path="/url-encoder" element={<UrlEncoder />} />
-            <Route path="/jwt-decoder" element={<JwtDecoder />} />
-            <Route path="/hash-generator" element={<HashGenerator />} />
+            <Route path="/" element={
+              <Home
+                search={homeSearch}
+                setSearch={setHomeSearch}
+                activeCat={homeActiveCat}
+                setActiveCat={setHomeActiveCat}
+              />
+            } />
+            <Route path="/json-formatter"   element={<JsonFormatter />} />
+            <Route path="/json-xml"         element={<JsonXml />} />
+            <Route path="/base64"           element={<Base64 />} />
+            <Route path="/url-encoder"      element={<UrlEncoder />} />
+            <Route path="/jwt-decoder"      element={<JwtDecoder />} />
+            <Route path="/hash-generator"   element={<HashGenerator />} />
             <Route path="/password-generator" element={<PasswordGenerator />} />
             <Route path="/image-compressor" element={<ImageCompressor />} />
-            <Route path="/qr-generator" element={<QrGenerator />} />
-            <Route path="/uuid-generator" element={<UuidGenerator />} />
-            <Route path="/word-counter" element={<WordCounter />} />
-            <Route path="/text-case" element={<TextCase />} />
+            <Route path="/qr-generator"     element={<QrGenerator />} />
+            <Route path="/uuid-generator"   element={<UuidGenerator />} />
+            <Route path="/word-counter"     element={<WordCounter />} />
+            <Route path="/text-case"        element={<TextCase />} />
             <Route path="/markdown-preview" element={<MarkdownPreview />} />
-            <Route path="/regex-tester" element={<RegexTester />} />
-            <Route path="/diff-checker" element={<DiffChecker />} />
-            <Route path="/color-converter" element={<ColorConverter />} />
-            <Route path="/unix-timestamp" element={<UnixTimestamp />} />
-            <Route path="/base-converter" element={<BaseConverter />} />
-            <Route path="/csv-json" element={<CsvJson />} />
-            <Route path="/cron-parser" element={<CronParser />} />
-            <Route path="/lorem-ipsum" element={<LoremIpsum />} />
-            <Route path="/html-entities" element={<HtmlEntities />} />
-            <Route path="/color-palette" element={<ColorPalette />} />
-            <Route path="/slugify" element={<Slugify />} />
+            <Route path="/regex-tester"     element={<RegexTester />} />
+            <Route path="/diff-checker"     element={<DiffChecker />} />
+            <Route path="/color-converter"  element={<ColorConverter />} />
+            <Route path="/unix-timestamp"   element={<UnixTimestamp />} />
+            <Route path="/base-converter"   element={<BaseConverter />} />
+            <Route path="/csv-json"         element={<CsvJson />} />
+            <Route path="/cron-parser"      element={<CronParser />} />
+            <Route path="/lorem-ipsum"      element={<LoremIpsum />} />
+            <Route path="/html-entities"    element={<HtmlEntities />} />
+            <Route path="/color-palette"    element={<ColorPalette />} />
+            <Route path="/slugify"          element={<Slugify />} />
           </Routes>
         </main>
         <Footer />
