@@ -23,6 +23,7 @@ export const tools: Tool[] = [
   { name: 'Regex Tester', slug: 'regex-tester', icon: '.*', description: 'Test regular expressions with live match highlighting', category: 'Text' },
   { name: 'Diff Checker', slug: 'diff-checker', icon: '±', description: 'Compare two texts and highlight differences', category: 'Text' },
   { name: 'Color Converter', slug: 'color-converter', icon: '🎨', description: 'Convert between HEX, RGB, and HSL color formats', category: 'Design' },
+  { name: 'Notes', slug: 'notes', icon: '📝', description: 'Write multiple notes saved in your browser with localStorage', category: 'Utility' },
 ]
 
 export const categories = [...new Set(tools.map(t => t.category))]

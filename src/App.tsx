@@ -18,6 +18,7 @@ import MarkdownPreview from './pages/MarkdownPreview'
 import RegexTester from './pages/RegexTester'
 import DiffChecker from './pages/DiffChecker'
 import ColorConverter from './pages/ColorConverter'
+import Notes from './pages/Notes'
 
 export default function App() {
   return (
@@ -43,6 +44,7 @@ export default function App() {
             <Route path="/regex-tester" element={<RegexTester />} />
             <Route path="/diff-checker" element={<DiffChecker />} />
             <Route path="/color-converter" element={<ColorConverter />} />
+            <Route path="/notes" element={<Notes />} />
           </Routes>
         </main>
         <Footer />
