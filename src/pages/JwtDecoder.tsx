@@ -49,7 +49,7 @@ export default function JwtDecoder() {
         {result && (
           <div className="space-y-4">
             {expiry && (
-              <div className={`text-sm rounded-lg p-3 border ${isExpired ? 'bg-red-50 border-red-200 text-red-700' : 'bg-green-50 border-green-200 text-green-700'}`}>
+              <div className={`text-sm rounded-lg p-3 border ${isExpired ? 'bg-red-950/40 border-red-800 text-red-400' : 'bg-emerald-950/40 border-emerald-800 text-emerald-400'}`}>
                 {isExpired ? '✗ Token expired' : '✓ Token valid'} — expires {expiry.toLocaleString()}
               </div>
             )}

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import ToolLayout from '../components/ToolLayout'
 
-type DiffLine = { type: 'add' | 'remove' | 'equal'; text: string; ln1?: number; ln2?: number }
+type DiffLine = { type: 'add' | 'remove' | 'equal'; text: string }
 
 function computeDiff(a: string, b: string): DiffLine[] {
   const oldLines = a.split('\n')
@@ -46,15 +46,15 @@ export default function DiffChecker() {
 
   return (
     <ToolLayout title="Diff Checker" description="Compare two texts and highlight additions and deletions line by line.">
-      <div className="space-y-4">
+      <div className="flex flex-col gap-4 flex-1">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div>
+          <div className="flex flex-col">
             <label className="label">Original</label>
-            <textarea value={left} onChange={e => setLeft(e.target.value)} placeholder="Paste original text…" className="tool-textarea h-56" spellCheck={false} />
+            <textarea value={left} onChange={e => setLeft(e.target.value)} placeholder="Paste original text…" className="tool-textarea flex-1" spellCheck={false} />
           </div>
-          <div>
+          <div className="flex flex-col">
             <label className="label">Modified</label>
-            <textarea value={right} onChange={e => setRight(e.target.value)} placeholder="Paste modified text…" className="tool-textarea h-56" spellCheck={false} />
+            <textarea value={right} onChange={e => setRight(e.target.value)} placeholder="Paste modified text…" className="tool-textarea flex-1" spellCheck={false} />
           </div>
         </div>
 
@@ -69,9 +69,9 @@ export default function DiffChecker() {
 
         {diff && (
           <div>
-            <div className="flex gap-4 mb-2 text-sm">
-              <span className="text-green-600 font-medium">+{added} added</span>
-              <span className="text-red-600 font-medium">−{removed} removed</span>
+            <div className="flex gap-4 mb-3 text-sm">
+              <span className="text-green-600 font-semibold">+{added} added</span>
+              <span className="text-red-600 font-semibold">−{removed} removed</span>
             </div>
 
             {inlineMode ? (
@@ -90,7 +90,7 @@ export default function DiffChecker() {
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 rounded-xl overflow-hidden border border-slate-200 font-mono text-sm">
                 <div className="border-r border-slate-200">
-                  <div className="bg-slate-50 px-4 py-2 text-xs text-slate-500 font-sans border-b border-slate-200">Original</div>
+                  <div className="bg-slate-50 px-4 py-2 text-xs text-slate-500 font-sans border-b border-slate-200 font-semibold">Original</div>
                   {diff.filter(d => d.type !== 'add').map((line, i) => (
                     <div key={i} className={`px-4 py-0.5 ${line.type === 'remove' ? 'bg-red-50 text-red-800' : 'text-slate-700'}`}>
                       {line.type === 'remove' && <span className="text-red-400 mr-2">−</span>}{line.text || ' '}
@@ -98,7 +98,7 @@ export default function DiffChecker() {
                   ))}
                 </div>
                 <div>
-                  <div className="bg-slate-50 px-4 py-2 text-xs text-slate-500 font-sans border-b border-slate-200">Modified</div>
+                  <div className="bg-slate-50 px-4 py-2 text-xs text-slate-500 font-sans border-b border-slate-200 font-semibold">Modified</div>
                   {diff.filter(d => d.type !== 'remove').map((line, i) => (
                     <div key={i} className={`px-4 py-0.5 ${line.type === 'add' ? 'bg-green-50 text-green-800' : 'text-slate-700'}`}>
                       {line.type === 'add' && <span className="text-green-500 mr-2">+</span>}{line.text || ' '}
