@@ -8,6 +8,7 @@ const categoryColors: Record<string, string> = {
   Generator: 'bg-green-100 text-green-700',
   Text: 'bg-amber-100 text-amber-700',
   Design: 'bg-pink-100 text-pink-700',
+  Utility: 'bg-teal-100 text-teal-700',
 }
 
 export default function ToolCard({ tool }: { tool: Tool }) {
