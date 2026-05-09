@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import ToolLayout from '../components/ToolLayout'
 
 const FLAGS = ['g', 'i', 'm', 's'] as const
+const escHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
 export default function RegexTester() {
   const [pattern, setPattern] = useState('')
@@ -19,37 +20,39 @@ export default function RegexTester() {
   }
 
   const { matches, highlighted, error, replaced } = useMemo(() => {
-    if (!pattern) return { matches: [], highlighted: testStr, error: '', replaced: '' }
+    if (!pattern) return { matches: [], highlighted: escHtml(testStr), error: '', replaced: '' }
     try {
-      const re = new RegExp(pattern, [...flags].join(''))
       const ms: RegExpMatchArray[] = []
-      let m: RegExpExecArray | null
+      const flagStr = [...flags].join('')
+      const globalFlagStr = flagStr.includes('g') ? flagStr : flagStr + 'g'
 
-      const globalRe = new RegExp(pattern, [...flags].join('').includes('g') ? [...flags].join('') : [...flags].join('') + 'g')
+      const globalRe = new RegExp(pattern, globalFlagStr)
+      let m: RegExpExecArray | null
       while ((m = globalRe.exec(testStr)) !== null) {
         ms.push(m)
+        if (m[0].length === 0) globalRe.lastIndex++ // prevent infinite loop on zero-length match
         if (!flags.has('g')) break
       }
 
-      const parts: React.ReactNode[] = []
+      const parts: string[] = []
       let last = 0
-      const allMatches = testStr.matchAll(new RegExp(pattern, [...flags].join('').includes('g') ? [...flags].join('') : [...flags].join('') + 'g'))
+      const allMatches = testStr.matchAll(new RegExp(pattern, globalFlagStr))
       let idx = 0
       for (const match of allMatches) {
         if (match.index === undefined) continue
-        if (match.index > last) parts.push(testStr.slice(last, match.index))
-        parts.push(`<mark class="bg-yellow-200 rounded px-0.5">${match[0]}</mark>`)
+        if (match.index > last) parts.push(escHtml(testStr.slice(last, match.index)))
+        parts.push(`<mark class="bg-yellow-200 rounded px-0.5">${escHtml(match[0])}</mark>`)
         last = match.index + match[0].length
         idx++
         if (!flags.has('g') && idx >= 1) break
       }
-      parts.push(testStr.slice(last))
+      parts.push(escHtml(testStr.slice(last)))
 
       const replaced = showReplace ? testStr.replace(new RegExp(pattern, [...flags].join('')), replace) : ''
 
       return { matches: ms, highlighted: parts.join(''), error: '', replaced }
     } catch (e) {
-      return { matches: [], highlighted: testStr, error: (e as Error).message, replaced: '' }
+      return { matches: [], highlighted: escHtml(testStr), error: (e as Error).message, replaced: '' }
     }
   }, [pattern, flags, testStr, replace, showReplace])
 
@@ -79,12 +82,12 @@ export default function RegexTester() {
                 key={f}
                 onClick={() => toggleFlag(f)}
                 title={{ g: 'Global', i: 'Ignore case', m: 'Multiline', s: 'Dotall' }[f]}
-                className={`px-3 py-1 rounded-md text-sm font-mono font-medium border transition-colors ${flags.has(f) ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-slate-600 border-slate-200 hover:border-blue-400'}`}
+                className={`btn-toggle font-mono ${flags.has(f) ? 'btn-toggle-active' : ''}`}
               >
                 {f}
               </button>
             ))}
-            <button onClick={() => setShowReplace(s => !s)} className={showReplace ? 'btn-primary' : 'btn-secondary'}>Replace</button>
+            <button onClick={() => setShowReplace(s => !s)} className={showReplace ? 'btn-toggle btn-toggle-active' : 'btn-toggle'}>Replace</button>
           </div>
 
           {showReplace && (
@@ -111,7 +114,7 @@ export default function RegexTester() {
           <div>
             <div className="flex items-center gap-3 mb-2">
               <label className="label mb-0">Matches</label>
-              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${matches.length > 0 ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${matches.length > 0 ? 'bg-green-100 text-emerald-400' : 'bg-slate-100 text-slate-500'}`}>
                 {matches.length} match{matches.length !== 1 ? 'es' : ''}
               </span>
             </div>

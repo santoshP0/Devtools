@@ -34,7 +34,7 @@ export default function UrlEncoder() {
       <div className="space-y-4">
         <div className="flex gap-3 items-center flex-wrap">
           <div className="flex gap-2">
-            <button onClick={encode} className="btn-primary">Encode</button>
+            <button onClick={encode} className="btn-secondary">Encode</button>
             <button onClick={decode} className="btn-secondary">Decode</button>
           </div>
           <div className="flex items-center gap-2 text-sm text-slate-600">

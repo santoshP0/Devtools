@@ -12,7 +12,9 @@ export default function JsonXml() {
     try {
       const obj = JSON.parse(json)
       const builder = new XMLBuilder({ format: true, indentBy: '  ' })
-      setXml(builder.build(obj))
+      // Arrays can't be XML tag names — wrap in <root><item> structure
+      const toSerialize = Array.isArray(obj) ? { root: { item: obj } } : { root: obj }
+      setXml(builder.build(toSerialize))
     } catch (e) {
       setError('JSON → XML: ' + (e as Error).message)
     }
@@ -23,7 +25,17 @@ export default function JsonXml() {
     try {
       const parser = new XMLParser({ ignoreAttributes: false, attributeNamePrefix: '@_' })
       const result = parser.parse(xml)
-      setJson(JSON.stringify(result, null, 2))
+      const keys = Object.keys(result)
+      // Unwrap single root element
+      let inner: unknown = keys.length === 1 ? result[keys[0]] : result
+      // Unwrap { item: [...] } back to plain array (round-trip of JSON arrays)
+      if (inner && typeof inner === 'object' && !Array.isArray(inner)) {
+        const innerKeys = Object.keys(inner as object)
+        if (innerKeys.length === 1 && Array.isArray((inner as Record<string, unknown>)[innerKeys[0]])) {
+          inner = (inner as Record<string, unknown>)[innerKeys[0]]
+        }
+      }
+      setJson(JSON.stringify(inner, null, 2))
     } catch (e) {
       setError('XML → JSON: ' + (e as Error).message)
     }
@@ -33,37 +45,37 @@ export default function JsonXml() {
 
   return (
     <ToolLayout title="JSON ↔ XML Converter" description="Convert between JSON and XML formats instantly.">
-      <div className="space-y-4">
+      <div className="flex flex-col gap-4 flex-1">
         {error && (
-          <div className="border border-red-200 rounded-lg p-3 bg-red-50 text-red-700 text-sm">
+          <div className="border border-red-200 rounded-xl p-3 bg-red-50 text-red-400 text-sm">
             ✗ {error}
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div>
-            <div className="flex justify-between items-center mb-1">
-              <label className="label">JSON</label>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1">
+          <div className="flex flex-col">
+            <div className="flex justify-between items-center mb-1.5">
+              <label className="label mb-0">JSON</label>
               <button onClick={() => copy(json)} className="copy-btn">Copy</button>
             </div>
             <textarea
               value={json}
               onChange={e => setJson(e.target.value)}
               placeholder={'{\n  "name": "example",\n  "value": 42\n}'}
-              className="tool-textarea h-72"
+              className="tool-textarea flex-1"
               spellCheck={false}
             />
           </div>
-          <div>
-            <div className="flex justify-between items-center mb-1">
-              <label className="label">XML</label>
+          <div className="flex flex-col">
+            <div className="flex justify-between items-center mb-1.5">
+              <label className="label mb-0">XML</label>
               <button onClick={() => copy(xml)} className="copy-btn">Copy</button>
             </div>
             <textarea
               value={xml}
               onChange={e => setXml(e.target.value)}
               placeholder={'<root>\n  <name>example</name>\n  <value>42</value>\n</root>'}
-              className="tool-textarea h-72"
+              className="tool-textarea flex-1"
               spellCheck={false}
             />
           </div>
