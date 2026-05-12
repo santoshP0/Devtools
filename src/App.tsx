@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
+import CommandPalette from './components/CommandPalette'
 import Home from './pages/Home'
 import JsonFormatter from './pages/JsonFormatter'
 import JsonXml from './pages/JsonXml'
@@ -68,6 +69,7 @@ export default function App() {
         background: 'var(--bg)',
         display: 'flex', flexDirection: 'column',
       }}>
+        <CommandPalette />
         <Navbar />
         <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
           <Routes>
