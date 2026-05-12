@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Tool } from '../lib/tools'
+import { useFavorites } from '../lib/storage'
 
 const CATS: Record<string, { color: string; bg: string; glow: string }> = {
+  API:       { color: 'var(--accent)',   bg: 'var(--accent-bg)',  glow: 'var(--accent)' },
   Data:      { color: 'var(--cat-data)', bg: 'var(--cat-data-bg)', glow: 'oklch(0.72 0.15 220)' },
   Security:  { color: 'var(--cat-sec)',  bg: 'var(--cat-sec-bg)',  glow: 'oklch(0.72 0.16 25)'  },
   Generator: { color: 'var(--cat-gen)',  bg: 'var(--cat-gen-bg)',  glow: 'oklch(0.72 0.15 145)' },
@@ -10,14 +12,15 @@ const CATS: Record<string, { color: string; bg: string; glow: string }> = {
   Design:    { color: 'var(--cat-des)',  bg: 'var(--cat-des-bg)',  glow: 'oklch(0.72 0.16 300)' },
   Media:     { color: 'var(--cat-med)',  bg: 'var(--cat-med-bg)',  glow: 'oklch(0.72 0.16 195)' },
   Utils:     { color: 'var(--cat-utl)',  bg: 'var(--cat-utl-bg)',  glow: 'oklch(0.72 0.14 260)' },
-  Frontend:  { color: 'var(--cat-utl)',  bg: 'var(--cat-utl-bg)',  glow: 'oklch(0.72 0.14 260)' },
-  API:       { color: 'var(--cat-data)', bg: 'var(--cat-data-bg)', glow: 'oklch(0.72 0.15 220)' },
-  Backend:   { color: 'var(--cat-sec)',  bg: 'var(--cat-sec-bg)',  glow: 'oklch(0.72 0.16 25)'  },
+  Frontend:  { color: 'oklch(0.70 0.18 190)', bg: 'oklch(0.70 0.18 190 / 0.1)', glow: 'oklch(0.70 0.18 190)' },
+  Backend:   { color: 'oklch(0.65 0.12 160)', bg: 'oklch(0.65 0.12 160 / 0.1)', glow: 'oklch(0.65 0.12 160)' },
 }
 
 export default function ToolCard({ tool, index = 0 }: { tool: Tool; index?: number }) {
   const [hovered, setHovered] = useState(false)
   const cat = CATS[tool.category] ?? CATS.Utils
+  const { isFavorite, toggleFavorite } = useFavorites()
+  const fav = isFavorite(tool.slug)
 
   return (
     <Link
@@ -42,7 +45,7 @@ export default function ToolCard({ tool, index = 0 }: { tool: Tool; index?: numb
         animationDelay: `${index * 0.04}s`,
       }}
     >
-      {/* Icon + arrow */}
+      {/* Icon + Fav button */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div style={{
           width: 40, height: 40, borderRadius: 10,
@@ -56,11 +59,23 @@ export default function ToolCard({ tool, index = 0 }: { tool: Tool; index?: numb
         }}>
           {tool.icon}
         </div>
-        <span style={{
-          opacity: hovered ? 1 : 0.25,
-          color: 'var(--text-muted)', fontSize: 18,
-          transition: 'opacity var(--transition)',
-        }}>→</span>
+        
+        <button
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            toggleFavorite(tool.slug)
+          }}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer',
+            fontSize: 18, color: fav ? '#facc15' : 'var(--text-muted)',
+            opacity: hovered || fav ? 1 : 0.2,
+            transition: 'all var(--transition)',
+            transform: fav ? 'scale(1.1)' : 'scale(1)',
+          }}
+        >
+          {fav ? '★' : '☆'}
+        </button>
       </div>
 
       {/* Name + description */}

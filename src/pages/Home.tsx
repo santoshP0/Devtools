@@ -1,9 +1,11 @@
 import { useRef, useEffect, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import ToolCard from '../components/ToolCard'
 import HeroCanvas from '../components/HeroCanvas'
 import { tools, categories } from '../lib/tools'
+import { useHistory, useFavorites } from '../lib/storage'
 
-const ALL_CATS = categories // already contains 'All' from tools.ts
+const ALL_CATS = categories
 
 const CAT_STYLE: Record<string, { color: string; bg: string; border: string; activeBg: string }> = {
   All:       { color: 'var(--bg)',       bg: 'var(--accent)',     border: 'var(--accent)',    activeBg: 'var(--accent)'    },
@@ -28,6 +30,16 @@ interface Props {
 
 export default function Home({ search, setSearch, activeCat, setActiveCat }: Props) {
   const searchRef = useRef<HTMLInputElement>(null)
+  const { recent } = useHistory()
+  const { favorites } = useFavorites()
+
+  const recentTools = useMemo(() => 
+    recent.map(slug => tools.find(t => t.slug === slug)).filter(Boolean),
+  [recent])
+
+  const pinnedTools = useMemo(() => 
+    tools.filter(t => favorites.includes(t.slug)),
+  [favorites])
 
   const catCounts = useMemo(() => {
     const c: Record<string, number> = { All: tools.length }
@@ -36,15 +48,14 @@ export default function Home({ search, setSearch, activeCat, setActiveCat }: Pro
   }, [])
 
   const filtered = useMemo(() => {
+    const q = search.toLowerCase()
     return tools.filter(t => {
-      const matchCat = activeCat === 'All' || t.category === activeCat
-      const q = search.toLowerCase()
       const matchQ = !q || t.name.toLowerCase().includes(q) || t.description.toLowerCase().includes(q)
+      const matchCat = q ? true : (activeCat === 'All' || t.category === activeCat)
       return matchCat && matchQ
     })
   }, [search, activeCat])
 
-  // ⌘K / Ctrl+K focuses search
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -70,7 +81,6 @@ export default function Home({ search, setSearch, activeCat, setActiveCat }: Pro
         <HeroCanvas bgStyle="particles" />
 
         <div style={{ position: 'relative', zIndex: 2, textAlign: 'center', maxWidth: 600 }}>
-          {/* Badge */}
           <div style={{
             display: 'inline-flex', alignItems: 'center', gap: 8,
             background: 'var(--accent-bg)', border: '1px solid var(--accent-dim)',
@@ -85,10 +95,9 @@ export default function Home({ search, setSearch, activeCat, setActiveCat }: Pro
               animation: 'pulseRing 2s infinite',
               display: 'inline-block',
             }} />
-            {tools.length} tools · Free forever · No sign-up
+            {tools.length} elite tools · Offline enabled
           </div>
 
-          {/* Heading */}
           <h1 style={{
             fontSize: 'clamp(38px, 6vw, 64px)', fontWeight: 700,
             lineHeight: 1.1, letterSpacing: '-0.03em', marginBottom: 16,
@@ -106,11 +115,10 @@ export default function Home({ search, setSearch, activeCat, setActiveCat }: Pro
             animation: 'fadeUp 0.5s 0.2s ease both',
             fontFamily: 'var(--font-sans)',
           }}>
-            Fast, free browser tools for developers.<br />
-            No ads, no tracking, no data leaves your device.
+            Pro-grade utilities for your daily workflow.<br />
+            100% private. Works fully offline.
           </p>
 
-          {/* Search */}
           <div style={{
             position: 'relative', maxWidth: 480, margin: '0 auto',
             animation: 'fadeUp 0.5s 0.3s ease both',
@@ -124,7 +132,7 @@ export default function Home({ search, setSearch, activeCat, setActiveCat }: Pro
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search tools…"
+              placeholder="Search tools… (⌘K)"
               style={{
                 width: '100%', padding: '14px 52px', fontSize: 15,
                 background: 'oklch(0.15 0.025 250 / 0.8)',
@@ -135,24 +143,35 @@ export default function Home({ search, setSearch, activeCat, setActiveCat }: Pro
                 outline: 'none',
                 transition: 'box-shadow var(--transition), border-color var(--transition)',
               }}
-              onFocus={e => {
-                e.currentTarget.style.borderColor = 'var(--accent-dim)'
-                e.currentTarget.style.boxShadow = '0 0 0 4px oklch(0.78 0.18 195 / 0.12)'
-              }}
-              onBlur={e => {
-                e.currentTarget.style.borderColor = 'var(--border-hi)'
-                e.currentTarget.style.boxShadow = 'none'
-              }}
             />
             <kbd style={{
               position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)',
               fontSize: 11, color: 'var(--text-muted)', background: 'var(--surface)',
               border: '1px solid var(--border)', borderRadius: 5, padding: '2px 6px',
               fontFamily: 'var(--font-mono)',
-            }}>⌘K</kbd>
+            }}>⌘P</kbd>
           </div>
         </div>
       </div>
+
+      {/* ── Recents Bar ── */}
+      {recentTools.length > 0 && search === '' && activeCat === 'All' && (
+        <div className="bg-slate-900/50 border-b border-slate-800 px-8 py-3 animate-fade-in">
+          <div className="max-w-[1200px] mx-auto flex items-center gap-4 overflow-x-auto custom-scrollbar whitespace-nowrap">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mr-2">Recent:</span>
+            {recentTools.slice(0, 5).map((tool: any) => (
+              <Link
+                key={tool.slug}
+                to={`/${tool.slug}`}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800 border border-slate-700 hover:border-accent/40 hover:bg-slate-700/50 transition-all text-xs text-slate-300"
+              >
+                <span className="font-mono text-[10px] opacity-70">{tool.icon}</span>
+                <span>{tool.name}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── Category filter ── */}
       <div style={{
@@ -188,17 +207,34 @@ export default function Home({ search, setSearch, activeCat, setActiveCat }: Pro
         })}
       </div>
 
-      {/* ── Tool grid ── */}
-      <div style={{
-        padding: '20px 32px 60px',
-        maxWidth: 1200, margin: '0 auto',
-      }}>
+      <div style={{ padding: '20px 32px 60px', maxWidth: 1200, margin: '0 auto' }}>
+        
+        {/* ── Pinned Section ── */}
+        {pinnedTools.length > 0 && search === '' && activeCat === 'All' && (
+          <div className="mb-12 animate-fade-in">
+            <h2 className="text-sm font-bold text-slate-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-3">
+              <span className="text-[#facc15]">★</span> Pinned Tools
+              <div className="h-px flex-1 bg-slate-800" />
+            </h2>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+              gap: 14,
+            }}>
+              {pinnedTools.map((tool, i) => (
+                <ToolCard key={`pinned-${tool.slug}`} tool={tool} index={i} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Main Grid ── */}
+        <h2 className="text-sm font-bold text-slate-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-3">
+          {activeCat === 'All' ? 'All Tools' : activeCat}
+          <div className="h-px flex-1 bg-slate-800" />
+        </h2>
         {filtered.length === 0 ? (
-          <div style={{
-            textAlign: 'center', padding: '60px 0',
-            color: 'var(--text-muted)', fontSize: 15,
-            fontFamily: 'var(--font-sans)',
-          }}>
+          <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-muted)', fontSize: 15 }}>
             No tools match "{search}"
           </div>
         ) : (

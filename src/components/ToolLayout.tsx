@@ -1,27 +1,26 @@
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { ReactNode, useEffect } from 'react'
+import { useHistory } from '../lib/storage'
 
 interface Props {
   title: string
   description: string
   children: ReactNode
+  fullWidth?: boolean
 }
 
-const CATS: Record<string, { color: string; bg: string }> = {
-  Data:      { color: 'var(--cat-data)', bg: 'var(--cat-data-bg)' },
-  Security:  { color: 'var(--cat-sec)',  bg: 'var(--cat-sec-bg)'  },
-  Generator: { color: 'var(--cat-gen)',  bg: 'var(--cat-gen-bg)'  },
-  Text:      { color: 'var(--cat-txt)',  bg: 'var(--cat-txt-bg)'  },
-  Design:    { color: 'var(--cat-des)',  bg: 'var(--cat-des-bg)'  },
-  Media:     { color: 'var(--cat-med)',  bg: 'var(--cat-med-bg)'  },
-  Utils:     { color: 'var(--cat-utl)',  bg: 'var(--cat-utl-bg)'  },
-}
+export default function ToolLayout({ title, description, children, fullWidth = false }: Props) {
+  const { pathname } = useLocation()
+  const { trackVisit } = useHistory()
 
-export default function ToolLayout({ title, description, children }: Props) {
   useEffect(() => {
     document.title = `${title} | DevToolbox`
+    // Track visit based on slug (last part of pathname)
+    const slug = pathname.split('/').pop()
+    if (slug) trackVisit(slug)
+    
     return () => { document.title = 'DevToolbox – Free Developer Tools' }
-  }, [title])
+  }, [title, pathname])
 
   return (
     <div style={{ minHeight: 'calc(100dvh - 54px)', display: 'flex', flexDirection: 'column' }}>
@@ -61,8 +60,8 @@ export default function ToolLayout({ title, description, children }: Props) {
       {/* Tool content */}
       <div style={{
         flex: 1, display: 'flex', flexDirection: 'column',
-        padding: '32px',
-        maxWidth: 1200, width: '100%', margin: '0 auto',
+        padding: fullWidth ? '24px 32px' : '32px',
+        maxWidth: fullWidth ? '100%' : 1200, width: '100%', margin: '0 auto',
         animation: 'fadeUp 0.35s ease both',
       }}>
         <p style={{

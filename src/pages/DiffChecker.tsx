@@ -61,47 +61,69 @@ export default function DiffChecker() {
         <div className="flex gap-2 items-center">
           <button onClick={compare} className="btn-primary">Compare</button>
           <button onClick={clear} className="btn-secondary">Clear</button>
-          <label className="flex items-center gap-2 text-sm text-slate-600 ml-2">
-            <input type="checkbox" checked={inlineMode} onChange={e => setInlineMode(e.target.checked)} className="accent-blue-600" />
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--text-dim)', marginLeft: 8, cursor: 'pointer' }}>
+            <input type="checkbox" checked={inlineMode} onChange={e => setInlineMode(e.target.checked)} style={{ accentColor: 'var(--accent)' }} />
             Inline mode
           </label>
         </div>
 
         {diff && (
           <div>
-            <div className="flex gap-4 mb-3 text-sm">
-              <span className="text-green-600 font-semibold">+{added} added</span>
-              <span className="text-red-600 font-semibold">−{removed} removed</span>
+            <div style={{ display: 'flex', gap: 16, marginBottom: 12, fontSize: 13, fontFamily: 'var(--font-mono)' }}>
+              <span style={{ color: 'oklch(0.72 0.15 145)', fontWeight: 600 }}>+{added} added</span>
+              <span style={{ color: 'oklch(0.65 0.18 25)', fontWeight: 600 }}>−{removed} removed</span>
+              {added === 0 && removed === 0 && (
+                <span style={{ color: 'var(--text-muted)' }}>Files identical</span>
+              )}
             </div>
 
             {inlineMode ? (
-              <div className="bg-white border border-slate-200 rounded-xl overflow-hidden font-mono text-sm">
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', fontFamily: 'var(--font-mono)', fontSize: 13 }}>
                 {diff.map((line, i) => (
-                  <div key={i} className={`px-4 py-0.5 flex gap-3 ${line.type === 'add' ? 'bg-green-50' : line.type === 'remove' ? 'bg-red-50' : ''}`}>
-                    <span className={`select-none w-4 ${line.type === 'add' ? 'text-green-600' : line.type === 'remove' ? 'text-red-500' : 'text-slate-300'}`}>
+                  <div key={i} style={{
+                    display: 'flex', gap: 12, padding: '2px 16px',
+                    background: line.type === 'add' ? 'oklch(0.72 0.15 145 / 0.10)' : line.type === 'remove' ? 'oklch(0.65 0.18 25 / 0.10)' : 'transparent',
+                    borderLeft: `3px solid ${line.type === 'add' ? 'oklch(0.72 0.15 145 / 0.6)' : line.type === 'remove' ? 'oklch(0.65 0.18 25 / 0.6)' : 'transparent'}`,
+                  }}>
+                    <span style={{
+                      userSelect: 'none', width: 14, flexShrink: 0,
+                      color: line.type === 'add' ? 'oklch(0.72 0.15 145)' : line.type === 'remove' ? 'oklch(0.65 0.18 25)' : 'var(--border)',
+                    }}>
                       {line.type === 'add' ? '+' : line.type === 'remove' ? '−' : ' '}
                     </span>
-                    <span className={line.type === 'add' ? 'text-green-800' : line.type === 'remove' ? 'text-red-800' : 'text-slate-700'}>
-                      {line.text}
+                    <span style={{ color: line.type === 'add' ? 'oklch(0.85 0.12 145)' : line.type === 'remove' ? 'oklch(0.80 0.12 25)' : 'var(--text-dim)' }}>
+                      {line.text || ' '}
                     </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 rounded-xl overflow-hidden border border-slate-200 font-mono text-sm">
-                <div className="border-r border-slate-200">
-                  <div className="bg-slate-50 px-4 py-2 text-xs text-slate-500 font-sans border-b border-slate-200 font-semibold">Original</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderRadius: 12, overflow: 'hidden', border: '1px solid var(--border)', fontFamily: 'var(--font-mono)', fontSize: 13 }}>
+                <div style={{ borderRight: '1px solid var(--border)' }}>
+                  <div style={{ background: 'var(--surface2)', padding: '8px 16px', fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-sans)', borderBottom: '1px solid var(--border)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Original</div>
                   {diff.filter(d => d.type !== 'add').map((line, i) => (
-                    <div key={i} className={`px-4 py-0.5 ${line.type === 'remove' ? 'bg-red-50 text-red-800' : 'text-slate-700'}`}>
-                      {line.type === 'remove' && <span className="text-red-400 mr-2">−</span>}{line.text || ' '}
+                    <div key={i} style={{
+                      padding: '2px 16px',
+                      background: line.type === 'remove' ? 'oklch(0.65 0.18 25 / 0.12)' : 'transparent',
+                      borderLeft: `3px solid ${line.type === 'remove' ? 'oklch(0.65 0.18 25 / 0.7)' : 'transparent'}`,
+                      color: line.type === 'remove' ? 'oklch(0.80 0.12 25)' : 'var(--text-dim)',
+                    }}>
+                      {line.type === 'remove' && <span style={{ color: 'oklch(0.65 0.18 25)', marginRight: 8 }}>−</span>}
+                      {line.text || ' '}
                     </div>
                   ))}
                 </div>
                 <div>
-                  <div className="bg-slate-50 px-4 py-2 text-xs text-slate-500 font-sans border-b border-slate-200 font-semibold">Modified</div>
+                  <div style={{ background: 'var(--surface2)', padding: '8px 16px', fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-sans)', borderBottom: '1px solid var(--border)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Modified</div>
                   {diff.filter(d => d.type !== 'remove').map((line, i) => (
-                    <div key={i} className={`px-4 py-0.5 ${line.type === 'add' ? 'bg-green-50 text-green-800' : 'text-slate-700'}`}>
-                      {line.type === 'add' && <span className="text-green-500 mr-2">+</span>}{line.text || ' '}
+                    <div key={i} style={{
+                      padding: '2px 16px',
+                      background: line.type === 'add' ? 'oklch(0.72 0.15 145 / 0.12)' : 'transparent',
+                      borderLeft: `3px solid ${line.type === 'add' ? 'oklch(0.72 0.15 145 / 0.7)' : 'transparent'}`,
+                      color: line.type === 'add' ? 'oklch(0.85 0.12 145)' : 'var(--text-dim)',
+                    }}>
+                      {line.type === 'add' && <span style={{ color: 'oklch(0.72 0.15 145)', marginRight: 8 }}>+</span>}
+                      {line.text || ' '}
                     </div>
                   ))}
                 </div>
