@@ -15,24 +15,26 @@ export default function ToolLayout({ title, description, children, fullWidth = f
 
   useEffect(() => {
     document.title = `${title} | DevToolbox`
-    // Track visit based on slug (last part of pathname)
+    // Lock page scroll — tool panels scroll internally
+    document.body.style.overflow = 'hidden'
     const slug = pathname.split('/').pop()
     if (slug) trackVisit(slug)
-    
-    return () => { document.title = 'DevToolbox – Free Developer Tools' }
+
+    return () => {
+      document.title = 'DevToolbox – Free Developer Tools'
+      document.body.style.overflow = ''
+    }
   }, [title, pathname])
 
   return (
-    <div style={{ minHeight: 'calc(100dvh - 54px)', display: 'flex', flexDirection: 'column' }}>
-      {/* Sticky topbar */}
+    // paddingTop:54 clears the fixed navbar; height:100dvh fills the viewport
+    <div style={{ height: '100dvh', paddingTop: 54, boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
+      {/* Topbar */}
       <div style={{
         borderBottom: '1px solid var(--border)',
-        padding: '0 32px', height: 58,
+        padding: '0 32px', height: 58, flexShrink: 0,
         display: 'flex', alignItems: 'center', gap: 16,
         background: 'oklch(0.13 0.025 250 / 0.95)',
-        position: 'sticky', top: 54, zIndex: 40,
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
       }}>
         <Link
           to="/"
@@ -57,16 +59,19 @@ export default function ToolLayout({ title, description, children, fullWidth = f
         </span>
       </div>
 
-      {/* Tool content */}
+      {/* Tool content — scrolls internally */}
       <div style={{
-        flex: 1, display: 'flex', flexDirection: 'column',
+        flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column',
         padding: fullWidth ? '24px 32px' : '32px',
         maxWidth: fullWidth ? '100%' : 1200, width: '100%', margin: '0 auto',
+        overflowY: 'auto',
+        boxSizing: 'border-box',
         animation: 'fadeUp 0.35s ease both',
       }}>
         <p style={{
           fontSize: 14, color: 'var(--text-dim)',
           marginBottom: 24, fontFamily: 'var(--font-sans)',
+          flexShrink: 0,
         }}>
           {description}
         </p>

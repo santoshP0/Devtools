@@ -1,25 +1,31 @@
 import { useState } from 'react'
 import ToolLayout from '../components/ToolLayout'
 
+const SAMPLE = `// Quick scratchpad
+console.log("Hello, world!");
+console.log("2 + 2 =", 2 + 2);
+`
+
 export default function JsSandbox() {
-  const [code, setCode] = useState('// Quick scratchpad for JS\nconst list = [1, 2, 3];\nconst squared = list.map(x => x * x);\nconsole.log("Input:", list);\nconsole.log("Result:", squared);')
+  const [code, setCode] = useState(SAMPLE)
   const [logs, setLogs] = useState<string[]>([])
   const [error, setError] = useState('')
 
   const runCode = () => {
     setError('')
     const output: string[] = []
-    
-    // Custom console to capture logs
+
     const mockConsole = {
       log: (...args: any[]) => output.push(args.map(a => typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a)).join(' ')),
       error: (...args: any[]) => output.push('❌ ' + args.join(' ')),
-      warn: (...args: any[]) => output.push('⚠ ' + args.join(' '))
+      warn: (...args: any[]) => output.push('⚠ ' + args.join(' ')),
     }
 
     try {
-      // Use Function constructor for basic sandboxing (not truly secure, but good for a scratchpad)
-      const fn = new Function('console', code)
+      // INTENTIONAL: This is a JS sandbox tool. The user explicitly writes and runs code.
+      // new Function() is used deliberately to execute user-provided JS in the browser context.
+      // No external input is eval'd; the user types and runs their own code only.
+      const fn = new Function('console', code) // eslint-disable-line no-new-func
       fn(mockConsole)
       setLogs(output)
     } catch (e: any) {
@@ -29,38 +35,70 @@ export default function JsSandbox() {
   }
 
   return (
-    <ToolLayout title="JavaScript Sandbox" description="A lightweight playground to run and test JavaScript snippets in the browser.">
-      <div className="two-col">
-        <div className="flex flex-col gap-4">
-          <div className="flex justify-between items-center mb-1">
-            <label className="label">Script Editor</label>
-            <button onClick={runCode} className="btn-primary px-6">Run (Ctrl+Enter)</button>
+    <ToolLayout title="JavaScript Sandbox" description="Lightweight playground to run and test JavaScript snippets in the browser." fullWidth>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, flex: 1, minHeight: 0 }}>
+        {/* Editor */}
+        <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexShrink: 0 }}>
+            <label className="label" style={{ margin: 0 }}>Script Editor</label>
+            <button onClick={runCode} className="btn-primary" style={{ padding: '6px 20px' }}>Run (Ctrl+Enter)</button>
           </div>
           <textarea
             value={code}
             onChange={e => setCode(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) runCode() }}
-            className="tool-textarea flex-1 min-h-[500px]"
+            className="tool-textarea"
+            style={{ flex: 1, minHeight: 0, fontFamily: 'var(--font-mono)', fontSize: 13, lineHeight: 1.7, resize: 'none' }}
             spellCheck={false}
           />
         </div>
 
-        <div className="flex flex-col gap-4">
-          <label className="label">Console Output</label>
-          <div className="tool-panel flex-1 min-h-[500px] bg-black/30 border-slate-800 flex flex-col font-mono text-xs">
-            <div className="flex-1 overflow-y-auto p-4 space-y-1 custom-scrollbar">
+        {/* Output */}
+        <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <label className="label" style={{ marginBottom: 8, flexShrink: 0 }}>Console Output</label>
+          <div style={{
+            flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column',
+            background: 'oklch(0.08 0.01 250)',
+            border: '1px solid var(--border)',
+            borderRadius: 10,
+            fontFamily: 'var(--font-mono)', fontSize: 12,
+          }}>
+            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+              {logs.length === 0 && !error && (
+                <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>Console is empty…</span>
+              )}
               {logs.map((log, i) => (
-                <div key={i} className="text-slate-300 border-b border-white/5 pb-1">
-                  <span className="text-slate-600 mr-2">[{new Date().toLocaleTimeString([], { hour12: false })}]</span>
+                <div key={i} style={{ color: 'var(--text-dim)', borderBottom: '1px solid var(--border)', paddingBottom: 4 }}>
+                  <span style={{ color: 'var(--text-muted)', marginRight: 8 }}>
+                    [{new Date().toLocaleTimeString([], { hour12: false })}]
+                  </span>
                   {log}
                 </div>
               ))}
-              {logs.length === 0 && !error && <div className="text-slate-600 italic">Console is empty...</div>}
-              {error && <div className="text-red-400 bg-red-950/20 p-2 rounded border border-red-900/30">Error: {error}</div>}
+              {error && (
+                <div style={{
+                  color: 'oklch(0.70 0.18 25)',
+                  background: 'oklch(0.65 0.18 25 / 0.10)',
+                  border: '1px solid oklch(0.65 0.18 25 / 0.35)',
+                  borderRadius: 6, padding: '6px 12px',
+                }}>
+                  Error: {error}
+                </div>
+              )}
             </div>
-            <div className="p-3 border-t border-white/5 flex justify-between items-center">
-              <span className="text-[10px] text-slate-500 uppercase font-bold tracking-tighter">Live Output</span>
-              <button onClick={() => setLogs([])} className="text-[10px] text-slate-600 hover:text-slate-400 uppercase font-bold">Clear</button>
+            <div style={{
+              padding: '8px 16px', borderTop: '1px solid var(--border)',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0,
+            }}>
+              <span style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.08em' }}>Live Output</span>
+              <button
+                onClick={() => { setLogs([]); setError('') }}
+                style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                onMouseEnter={e => (e.currentTarget.style.color = 'var(--text)')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
+              >
+                Clear
+              </button>
             </div>
           </div>
         </div>

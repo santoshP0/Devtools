@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef } from 'react'
 import ToolLayout from '../components/ToolLayout'
 
 interface Note {
@@ -11,44 +11,28 @@ interface Note {
 }
 
 const COLORS = [
-  { name: 'white', bg: 'bg-white', border: 'border-slate-200', active: 'ring-slate-400' },
-  { name: 'yellow', bg: 'bg-yellow-50', border: 'border-yellow-200', active: 'ring-yellow-400' },
-  { name: 'blue', bg: 'bg-blue-50', border: 'border-blue-200', active: 'ring-blue-400' },
-  { name: 'green', bg: 'bg-green-50', border: 'border-green-200', active: 'ring-green-400' },
-  { name: 'pink', bg: 'bg-pink-50', border: 'border-pink-200', active: 'ring-pink-400' },
-  { name: 'purple', bg: 'bg-purple-50', border: 'border-purple-200', active: 'ring-purple-400' },
+  { name: 'default', swatch: 'oklch(0.25 0.02 250)',  bg: 'oklch(0.97 0.01 250)',  border: 'oklch(0.87 0.02 250)',  text: '#1e1e2e' },
+  { name: 'yellow',  swatch: 'oklch(0.78 0.16 90)',   bg: 'oklch(0.97 0.05 95)',   border: 'oklch(0.88 0.08 90)',   text: '#2a1a00' },
+  { name: 'blue',    swatch: 'oklch(0.65 0.15 240)',  bg: 'oklch(0.96 0.04 235)',  border: 'oklch(0.86 0.07 235)',  text: '#00102d' },
+  { name: 'green',   swatch: 'oklch(0.65 0.16 145)',  bg: 'oklch(0.96 0.05 145)',  border: 'oklch(0.86 0.08 145)',  text: '#001a0a' },
+  { name: 'pink',    swatch: 'oklch(0.72 0.14 350)',  bg: 'oklch(0.97 0.04 355)',  border: 'oklch(0.87 0.07 350)',  text: '#2a001a' },
+  { name: 'purple',  swatch: 'oklch(0.65 0.18 300)',  bg: 'oklch(0.96 0.04 300)',  border: 'oklch(0.86 0.07 300)',  text: '#1a002d' },
 ]
 
 const STORAGE_KEY = 'devtoolbox-notes'
 
 function loadNotes(): Note[] {
-  try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]')
-  } catch {
-    return []
-  }
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]') } catch { return [] }
 }
-
 function saveNotes(notes: Note[]) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(notes))
 }
-
 function newNote(): Note {
-  return {
-    id: crypto.randomUUID(),
-    title: '',
-    content: '',
-    color: 'white',
-    createdAt: Date.now(),
-    updatedAt: Date.now(),
-  }
+  return { id: crypto.randomUUID(), title: '', content: '', color: 'default', createdAt: Date.now(), updatedAt: Date.now() }
 }
-
 function timeAgo(ts: number) {
   const diff = Date.now() - ts
-  const m = Math.floor(diff / 60000)
-  const h = Math.floor(diff / 3600000)
-  const d = Math.floor(diff / 86400000)
+  const m = Math.floor(diff / 60000), h = Math.floor(diff / 3600000), d = Math.floor(diff / 86400000)
   if (d > 0) return `${d}d ago`
   if (h > 0) return `${h}h ago`
   if (m > 0) return `${m}m ago`
@@ -56,34 +40,35 @@ function timeAgo(ts: number) {
 }
 
 export default function Notes() {
-  const [notes, setNotes] = useState<Note[]>(loadNotes)
+  const [notes, setNotes] = useState<Note[]>(() => { const n = loadNotes(); return n })
   const [activeId, setActiveId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
-  const saveTimeout = useRef<ReturnType<typeof setTimeout>>()
+  const [copiedNote, setCopiedNote] = useState(false)
   const contentRef = useRef<HTMLTextAreaElement>(null)
 
   const active = notes.find(n => n.id === activeId) ?? null
 
-  useEffect(() => {
-    saveNotes(notes)
-  }, [notes])
-
   const update = (id: string, patch: Partial<Note>) => {
-    clearTimeout(saveTimeout.current)
-    setNotes(prev => prev.map(n => n.id === id ? { ...n, ...patch, updatedAt: Date.now() } : n))
+    const updated = notes.map(n => n.id === id ? { ...n, ...patch, updatedAt: Date.now() } : n)
+    setNotes(updated)
+    saveNotes(updated)
   }
 
   const addNote = () => {
     const note = newNote()
-    setNotes(prev => [note, ...prev])
+    const updated = [note, ...notes]
+    setNotes(updated)
+    saveNotes(updated)
     setActiveId(note.id)
     setTimeout(() => contentRef.current?.focus(), 50)
   }
 
   const deleteNote = (id: string) => {
-    setNotes(prev => prev.filter(n => n.id !== id))
-    if (activeId === id) setActiveId(null)
+    const updated = notes.filter(n => n.id !== id)
+    setNotes(updated)
+    saveNotes(updated)
+    if (activeId === id) setActiveId(updated[0]?.id ?? null)
     setConfirmDelete(null)
   }
 
@@ -93,16 +78,15 @@ export default function Notes() {
   })
 
   const colorOf = (name: string) => COLORS.find(c => c.name === name) ?? COLORS[0]
+  const activeColor = active ? colorOf(active.color) : COLORS[0]
 
   return (
     <ToolLayout title="Notes" description="Write and save multiple notes in your browser. Stored locally — never uploaded anywhere.">
-      <div className="flex gap-4 h-[600px]">
+      <div style={{ display: 'flex', gap: 16, flex: 1, minHeight: 0, overflow: 'hidden' }}>
 
         {/* Sidebar */}
-        <div className="w-64 flex-shrink-0 flex flex-col gap-3">
-          <button onClick={addNote} className="btn-primary w-full flex items-center justify-center gap-2">
-            <span className="text-lg leading-none">+</span> New Note
-          </button>
+        <div style={{ width: 240, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <button onClick={addNote} className="btn-primary" style={{ width: '100%' }}>+ New Note</button>
 
           <input
             type="search"
@@ -110,74 +94,104 @@ export default function Notes() {
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="tool-input"
+            style={{ width: '100%', boxSizing: 'border-box' }}
           />
 
-          <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
             {filtered.length === 0 && (
-              <div className="text-center text-sm text-slate-400 py-8">
-                {search ? 'No notes match your search' : 'No notes yet — click New Note!'}
+              <div style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-muted)', padding: '32px 0' }}>
+                {search ? 'No notes match' : 'No notes yet — click New Note!'}
               </div>
             )}
             {filtered.map(note => {
               const c = colorOf(note.color)
+              const isActive = activeId === note.id
               return (
                 <button
                   key={note.id}
                   onClick={() => setActiveId(note.id)}
-                  className={`w-full text-left rounded-xl border p-3 transition-all ${c.bg} ${c.border} ${activeId === note.id ? `ring-2 ${c.active}` : 'hover:shadow-sm'}`}
+                  style={{
+                    width: '100%', textAlign: 'left', borderRadius: 12, padding: '10px 12px',
+                    border: `2px solid ${isActive ? c.swatch : 'var(--border)'}`,
+                    background: isActive ? c.bg : 'var(--surface)',
+                    cursor: 'pointer', transition: 'all 0.15s',
+                  }}
                 >
-                  <p className="font-medium text-sm text-slate-800 truncate">
-                    {note.title || <span className="text-slate-400 italic">Untitled</span>}
+                  <p style={{ fontSize: 13, fontWeight: 600, color: isActive ? c.text : 'var(--text)', marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {note.title || <span style={{ color: isActive ? c.text + '80' : 'var(--text-muted)', fontStyle: 'italic' }}>Untitled</span>}
                   </p>
-                  <p className="text-xs text-slate-500 mt-0.5 truncate">
-                    {note.content || <span className="italic">Empty</span>}
+                  <p style={{ fontSize: 12, color: isActive ? c.text + 'aa' : 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {note.content || <span style={{ fontStyle: 'italic' }}>Empty</span>}
                   </p>
-                  <p className="text-xs text-slate-400 mt-1">{timeAgo(note.updatedAt)}</p>
+                  <p style={{ fontSize: 11, color: isActive ? c.text + '80' : 'var(--text-muted)', marginTop: 4 }}>{timeAgo(note.updatedAt)}</p>
                 </button>
               )
             })}
           </div>
 
-          <div className="text-xs text-slate-400 text-center">
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', flexShrink: 0 }}>
             {notes.length} note{notes.length !== 1 ? 's' : ''} · saved locally
           </div>
         </div>
 
         {/* Editor */}
-        <div className="flex-1 min-w-0">
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
           {!active ? (
-            <div className="h-full bg-white border border-slate-200 rounded-xl flex flex-col items-center justify-center text-slate-400 gap-3">
-              <span className="text-4xl">📝</span>
-              <p className="text-sm">Select a note or create a new one</p>
+            <div style={{
+              flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, gap: 12,
+            }}>
+              <span style={{ fontSize: 40 }}>📝</span>
+              <p style={{ fontSize: 14, color: 'var(--text-muted)' }}>Select a note or create a new one</p>
               <button onClick={addNote} className="btn-primary">New Note</button>
             </div>
           ) : (
-            <div className={`h-full rounded-xl border flex flex-col ${colorOf(active.color).bg} ${colorOf(active.color).border}`}>
+            <div style={{
+              flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column',
+              background: activeColor.bg,
+              border: `1.5px solid ${activeColor.border}`,
+              borderRadius: 12,
+              overflow: 'hidden',
+            }}>
               {/* Toolbar */}
-              <div className="flex items-center justify-between px-4 py-2 border-b border-inherit">
-                <div className="flex items-center gap-1.5">
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '8px 16px', flexShrink: 0,
+                borderBottom: `1px solid ${activeColor.border}`,
+                background: activeColor.bg,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   {COLORS.map(c => (
                     <button
                       key={c.name}
                       onClick={() => update(active.id, { color: c.name })}
                       title={c.name}
-                      className={`w-5 h-5 rounded-full border transition-all ${c.bg} ${c.border} ${active.color === c.name ? `ring-2 ring-offset-1 ${c.active}` : 'hover:scale-110'}`}
+                      style={{
+                        width: 20, height: 20, borderRadius: '50%',
+                        background: c.bg,
+                        border: `2px solid ${active.color === c.name ? c.swatch : c.border}`,
+                        cursor: 'pointer',
+                        boxShadow: active.color === c.name ? `0 0 0 2px ${c.swatch}44` : 'none',
+                        transform: active.color === c.name ? 'scale(1.2)' : 'scale(1)',
+                        transition: 'all 0.15s',
+                      }}
                     />
                   ))}
                 </div>
-                <div className="flex items-center gap-3 text-xs text-slate-400">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 12, color: activeColor.text + 'aa' }}>
                   <span>{active.content.length} chars</span>
                   <span>Updated {timeAgo(active.updatedAt)}</span>
                   {confirmDelete === active.id ? (
-                    <span className="flex items-center gap-2">
-                      <span className="text-slate-600">Delete?</span>
-                      <button onClick={() => deleteNote(active.id)} className="text-red-600 font-medium hover:text-red-700">Yes</button>
-                      <button onClick={() => setConfirmDelete(null)} className="text-slate-500 hover:text-slate-700">No</button>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span>Delete?</span>
+                      <button onClick={() => deleteNote(active.id)} style={{ color: 'oklch(0.65 0.18 25)', fontWeight: 600, background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 12 }}>Yes</button>
+                      <button onClick={() => setConfirmDelete(null)} style={{ color: activeColor.text + 'aa', background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 12 }}>No</button>
                     </span>
                   ) : (
-                    <button onClick={() => setConfirmDelete(active.id)} className="text-slate-400 hover:text-red-500 transition-colors" title="Delete note">
-                      🗑
-                    </button>
+                    <button onClick={() => setConfirmDelete(active.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: 16, opacity: 0.5, transition: 'opacity 0.15s' }}
+                      onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+                      onMouseLeave={e => (e.currentTarget.style.opacity = '0.5')}
+                    >🗑</button>
                   )}
                 </div>
               </div>
@@ -188,7 +202,16 @@ export default function Notes() {
                 value={active.title}
                 onChange={e => update(active.id, { title: e.target.value })}
                 placeholder="Note title…"
-                className="w-full px-4 pt-3 pb-1 text-lg font-semibold text-slate-800 bg-transparent border-none focus:outline-none placeholder:text-slate-300"
+                style={{
+                  width: '100%', padding: '14px 20px 6px',
+                  fontSize: 18, fontWeight: 700,
+                  color: activeColor.text,
+                  background: activeColor.bg,
+                  border: 'none', outline: 'none',
+                  fontFamily: 'var(--font-sans)',
+                  flexShrink: 0,
+                  boxSizing: 'border-box',
+                }}
               />
 
               {/* Content */}
@@ -197,20 +220,36 @@ export default function Notes() {
                 value={active.content}
                 onChange={e => update(active.id, { content: e.target.value })}
                 placeholder="Start writing…"
-                className="flex-1 w-full px-4 py-2 text-sm text-slate-700 bg-transparent border-none focus:outline-none resize-none placeholder:text-slate-300 leading-relaxed"
+                style={{
+                  flex: 1, minHeight: 0,
+                  width: '100%', padding: '6px 20px 16px',
+                  fontSize: 14, lineHeight: 1.8,
+                  color: activeColor.text + 'dd',
+                  background: activeColor.bg,
+                  border: 'none', outline: 'none', resize: 'none',
+                  fontFamily: 'var(--font-sans)',
+                  boxSizing: 'border-box',
+                }}
                 spellCheck
               />
 
               {/* Footer */}
-              <div className="px-4 py-2 border-t border-inherit flex justify-between items-center">
-                <span className="text-xs text-slate-400">
+              <div style={{
+                padding: '8px 16px', flexShrink: 0,
+                borderTop: `1px solid ${activeColor.border}`,
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                background: activeColor.bg,
+              }}>
+                <span style={{ fontSize: 12, color: activeColor.text + '80' }}>
                   Created {new Date(active.createdAt).toLocaleDateString()}
                 </span>
                 <button
-                  onClick={() => navigator.clipboard.writeText(active.content)}
-                  className="text-xs text-slate-400 hover:text-blue-600 transition-colors"
+                  onClick={() => { navigator.clipboard.writeText(active.content); setCopiedNote(true); setTimeout(() => setCopiedNote(false), 2000) }}
+                  style={{ fontSize: 12, color: activeColor.text + '80', background: 'none', border: 'none', cursor: 'pointer', padding: 0, transition: 'color 0.15s' }}
+                  onMouseEnter={e => (e.currentTarget.style.color = activeColor.swatch)}
+                  onMouseLeave={e => (e.currentTarget.style.color = activeColor.text + '80')}
                 >
-                  Copy text
+                  {copiedNote ? '✓ Copied' : 'Copy text'}
                 </button>
               </div>
             </div>
