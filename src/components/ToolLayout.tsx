@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import { ReactNode, useEffect } from 'react'
 import { useHistory } from '../lib/storage'
 
@@ -27,38 +27,8 @@ export default function ToolLayout({ title, description, children, fullWidth = f
   }, [title, pathname])
 
   return (
-    // paddingTop:54 clears the fixed navbar; height:100dvh fills the viewport
+    // paddingTop:54 clears the fixed navbar (back button now lives in Navbar)
     <div style={{ height: '100dvh', paddingTop: 54, boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
-      {/* Topbar */}
-      <div style={{
-        borderBottom: '1px solid var(--border)',
-        padding: '0 32px', height: 58, flexShrink: 0,
-        display: 'flex', alignItems: 'center', gap: 16,
-        background: 'oklch(0.13 0.025 250 / 0.95)',
-      }}>
-        <Link
-          to="/"
-          style={{
-            display: 'flex', alignItems: 'center', gap: 6,
-            fontSize: 13, color: 'var(--text-muted)',
-            textDecoration: 'none',
-            fontFamily: 'var(--font-sans)',
-            transition: 'color var(--transition)',
-          }}
-          onMouseEnter={e => (e.currentTarget.style.color = 'var(--accent)')}
-          onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-muted)')}
-        >
-          ← All Tools
-        </Link>
-        <span style={{ color: 'var(--border-hi)', fontSize: 18 }}>|</span>
-        <span style={{
-          fontSize: 16, fontWeight: 600,
-          color: 'var(--text)', fontFamily: 'var(--font-sans)',
-        }}>
-          {title}
-        </span>
-      </div>
-
       {/* Tool content — scrolls internally */}
       <div style={{
         flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column',
