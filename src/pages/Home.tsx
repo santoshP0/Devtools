@@ -73,7 +73,7 @@ export default function Home({ search, setSearch, activeCat, setActiveCat }: Pro
       {/* ── Hero ── */}
       <div style={{
         position: 'relative', overflow: 'hidden',
-        background: 'linear-gradient(180deg, oklch(0.10 0.025 250) 0%, oklch(0.12 0.03 250) 100%)',
+        background: 'linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%)',
         padding: '80px 32px 70px',
         display: 'flex', flexDirection: 'column', alignItems: 'center',
         borderBottom: '1px solid var(--border)',
@@ -135,11 +135,10 @@ export default function Home({ search, setSearch, activeCat, setActiveCat }: Pro
               placeholder="Search tools… (⌘K)"
               style={{
                 width: '100%', padding: '14px 52px', fontSize: 15,
-                background: 'oklch(0.15 0.025 250 / 0.8)',
-                border: '1px solid var(--border-hi)',
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
                 borderRadius: 12, color: 'var(--text)',
                 fontFamily: 'var(--font-sans)',
-                backdropFilter: 'blur(8px)',
                 outline: 'none',
                 transition: 'box-shadow var(--transition), border-color var(--transition)',
               }}
@@ -156,16 +155,16 @@ export default function Home({ search, setSearch, activeCat, setActiveCat }: Pro
 
       {/* ── Recents Bar ── */}
       {recentTools.length > 0 && search === '' && activeCat === 'All' && (
-        <div className="bg-slate-900/50 border-b border-slate-800 px-8 py-3 animate-fade-in">
-          <div className="max-w-[1200px] mx-auto flex items-center gap-4 overflow-x-auto custom-scrollbar whitespace-nowrap">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mr-2">Recent:</span>
+        <div style={{ background:'var(--surface2)', borderBottom:'1px solid var(--border)', padding:'10px 32px' }}>
+          <div style={{ maxWidth:1200, margin:'0 auto', display:'flex', alignItems:'center', gap:12, overflowX:'auto', whiteSpace:'nowrap' }}>
+            <span style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.15em', marginRight:4 }}>Recent:</span>
             {recentTools.slice(0, 5).map((tool: any) => (
               <Link
                 key={tool.slug}
                 to={`/${tool.slug}`}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800 border border-slate-700 hover:border-accent/40 hover:bg-slate-700/50 transition-all text-xs text-slate-300"
+                style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 12px', borderRadius:100, background:'var(--surface)', border:'1px solid var(--border)', fontSize:12, color:'var(--text-dim)', textDecoration:'none', transition:'all 0.15s', fontFamily:'var(--font-sans)' }}
               >
-                <span className="font-mono text-[10px] opacity-70">{tool.icon}</span>
+                <span style={{ fontFamily:'var(--font-mono)', fontSize:10, opacity:0.7 }}>{tool.icon}</span>
                 <span>{tool.name}</span>
               </Link>
             ))}
@@ -212,9 +211,9 @@ export default function Home({ search, setSearch, activeCat, setActiveCat }: Pro
         {/* ── Pinned Section ── */}
         {pinnedTools.length > 0 && search === '' && activeCat === 'All' && (
           <div className="mb-12 animate-fade-in">
-            <h2 className="text-sm font-bold text-slate-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-3">
-              <span className="text-[#facc15]">★</span> Pinned Tools
-              <div className="h-px flex-1 bg-slate-800" />
+            <h2 style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.2em', marginBottom:24, display:'flex', alignItems:'center', gap:12 }}>
+              <span style={{ color:'#f59e0b' }}>★</span> Pinned Tools
+              <div style={{ height:1, flex:1, background:'var(--border)' }} />
             </h2>
             <div style={{
               display: 'grid',
@@ -229,9 +228,9 @@ export default function Home({ search, setSearch, activeCat, setActiveCat }: Pro
         )}
 
         {/* ── Main Grid ── */}
-        <h2 className="text-sm font-bold text-slate-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-3">
+        <h2 style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.2em', marginBottom:24, display:'flex', alignItems:'center', gap:12 }}>
           {activeCat === 'All' ? 'All Tools' : activeCat}
-          <div className="h-px flex-1 bg-slate-800" />
+          <div style={{ height:1, flex:1, background:'var(--border)' }} />
         </h2>
         {filtered.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-muted)', fontSize: 15 }}>

@@ -45,7 +45,8 @@ export default function HeroCanvas({ bgStyle = 'particles' }: Props) {
           if (p.y < 0 || p.y > H()) p.vy *= -1
           ctx.beginPath()
           ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
-          ctx.fillStyle = 'oklch(0.78 0.18 195 / 0.45)'
+          const isDark = document.documentElement.dataset.theme === 'dark'
+          ctx.fillStyle = isDark ? 'oklch(0.78 0.18 195 / 0.45)' : 'oklch(0.52 0.18 195 / 0.55)'
           ctx.fill()
         })
 
@@ -58,8 +59,9 @@ export default function HeroCanvas({ bgStyle = 'particles' }: Props) {
               ctx.beginPath()
               ctx.moveTo(a.x, a.y)
               ctx.lineTo(b.x, b.y)
-              const alpha = 0.12 * (1 - d / 110)
-              ctx.strokeStyle = `rgba(99,205,255,${alpha})`
+              const isDark2 = document.documentElement.dataset.theme === 'dark'
+              const alpha = (isDark2 ? 0.12 : 0.18) * (1 - d / 110)
+              ctx.strokeStyle = isDark2 ? `rgba(99,205,255,${alpha})` : `rgba(0,140,180,${alpha})`
               ctx.lineWidth = 0.6
               ctx.stroke()
             }

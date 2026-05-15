@@ -6,9 +6,45 @@
 @tailwind utilities;
 
 /* ══════════════════════════════════════════════════
-   DARK DESIGN SYSTEM — CSS Variables
+   DESIGN SYSTEM — CSS Variables
+   :root = light (default)   [data-theme="dark"] = dark
    ══════════════════════════════════════════════════ */
 :root {
+  /* Shared — never change with theme */
+  --radius:       10px;
+  --radius-lg:    16px;
+  --font-sans:    'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --font-mono:    'JetBrains Mono', 'Fira Code', monospace;
+  --transition:   0.18s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Light theme (default) */
+  --bg:           oklch(0.97 0.005 250);
+  --bg2:          oklch(0.93 0.008 250);
+  --surface:      oklch(1.00 0.000 250);
+  --surface2:     oklch(0.95 0.006 250);
+  --border:       oklch(0.87 0.012 250);
+  --border-hi:    oklch(0.78 0.020 250);
+  --accent:       oklch(0.52 0.18  195);
+  --accent-dim:   oklch(0.42 0.14  195);
+  --accent-bg:    oklch(0.92 0.06  195);
+  --purple:       oklch(0.52 0.16  285);
+  --purple-bg:    oklch(0.92 0.06  285);
+  --text:         oklch(0.14 0.020 250);
+  --text-dim:     oklch(0.35 0.020 250);
+  --text-muted:   oklch(0.55 0.015 250);
+  --nav-bg:       oklch(0.99 0.003 250 / 0.92);
+  /* Per-category colors — darker hues for light bg */
+  --cat-data:     oklch(0.45 0.15 220);   --cat-data-bg:  oklch(0.93 0.04 220);
+  --cat-sec:      oklch(0.48 0.16  25);   --cat-sec-bg:   oklch(0.93 0.04  25);
+  --cat-gen:      oklch(0.45 0.15 145);   --cat-gen-bg:   oklch(0.93 0.04 145);
+  --cat-txt:      oklch(0.50 0.14  75);   --cat-txt-bg:   oklch(0.93 0.04  75);
+  --cat-des:      oklch(0.48 0.16 300);   --cat-des-bg:   oklch(0.93 0.04 300);
+  --cat-med:      oklch(0.48 0.16 195);   --cat-med-bg:   oklch(0.93 0.04 195);
+  --cat-utl:      oklch(0.48 0.14 260);   --cat-utl-bg:   oklch(0.93 0.04 260);
+}
+
+/* Dark theme */
+[data-theme="dark"] {
   --bg:           oklch(0.10 0.025 250);
   --bg2:          oklch(0.13 0.025 250);
   --surface:      oklch(0.16 0.025 250);
@@ -23,6 +59,7 @@
   --text:         oklch(0.93 0.01  250);
   --text-dim:     oklch(0.62 0.02  250);
   --text-muted:   oklch(0.40 0.02  250);
+  --nav-bg:       oklch(0.10 0.025 250 / 0.92);
   /* Per-category colors */
   --cat-data:     oklch(0.72 0.15 220);   --cat-data-bg:  oklch(0.17 0.05 220);
   --cat-sec:      oklch(0.72 0.16  25);   --cat-sec-bg:   oklch(0.17 0.05  25);
@@ -31,12 +68,6 @@
   --cat-des:      oklch(0.72 0.16 300);   --cat-des-bg:   oklch(0.17 0.05 300);
   --cat-med:      oklch(0.72 0.16 195);   --cat-med-bg:   oklch(0.17 0.05 195);
   --cat-utl:      oklch(0.72 0.14 260);   --cat-utl-bg:   oklch(0.17 0.05 260);
-  /* Misc */
-  --radius:       10px;
-  --radius-lg:    16px;
-  --font-sans:    'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
-  --font-mono:    'JetBrains Mono', 'Fira Code', monospace;
-  --transition:   0.18s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* ── Base ── */
