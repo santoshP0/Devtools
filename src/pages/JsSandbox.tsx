@@ -58,7 +58,7 @@ export default function JsSandbox() {
           <label className="label" style={{ marginBottom: 8, flexShrink: 0 }}>Console Output</label>
           <div style={{
             flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column',
-            background: 'oklch(0.08 0.01 250)',
+            background: 'var(--bg)',
             border: '1px solid var(--border)',
             borderRadius: 10,
             fontFamily: 'var(--font-mono)', fontSize: 12,
