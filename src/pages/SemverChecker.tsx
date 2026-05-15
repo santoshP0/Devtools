@@ -82,8 +82,8 @@ export default function SemverCheckerPage() {
             {sorted.map(({ raw, parsed: pv, matches }) => (
               <div key={raw} style={{
                 display:'flex', gap:14, alignItems:'center',
-                background: matches ? 'oklch(0.14 0.04 145)' : 'var(--surface)',
-                border:`1px solid ${matches ? 'oklch(0.40 0.10 145)' : 'var(--border)'}`,
+                background: matches ? 'var(--cat-gen-bg)' : 'var(--surface)',
+                border:`1px solid ${matches ? 'var(--cat-gen)' : 'var(--border)'}`,
                 borderRadius:10, padding:'11px 16px',
               }}>
                 <span style={{ fontFamily:'var(--font-mono)', fontWeight:700, fontSize:15, minWidth:100 }}>{raw}</span>
