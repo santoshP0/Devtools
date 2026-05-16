@@ -38,10 +38,25 @@ export default function SvgPreviewPage() {
   const isValid = svg.trim().startsWith('<svg') || svg.trim().startsWith('<?xml')
   const dataUri = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
 
-  // Strip hardcoded width/height so preview respects container size
-  const previewSvg = svg
-    .replace(/<svg([^>]*?)\s+width=["'][^"']*["']/g, '<svg$1')
-    .replace(/<svg([^>]*?)\s+height=["'][^"']*["']/g, '<svg$1')
+  // Build preview SVG: ensure viewBox exists so scaling works correctly
+  const previewSvg = (() => {
+    // Extract existing viewBox
+    const vbMatch = svg.match(/viewBox=["']([^"']+)["']/)
+    // Extract width/height for synthesizing viewBox if missing
+    const wMatch = svg.match(/<svg[^>]*\s+width=["']([^"']+)["']/)
+    const hMatch = svg.match(/<svg[^>]*\s+height=["']([^"']+)["']/)
+    const w = wMatch ? parseFloat(wMatch[1]) : null
+    const h = hMatch ? parseFloat(hMatch[1]) : null
+    let s = svg
+    // Add viewBox if missing but we have width/height
+    if (!vbMatch && w && h) {
+      s = s.replace(/<svg(\s)/, `<svg viewBox="0 0 ${w} ${h}"$1`)
+    }
+    // Strip explicit width/height so CSS controls display size
+    s = s.replace(/(<svg[^>]*?)\s+width=["'][^"']*["']/g, '$1')
+    s = s.replace(/(<svg[^>]*?)\s+height=["'][^"']*["']/g, '$1')
+    return s
+  })()
   const previewUri = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(previewSvg)}`
 
   const handleFile = (file: File) => {
@@ -92,9 +107,9 @@ export default function SvgPreviewPage() {
               ))}
             </div>
           </div>
-          <div style={{ flex:1, minHeight:280, display:'flex', alignItems:'center', justifyContent:'center', borderRadius:12, border:'1px solid var(--border)', background: bgMap[bgStyle], overflow:'hidden', padding:16 }}>
+          <div style={{ flex:1, minHeight:320, maxHeight:480, display:'flex', alignItems:'center', justifyContent:'center', borderRadius:12, border:'1px solid var(--border)', background: bgMap[bgStyle], overflow:'hidden', padding:16 }}>
             {isValid
-              ? <img src={previewUri} alt="SVG preview" style={{ maxWidth:'100%', maxHeight:280, objectFit:'contain', display:'block' }} />
+              ? <img src={previewUri} alt="SVG preview" style={{ maxWidth:'100%', maxHeight:'100%', width:'100%', objectFit:'contain', display:'block' }} />
               : <span style={{ color:'var(--text-muted)', fontSize:14 }}>Enter valid SVG →</span>
             }
           </div>
