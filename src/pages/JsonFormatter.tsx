@@ -1,36 +1,230 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import ToolLayout from '../components/ToolLayout'
 
-export default function JsonFormatter() {
-  const [input, setInput] = useState('')
-  const [output, setOutput] = useState('')
-  const [error, setError] = useState('')
-  const [indent, setIndent] = useState<number | string>(2)
-  const [copied, setCopied] = useState(false)
+// ─── Persistence ──────────────────────────────────────────────────────────────
+const STORAGE_KEY = 'devtools:json-formatter:input'
+function loadSaved() { try { return localStorage.getItem(STORAGE_KEY) ?? '' } catch { return '' } }
+function saveToDisk(v: string) { try { localStorage.setItem(STORAGE_KEY, v) } catch {} }
 
-  const process = (minify: boolean) => {
-    if (!input.trim()) return
-    try {
-      const parsed = JSON.parse(input)
-      setOutput(minify ? JSON.stringify(parsed) : JSON.stringify(parsed, null, indent === '\t' ? '\t' : Number(indent)))
-      setError('')
-    } catch (e) {
-      setError((e as Error).message)
-      setOutput('')
-    }
+// ─── Error prettifier ─────────────────────────────────────────────────────────
+function prettifyJsonError(raw: string, input: string): { title: string; detail: string; lineNo: number; colNo: number } {
+  // Extract position from different browser error formats
+  let pos = -1
+  let lineNo = 0
+  let colNo = 0
+
+  // "at position N" (Chrome/V8)
+  const posM = raw.match(/at position (\d+)/i)
+  if (posM) pos = Number(posM[1])
+
+  // "(line N column N)" (Firefox / newer V8)
+  const lcM = raw.match(/\(line (\d+) column (\d+)\)/i)
+  if (lcM) { lineNo = Number(lcM[1]); colNo = Number(lcM[2]) }
+
+  // Derive line/col from position if we have it
+  if (pos >= 0 && (lineNo === 0)) {
+    const before = input.slice(0, pos)
+    const parts = before.split('\n')
+    lineNo = parts.length
+    colNo = (parts[parts.length - 1]?.length ?? 0) + 1
   }
 
-  const validate = () => {
+  // Extract a snippet around the problem
+  let snippet = ''
+  if (pos >= 0) {
+    const start = Math.max(0, pos - 20)
+    const end = Math.min(input.length, pos + 20)
+    const before = input.slice(start, pos).replace(/\n/g, '↵')
+    const after  = input.slice(pos, end).replace(/\n/g, '↵')
+    snippet = `…${before}⚑${after}…`
+  }
+
+  // Human-readable titles for common errors
+  let title = 'Invalid JSON'
+  const msg = raw.toLowerCase()
+  if (msg.includes('unexpected end') || msg.includes('unterminated')) title = 'Unexpected end of input — JSON is incomplete'
+  else if (msg.includes('unexpected token') || msg.includes('non-whitespace')) title = 'Unexpected character found'
+  else if (msg.includes('bad escape')) title = 'Invalid escape sequence in string'
+  else if (msg.includes('duplicate key')) title = 'Duplicate key in object'
+  else if (msg.includes('expected') && msg.includes('colon')) title = 'Missing colon (:) between key and value'
+  else if (msg.includes('expected') && msg.includes('comma')) title = 'Missing comma (,) between values'
+
+  const detail = [
+    lineNo > 0 ? `Line ${lineNo}, column ${colNo}` : '',
+    snippet ? `Near: ${snippet}` : '',
+  ].filter(Boolean).join('  ·  ')
+
+  return { title, detail, lineNo, colNo }
+}
+
+// ─── Collapsible JSON Tree ────────────────────────────────────────────────────
+const C = {
+  key:    '#60a5fa',
+  str:    '#4ade80',
+  num:    '#fb923c',
+  bool:   '#c084fc',
+  null:   '#94a3b8',
+  punct:  '#cbd5e1',
+  muted:  '#64748b',
+}
+
+function CollapseBtn({ collapsed, onClick }: { collapsed: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={e => { e.stopPropagation(); onClick() }}
+      title={collapsed ? 'Expand' : 'Collapse'}
+      style={{
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 10, fontWeight: 700, fontFamily: 'var(--font-mono)',
+        padding: '0 4px', height: 16, borderRadius: 3, marginLeft: 4, cursor: 'pointer',
+        background: collapsed ? 'rgba(96,165,250,0.15)' : 'rgba(148,163,184,0.12)',
+        color: collapsed ? '#60a5fa' : '#94a3b8',
+        border: `1px solid ${collapsed ? 'rgba(96,165,250,0.3)' : 'rgba(148,163,184,0.2)'}`,
+        transition: 'all 0.12s',
+      }}
+    >
+      {collapsed ? '+' : '−'}
+    </button>
+  )
+}
+
+type JsonPrim = string | number | boolean | null
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type JsonVal = JsonPrim | JsonVal[] | { [k: string]: any }
+
+function JsonNode({ k, val, depth, last }: {
+  k?: string; val: JsonVal; depth: number; last: boolean
+}) {
+  const [collapsed, setCollapsed] = useState(false)
+  const indent = depth * 16
+  const comma = last ? '' : ','
+
+  const keyEl = k !== undefined
+    ? <span><span style={{ color: C.key }}>"{ k }"</span><span style={{ color: C.punct }}>: </span></span>
+    : null
+
+  // Primitive
+  if (val === null)
+    return <div style={{ paddingLeft: indent, lineHeight: '22px' }}>{keyEl}<span style={{ color: C.null }}>null</span><span style={{ color: C.muted }}>{comma}</span></div>
+  if (typeof val === 'boolean')
+    return <div style={{ paddingLeft: indent, lineHeight: '22px' }}>{keyEl}<span style={{ color: C.bool }}>{String(val)}</span><span style={{ color: C.muted }}>{comma}</span></div>
+  if (typeof val === 'number')
+    return <div style={{ paddingLeft: indent, lineHeight: '22px' }}>{keyEl}<span style={{ color: C.num }}>{val}</span><span style={{ color: C.muted }}>{comma}</span></div>
+  if (typeof val === 'string')
+    return <div style={{ paddingLeft: indent, lineHeight: '22px' }}>{keyEl}<span style={{ color: C.str }}>"{ val }"</span><span style={{ color: C.muted }}>{comma}</span></div>
+
+  // Array
+  if (Array.isArray(val)) {
+    const empty = val.length === 0
+    return (
+      <div style={{ paddingLeft: indent }}>
+        <div style={{ lineHeight: '22px', display: 'flex', alignItems: 'center' }}>
+          {keyEl}
+          <span style={{ color: C.punct }}>[</span>
+          {!empty && <CollapseBtn collapsed={collapsed} onClick={() => setCollapsed(c => !c)} />}
+          {(collapsed || empty) && (
+            <span style={{ color: C.muted, marginLeft: 4 }}>
+              {empty ? '' : `${val.length} item${val.length !== 1 ? 's' : ''}`}
+            </span>
+          )}
+          {collapsed && <span style={{ color: C.punct }}>]{comma}</span>}
+        </div>
+        {!collapsed && !empty && (
+          <>
+            {val.map((item, i) => (
+              <JsonNode key={i} val={item as JsonVal} depth={0} last={i === val.length - 1} />
+            ))}
+            <div style={{ lineHeight: '22px' }}><span style={{ color: C.punct }}>]{comma}</span></div>
+          </>
+        )}
+      </div>
+    )
+  }
+
+  // Object
+  const entries = Object.entries(val as Record<string, JsonVal>)
+  const empty = entries.length === 0
+  return (
+    <div style={{ paddingLeft: indent }}>
+      <div style={{ lineHeight: '22px', display: 'flex', alignItems: 'center' }}>
+        {keyEl}
+        <span style={{ color: C.punct }}>{'{'}</span>
+        {!empty && <CollapseBtn collapsed={collapsed} onClick={() => setCollapsed(c => !c)} />}
+        {collapsed && (
+          <span style={{ color: C.muted, marginLeft: 4 }}>{entries.length} key{entries.length !== 1 ? 's' : ''}</span>
+        )}
+        {collapsed && <span style={{ color: C.punct }}>{'}'}{comma}</span>}
+      </div>
+      {!collapsed && !empty && (
+        <>
+          {entries.map(([ek, ev], i) => (
+            <JsonNode key={ek} k={ek} val={ev as JsonVal} depth={0} last={i === entries.length - 1} />
+          ))}
+          <div style={{ lineHeight: '22px' }}><span style={{ color: C.punct }}>{'}'}{comma}</span></div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function JsonTree({ parsed }: { parsed: JsonVal }) {
+  return (
+    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13, lineHeight: 1.6, overflowX: 'auto' }}>
+      <JsonNode val={parsed} depth={0} last={true} />
+    </div>
+  )
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+export default function JsonFormatter() {
+  const [input, setInput]   = useState<string>(() => loadSaved())
+  const [output, setOutput] = useState('')
+  const [parsed, setParsed] = useState<JsonVal | null>(null)  // for tree view
+  const [error, setError]   = useState<{ title: string; detail: string; lineNo: number; colNo: number } | null>(null)
+  const [status, setStatus] = useState<'idle' | 'valid' | 'error'>('idle')
+  const [indent, setIndent] = useState<number | string>(2)
+  const [copied, setCopied] = useState(false)
+  const [viewMode, setViewMode] = useState<'tree' | 'raw'>('tree')
+
+  // Persist input
+  useEffect(() => {
+    const id = setTimeout(() => saveToDisk(input), 300)
+    return () => clearTimeout(id)
+  }, [input])
+
+  const process = useCallback((minify: boolean) => {
+    if (!input.trim()) return
+    try {
+      const obj = JSON.parse(input)
+      const out = minify ? JSON.stringify(obj) : JSON.stringify(obj, null, indent === '\t' ? '\t' : Number(indent))
+      setOutput(out)
+      setParsed(minify ? null : obj as JsonVal)  // no tree for minified
+      setError(null)
+      setStatus('valid')
+    } catch (e) {
+      const raw = (e as Error).message
+      setError(prettifyJsonError(raw, input))
+      setOutput('')
+      setParsed(null)
+      setStatus('error')
+    }
+  }, [input, indent])
+
+  const validate = useCallback(() => {
     if (!input.trim()) return
     try {
       JSON.parse(input)
-      setError('')
+      setError(null)
       setOutput('✓ Valid JSON')
+      setParsed(null)
+      setStatus('valid')
     } catch (e) {
-      setError((e as Error).message)
+      setError(prettifyJsonError((e as Error).message, input))
       setOutput('')
+      setParsed(null)
+      setStatus('error')
     }
-  }
+  }, [input])
 
   const copy = async () => {
     await navigator.clipboard.writeText(output)
@@ -38,13 +232,15 @@ export default function JsonFormatter() {
     setTimeout(() => setCopied(false), 1500)
   }
 
-  const clear = () => { setInput(''); setOutput(''); setError('') }
+  const clear = () => { setInput(''); setOutput(''); setError(null); setParsed(null); setStatus('idle'); saveToDisk('') }
+
+  const isValid = status === 'valid' && output && output !== '✓ Valid JSON'
 
   return (
-    <ToolLayout title="JSON Formatter" description="Format, validate and minify JSON data." fullWidth>
+    <ToolLayout title="JSON Formatter" description="Format, validate and minify JSON with syntax highlighting." fullWidth>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 16, flex: 1, minHeight: 0 }}>
 
-        {/* Input */}
+        {/* ── Input ── */}
         <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <label className="label">Input JSON</label>
           <textarea
@@ -57,20 +253,15 @@ export default function JsonFormatter() {
           />
         </div>
 
-        {/* Center actions */}
+        {/* ── Center actions ── */}
         <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 8, width: 112, flexShrink: 0 }}>
-          <button onClick={() => process(false)} className="btn-ghost" style={{ width: '100%' }}>Format</button>
-          <button onClick={() => process(true)} className="btn-ghost" style={{ width: '100%' }}>Minify</button>
-          <button onClick={validate} className="btn-ghost" style={{ width: '100%' }}>Validate</button>
+          <button onClick={() => process(false)} className="btn-ghost" style={{ width: '100%' }}>Format →</button>
+          <button onClick={() => process(true)}  className="btn-ghost" style={{ width: '100%' }}>Minify →</button>
+          <button onClick={validate}             className="btn-ghost" style={{ width: '100%' }}>Validate</button>
           <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <span style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Indent</span>
-            <select
-              value={indent}
-              onChange={e => setIndent(e.target.value === '\t' ? '\t' : Number(e.target.value))}
-              className="tool-select"
-              style={{ width: '100%' }}
-            >
+            <select value={indent} onChange={e => setIndent(e.target.value === '\t' ? '\t' : Number(e.target.value))} className="tool-select" style={{ width: '100%' }}>
               <option value={2}>2 spaces</option>
               <option value={4}>4 spaces</option>
               <option value={'\t'}>Tab</option>
@@ -80,34 +271,115 @@ export default function JsonFormatter() {
           <button onClick={clear} className="btn-ghost" style={{ width: '100%', fontSize: 12 }}>Clear</button>
         </div>
 
-        {/* Output */}
+        {/* ── Output ── */}
         <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexShrink: 0 }}>
-            <label className="label" style={{ margin: 0 }}>Output</label>
-            {output && !error && (
-              <button onClick={copy} className="copy-btn">{copied ? '✓ Copied' : 'Copy'}</button>
-            )}
-          </div>
-          {error ? (
-            <div style={{
-              flex: 1, minHeight: 0,
-              border: '1px solid oklch(0.65 0.18 25 / 0.35)',
-              borderRadius: 10, padding: 16,
-              background: 'oklch(0.65 0.18 25 / 0.08)',
-              color: 'oklch(0.70 0.18 25)',
-              fontSize: 13, fontFamily: 'var(--font-mono)',
-              overflowY: 'auto',
-            }}>
-              ✗ {error}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <label className="label" style={{ margin: 0 }}>Output</label>
+              {/* Tree / Raw toggle */}
+              {isValid && parsed && (
+                <div style={{ display: 'flex', borderRadius: 6, overflow: 'hidden', border: '1px solid var(--border)' }}>
+                  {(['tree', 'raw'] as const).map(m => (
+                    <button key={m} onClick={() => setViewMode(m)} style={{
+                      padding: '2px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', border: 'none',
+                      background: viewMode === m ? 'var(--accent)' : 'transparent',
+                      color: viewMode === m ? '#fff' : 'var(--text-dim)',
+                      transition: 'all 0.12s',
+                    }}>{m === 'tree' ? '🌲 Tree' : '</> Raw'}</button>
+                  ))}
+                </div>
+              )}
             </div>
-          ) : (
-            <textarea
-              value={output}
-              readOnly
-              className="tool-textarea"
-              style={{ flex: 1, minHeight: 0, resize: 'none' }}
-              spellCheck={false}
-            />
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {status === 'valid' && (
+                <span style={{ fontSize: 12, color: '#4ade80', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ fontSize: 15 }}>✓</span> Valid JSON
+                </span>
+              )}
+              {status === 'error' && (
+                <span style={{ fontSize: 12, color: '#f87171', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <span style={{ fontSize: 15 }}>✗</span> Invalid JSON
+                </span>
+              )}
+              {isValid && (
+                <button onClick={copy} className="copy-btn">{copied ? '✓ Copied' : 'Copy'}</button>
+              )}
+            </div>
+          </div>
+
+          {/* Error panel */}
+          {error && (
+            <div style={{
+              borderRadius: 10, padding: '14px 16px', marginBottom: 12, flexShrink: 0,
+              background: 'rgba(248,113,113,0.08)',
+              border: '1px solid rgba(248,113,113,0.3)',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <span style={{ fontSize: 20, lineHeight: 1, color: '#f87171', flexShrink: 0 }}>✗</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#f87171', marginBottom: 4 }}>
+                    {error.title}
+                  </div>
+                  {error.detail && (
+                    <div style={{ fontSize: 12, color: '#fca5a5', fontFamily: 'var(--font-mono)', lineHeight: 1.5, wordBreak: 'break-all' }}>
+                      {error.detail}
+                    </div>
+                  )}
+                  {error.lineNo > 0 && (
+                    <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
+                      <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: 'rgba(248,113,113,0.15)', color: '#f87171', fontFamily: 'var(--font-mono)' }}>
+                        Line {error.lineNo}
+                      </span>
+                      <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: 'rgba(248,113,113,0.15)', color: '#f87171', fontFamily: 'var(--font-mono)' }}>
+                        Col {error.colNo}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Validate success banner */}
+          {status === 'valid' && output === '✓ Valid JSON' && (
+            <div style={{
+              borderRadius: 10, padding: '14px 16px', flexShrink: 0,
+              background: 'rgba(74,222,128,0.08)',
+              border: '1px solid rgba(74,222,128,0.3)',
+              display: 'flex', alignItems: 'center', gap: 10,
+            }}>
+              <span style={{ fontSize: 22, color: '#4ade80' }}>✓</span>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: '#4ade80' }}>Valid JSON</div>
+                <div style={{ fontSize: 12, color: '#86efac', marginTop: 2 }}>Your JSON is syntactically correct.</div>
+              </div>
+            </div>
+          )}
+
+          {/* Tree / Raw output */}
+          {isValid && (
+            <div style={{
+              flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'auto',
+              border: '1px solid rgba(74,222,128,0.25)',
+              borderRadius: 10, padding: 16,
+              background: 'var(--surface)',
+            }}>
+              {viewMode === 'tree' && parsed
+                ? <JsonTree parsed={parsed} />
+                : <code style={{ display: 'block', whiteSpace: 'pre', fontFamily: 'var(--font-mono)', fontSize: 13, lineHeight: 1.7, color: '#4ade80' }}>{output}</code>
+              }
+            </div>
+          )}
+
+          {/* Idle empty state */}
+          {status === 'idle' && (
+            <div style={{
+              flex: 1, minHeight: 0, border: '1px dashed var(--border)', borderRadius: 10,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: 'var(--text-muted)', fontSize: 13,
+            }}>
+              Formatted output will appear here
+            </div>
           )}
         </div>
 
