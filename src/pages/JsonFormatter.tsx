@@ -58,32 +58,60 @@ function prettifyJsonError(raw: string, input: string): { title: string; detail:
 }
 
 // ─── Collapsible JSON Tree ────────────────────────────────────────────────────
-const C = {
-  key:    '#60a5fa',
-  str:    '#4ade80',
-  num:    '#fb923c',
-  bool:   '#c084fc',
-  null:   '#94a3b8',
-  punct:  '#cbd5e1',
-  muted:  '#64748b',
+interface ColorTheme {
+  key: string
+  str: string
+  num: string
+  bool: string
+  null: string
+  punct: string
+  muted: string
 }
 
-function CollapseBtn({ collapsed, onClick }: { collapsed: boolean; onClick: () => void }) {
+const PALETTES = {
+  dark: {
+    key:    '#60a5fa',
+    str:    '#4ade80',
+    num:    '#fb923c',
+    bool:   '#c084fc',
+    null:   '#94a3b8',
+    punct:  '#cbd5e1',
+    muted:  '#64748b',
+  },
+  light: {
+    key:    '#1d4ed8',
+    str:    '#15803d',
+    num:    '#c2410c',
+    bool:   '#7e22ce',
+    null:   '#475569',
+    punct:  '#334155',
+    muted:  '#64748b',
+  }
+}
+
+function ToggleArrow({ collapsed, onClick, colors }: { collapsed: boolean; onClick: () => void; colors: ColorTheme }) {
   return (
     <button
       onClick={e => { e.stopPropagation(); onClick() }}
-      title={collapsed ? 'Expand' : 'Collapse'}
       style={{
-        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 10, fontWeight: 700, fontFamily: 'var(--font-mono)',
-        padding: '0 4px', height: 16, borderRadius: 3, marginLeft: 4, cursor: 'pointer',
-        background: collapsed ? 'rgba(96,165,250,0.15)' : 'rgba(148,163,184,0.12)',
-        color: collapsed ? '#60a5fa' : '#94a3b8',
-        border: `1px solid ${collapsed ? 'rgba(96,165,250,0.3)' : 'rgba(148,163,184,0.2)'}`,
-        transition: 'all 0.12s',
+        background: 'none',
+        border: 'none',
+        padding: 0,
+        width: 16,
+        height: 16,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        color: colors.muted,
+        fontSize: 9,
+        transition: 'transform 0.15s ease',
+        transform: collapsed ? 'rotate(0deg)' : 'rotate(90deg)',
+        userSelect: 'none',
+        outline: 'none',
       }}
     >
-      {collapsed ? '+' : '−'}
+      ▶
     </button>
   )
 }
@@ -92,85 +120,164 @@ type JsonPrim = string | number | boolean | null
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type JsonVal = JsonPrim | JsonVal[] | { [k: string]: any }
 
-function JsonNode({ k, val, depth, last }: {
-  k?: string; val: JsonVal; depth: number; last: boolean
+function JsonNode({ k, val, depth, last, colors }: {
+  k?: string; val: JsonVal; depth: number; last: boolean; colors: ColorTheme
 }) {
   const [collapsed, setCollapsed] = useState(false)
-  const indent = depth * 16
+  const lineIndent = depth * 16
   const comma = last ? '' : ','
+  
+  const isExpandable = val !== null && typeof val === 'object'
+  const hasChildren = isExpandable && (Array.isArray(val) ? val.length > 0 : Object.keys(val as object).length > 0)
+
+  const toggleSlot = hasChildren ? (
+    <ToggleArrow collapsed={collapsed} onClick={() => setCollapsed(!collapsed)} colors={colors} />
+  ) : (
+    <div style={{ width: 16 }} />
+  )
 
   const keyEl = k !== undefined
-    ? <span><span style={{ color: C.key }}>"{ k }"</span><span style={{ color: C.punct }}>: </span></span>
+    ? <span style={{ marginRight: 4 }}><span style={{ color: colors.key }}>"{ k }"</span><span style={{ color: colors.punct }}>:</span></span>
     : null
 
-  // Primitive
-  if (val === null)
-    return <div style={{ paddingLeft: indent, lineHeight: '22px' }}>{keyEl}<span style={{ color: C.null }}>null</span><span style={{ color: C.muted }}>{comma}</span></div>
-  if (typeof val === 'boolean')
-    return <div style={{ paddingLeft: indent, lineHeight: '22px' }}>{keyEl}<span style={{ color: C.bool }}>{String(val)}</span><span style={{ color: C.muted }}>{comma}</span></div>
-  if (typeof val === 'number')
-    return <div style={{ paddingLeft: indent, lineHeight: '22px' }}>{keyEl}<span style={{ color: C.num }}>{val}</span><span style={{ color: C.muted }}>{comma}</span></div>
-  if (typeof val === 'string')
-    return <div style={{ paddingLeft: indent, lineHeight: '22px' }}>{keyEl}<span style={{ color: C.str }}>"{ val }"</span><span style={{ color: C.muted }}>{comma}</span></div>
+  // Primitive Values
+  if (val === null || typeof val !== 'object') {
+    let valEl: React.ReactNode = null
+    if (val === null) valEl = <span style={{ color: colors.null }}>null</span>
+    else if (typeof val === 'boolean') valEl = <span style={{ color: colors.bool }}>{String(val)}</span>
+    else if (typeof val === 'number') valEl = <span style={{ color: colors.num }}>{val}</span>
+    else if (typeof val === 'string') valEl = <span style={{ color: colors.str }}>"{val}"</span>
 
-  // Array
-  if (Array.isArray(val)) {
-    const empty = val.length === 0
     return (
-      <div style={{ paddingLeft: indent }}>
-        <div style={{ lineHeight: '22px', display: 'flex', alignItems: 'center' }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', lineHeight: '22px',
+        paddingLeft: lineIndent, fontFamily: 'var(--font-mono)'
+      }}>
+        {toggleSlot}
+        <div style={{ display: 'flex', alignItems: 'center' }}>
           {keyEl}
-          <span style={{ color: C.punct }}>[</span>
-          {!empty && <CollapseBtn collapsed={collapsed} onClick={() => setCollapsed(c => !c)} />}
-          {(collapsed || empty) && (
-            <span style={{ color: C.muted, marginLeft: 4 }}>
-              {empty ? '' : `${val.length} item${val.length !== 1 ? 's' : ''}`}
-            </span>
-          )}
-          {collapsed && <span style={{ color: C.punct }}>]{comma}</span>}
+          {valEl}
+          <span style={{ color: colors.punct }}>{comma}</span>
         </div>
-        {!collapsed && !empty && (
-          <>
-            {val.map((item, i) => (
-              <JsonNode key={i} val={item as JsonVal} depth={0} last={i === val.length - 1} />
-            ))}
-            <div style={{ lineHeight: '22px' }}><span style={{ color: C.punct }}>]{comma}</span></div>
-          </>
-        )}
       </div>
     )
   }
 
-  // Object
+  // Arrays
+  if (Array.isArray(val)) {
+    const empty = val.length === 0
+    if (collapsed || empty) {
+      return (
+        <div style={{
+          display: 'flex', alignItems: 'center', lineHeight: '22px',
+          paddingLeft: lineIndent, fontFamily: 'var(--font-mono)'
+        }}>
+          {toggleSlot}
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            {keyEl}
+            <span style={{ color: colors.punct }}>[</span>
+            <span style={{ color: colors.muted, fontSize: 11, fontStyle: 'italic', margin: '0 4px' }}>
+              {empty ? '' : `${val.length} item${val.length !== 1 ? 's' : ''}`}
+            </span>
+            <span style={{ color: colors.punct }}>]{comma}</span>
+          </div>
+        </div>
+      )
+    }
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-mono)' }}>
+        {/* Opening line */}
+        <div style={{ display: 'flex', alignItems: 'center', lineHeight: '22px', paddingLeft: lineIndent }}>
+          {toggleSlot}
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            {keyEl}
+            <span style={{ color: colors.punct }}>[</span>
+          </div>
+        </div>
+        
+        {/* Children list */}
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {val.map((item, i) => (
+            <JsonNode
+              key={i}
+              val={item as JsonVal}
+              depth={depth + 1}
+              last={i === val.length - 1}
+              colors={colors}
+            />
+          ))}
+        </div>
+
+        {/* Closing line */}
+        <div style={{ display: 'flex', alignItems: 'center', lineHeight: '22px', paddingLeft: lineIndent }}>
+          <div style={{ width: 16 }} />
+          <span style={{ color: colors.punct }}>]{comma}</span>
+        </div>
+      </div>
+    )
+  }
+
+  // Objects
   const entries = Object.entries(val as Record<string, JsonVal>)
   const empty = entries.length === 0
-  return (
-    <div style={{ paddingLeft: indent }}>
-      <div style={{ lineHeight: '22px', display: 'flex', alignItems: 'center' }}>
-        {keyEl}
-        <span style={{ color: C.punct }}>{'{'}</span>
-        {!empty && <CollapseBtn collapsed={collapsed} onClick={() => setCollapsed(c => !c)} />}
-        {collapsed && (
-          <span style={{ color: C.muted, marginLeft: 4 }}>{entries.length} key{entries.length !== 1 ? 's' : ''}</span>
-        )}
-        {collapsed && <span style={{ color: C.punct }}>{'}'}{comma}</span>}
+  if (collapsed || empty) {
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center', lineHeight: '22px',
+        paddingLeft: lineIndent, fontFamily: 'var(--font-mono)'
+      }}>
+        {toggleSlot}
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          {keyEl}
+          <span style={{ color: colors.punct }}>{'{'}</span>
+          <span style={{ color: colors.muted, fontSize: 11, fontStyle: 'italic', margin: '0 4px' }}>
+            {empty ? '' : `${entries.length} key${entries.length !== 1 ? 's' : ''}`}
+          </span>
+          <span style={{ color: colors.punct }}>{'}'}{comma}</span>
+        </div>
       </div>
-      {!collapsed && !empty && (
-        <>
-          {entries.map(([ek, ev], i) => (
-            <JsonNode key={ek} k={ek} val={ev as JsonVal} depth={0} last={i === entries.length - 1} />
-          ))}
-          <div style={{ lineHeight: '22px' }}><span style={{ color: C.punct }}>{'}'}{comma}</span></div>
-        </>
-      )}
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-mono)' }}>
+      {/* Opening line */}
+      <div style={{ display: 'flex', alignItems: 'center', lineHeight: '22px', paddingLeft: lineIndent }}>
+        {toggleSlot}
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          {keyEl}
+          <span style={{ color: colors.punct }}>{'{'}</span>
+        </div>
+      </div>
+      
+      {/* Children list */}
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {entries.map(([ek, ev], i) => (
+          <JsonNode
+            key={ek}
+            k={ek}
+            val={ev as JsonVal}
+            depth={depth + 1}
+            last={i === entries.length - 1}
+            colors={colors}
+          />
+        ))}
+      </div>
+
+      {/* Closing line */}
+      <div style={{ display: 'flex', alignItems: 'center', lineHeight: '22px', paddingLeft: lineIndent }}>
+        <div style={{ width: 16 }} />
+        <span style={{ color: colors.punct }}>{'}'}{comma}</span>
+      </div>
     </div>
   )
 }
 
-function JsonTree({ parsed }: { parsed: JsonVal }) {
+function JsonTree({ parsed, colors }: { parsed: JsonVal; colors: ColorTheme }) {
   return (
     <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13, lineHeight: 1.6, overflowX: 'auto' }}>
-      <JsonNode val={parsed} depth={0} last={true} />
+      <JsonNode val={parsed} depth={0} last={true} colors={colors} />
     </div>
   )
 }
@@ -185,6 +292,17 @@ export default function JsonFormatter() {
   const [indent, setIndent] = useState<number | string>(2)
   const [copied, setCopied] = useState(false)
   const [viewMode, setViewMode] = useState<'tree' | 'raw'>('tree')
+  const [isDark, setIsDark] = useState(() => document.documentElement.dataset.theme === 'dark')
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.dataset.theme === 'dark')
+    })
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+    return () => observer.disconnect()
+  }, [])
+
+  const colors = isDark ? PALETTES.dark : PALETTES.light
 
   // Persist input
   useEffect(() => {
@@ -360,13 +478,13 @@ export default function JsonFormatter() {
           {isValid && (
             <div style={{
               flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'auto',
-              border: '1px solid rgba(74,222,128,0.25)',
+              border: isDark ? '1px solid rgba(74,222,128,0.25)' : '1px solid var(--border)',
               borderRadius: 10, padding: 16,
               background: 'var(--surface)',
             }}>
               {viewMode === 'tree' && parsed
-                ? <JsonTree parsed={parsed} />
-                : <code style={{ display: 'block', whiteSpace: 'pre', fontFamily: 'var(--font-mono)', fontSize: 13, lineHeight: 1.7, color: '#4ade80' }}>{output}</code>
+                ? <JsonTree parsed={parsed} colors={colors} />
+                : <code style={{ display: 'block', whiteSpace: 'pre', fontFamily: 'var(--font-mono)', fontSize: 13, lineHeight: 1.7, color: colors.str }}>{output}</code>
               }
             </div>
           )}
