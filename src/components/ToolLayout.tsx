@@ -15,7 +15,8 @@ export default function ToolLayout({ title, description, children, fullWidth = f
 
   useEffect(() => {
     document.title = `${title} | DevToolbox`
-    // Lock page scroll — tool panels scroll internally
+    // Keep body overflow hidden so double scrollbars don't appear;
+    // the outer div below is the actual scroll container at full viewport width
     document.body.style.overflow = 'hidden'
     const slug = pathname.split('/').pop()
     if (slug) trackVisit(slug)
@@ -27,20 +28,31 @@ export default function ToolLayout({ title, description, children, fullWidth = f
   }, [title, pathname])
 
   return (
-    // paddingTop:54 clears the fixed navbar (back button now lives in Navbar)
-    <div style={{ height: '100dvh', paddingTop: 54, boxSizing: 'border-box', display: 'flex', flexDirection: 'column' }}>
-      {/* Tool content — scrolls internally */}
+    // Outer: full-viewport scroll container — scrollbar sits at screen edge,
+    // and wheel events from anywhere on the page are captured here.
+    <div style={{
+      height: '100dvh',
+      paddingTop: 54,
+      boxSizing: 'border-box',
+      overflowY: 'auto',
+      overflowX: 'hidden',
+    }}>
+      {/* Inner: constrains width + is a flex column so children can use flex:1 */}
       <div style={{
-        flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column',
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '100%',
         padding: fullWidth ? '24px 32px' : '32px',
-        maxWidth: fullWidth ? '100%' : 1200, width: '100%', margin: '0 auto',
-        overflowY: 'auto',
+        maxWidth: fullWidth ? '100%' : 1200,
+        width: '100%',
+        margin: '0 auto',
         boxSizing: 'border-box',
         animation: 'fadeUp 0.35s ease both',
       }}>
         <p style={{
-          fontSize: 14, color: 'var(--text-dim)',
-          marginBottom: 24, fontFamily: 'var(--font-sans)',
+          fontSize: 14, color: 'var(--sketch-text)',
+          marginBottom: 24, fontFamily: "'Architects Daughter', var(--font-sans)",
+          opacity: 0.8,
           flexShrink: 0,
         }}>
           {description}
