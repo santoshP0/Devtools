@@ -25,7 +25,7 @@ export const tools: Tool[] = [
   { name: 'JSON → TypeScript', slug: 'json-typescript',   icon: 'TS',  description: 'Generate TypeScript interfaces from any JSON object',      category: 'Data'      },
   { name: 'SQL Formatter',     slug: 'sql-formatter',     icon: 'SQL', description: 'Beautify and indent SQL queries instantly',                 category: 'Data'      },
   { name: 'CSV ↔ JSON',        slug: 'csv-json',          icon: 'CSV', description: 'Convert between CSV and JSON formats',                     category: 'Data'      },
-  { name: 'CSV Viewer',        slug: 'csv-viewer',        icon: '⊞',   description: 'Render CSV as a live sortable and searchable table',        category: 'Data'      },
+  { name: 'CSV Viewer',        slug: 'csv-viewer',        icon: '📊',  description: 'Open large CSV files instantly with virtual scrolling and sortable columns', category: 'Data'      },
   { name: 'JSON ↔ XML',        slug: 'json-xml',          icon: '⇄',   description: 'Convert between JSON and XML formats',                     category: 'Data'      },
 
   // ── Text ──
@@ -66,6 +66,7 @@ export const tools: Tool[] = [
   { name: 'Image Compressor',  slug: 'image-compressor',  icon: '⊟',   description: 'Compress images in your browser, no upload needed',       category: 'Media'     },
   { name: 'Image → Base64',    slug: 'image-to-base64',   icon: 'IMG', description: 'Convert images to Base64 data URIs for use in CSS or HTML', category: 'Media'   },
   { name: 'Base64 → Image',    slug: 'base64-to-image',   icon: 'B64', description: 'Decode a Base64 string or Data URI back into an image',    category: 'Media'     },
+  { name: 'EXIF Viewer',       slug: 'exif-viewer',       icon: '🔍',  description: 'Extract camera, GPS and timestamp metadata from JPEG images — 100% offline', category: 'Media' },
 
   // ── Generator ──
   { name: 'UUID Generator',    slug: 'uuid-generator',    icon: 'UID', description: 'Generate random UUID v4 strings',                           category: 'Generator' },
