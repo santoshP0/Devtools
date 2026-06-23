@@ -238,7 +238,7 @@ export default function JsonFormatter() {
 
   return (
     <ToolLayout title="JSON Formatter" description="Format, validate and minify JSON with syntax highlighting." fullWidth>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', gap: 16, flex: 1, minHeight: 0 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)', gap: 16, flex: 1, minHeight: 0 }}>
 
         {/* ── Input ── */}
         <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
