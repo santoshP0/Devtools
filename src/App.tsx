@@ -56,6 +56,7 @@ import ResponsiveTester from './pages/ResponsiveTester'
 import LogPrettifier from './pages/LogPrettifier'
 import NoSqlViewer from './pages/NoSqlViewer'
 import Notes from './pages/Notes'
+import ExifViewer from './pages/ExifViewer'
 
 export default function App() {
   // Persisted home state — survives navigation to tool pages and back
@@ -133,6 +134,7 @@ export default function App() {
             <Route path="/log-prettifier"      element={<LogPrettifier />} />
             <Route path="/nosql-viewer"        element={<NoSqlViewer />} />
             <Route path="/notes"               element={<Notes />} />
+            <Route path="/exif-viewer"         element={<ExifViewer />} />
           </Routes>
         </main>
         <Footer />
