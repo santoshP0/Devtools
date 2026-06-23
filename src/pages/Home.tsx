@@ -1,24 +1,35 @@
 import { useRef, useEffect, useMemo } from 'react'
-import { Link } from 'react-router-dom'
 import ToolCard from '../components/ToolCard'
-import HeroCanvas from '../components/HeroCanvas'
 import { tools, categories } from '../lib/tools'
-import { useHistory, useFavorites } from '../lib/storage'
 
 const ALL_CATS = categories
 
-const CAT_STYLE: Record<string, { color: string; bg: string; border: string; activeBg: string }> = {
-  All:       { color: 'var(--bg)',       bg: 'var(--accent)',     border: 'var(--accent)',    activeBg: 'var(--accent)'    },
-  API:       { color: 'var(--accent)',   bg: 'var(--accent-bg)',  border: 'var(--accent-dim)',activeBg: 'var(--accent-bg)' },
-  Data:      { color: 'var(--cat-data)', bg: 'var(--cat-data-bg)',border: 'oklch(0.72 0.15 220 / 0.5)', activeBg: 'var(--cat-data-bg)' },
-  Security:  { color: 'var(--cat-sec)',  bg: 'var(--cat-sec-bg)', border: 'oklch(0.72 0.16 25  / 0.5)', activeBg: 'var(--cat-sec-bg)'  },
-  Generator: { color: 'var(--cat-gen)',  bg: 'var(--cat-gen-bg)', border: 'oklch(0.72 0.15 145 / 0.5)', activeBg: 'var(--cat-gen-bg)' },
-  Text:      { color: 'var(--cat-txt)',  bg: 'var(--cat-txt-bg)', border: 'oklch(0.80 0.14 75  / 0.5)', activeBg: 'var(--cat-txt-bg)'  },
-  Design:    { color: 'var(--cat-des)',  bg: 'var(--cat-des-bg)', border: 'oklch(0.72 0.16 300 / 0.5)', activeBg: 'var(--cat-des-bg)' },
-  Media:     { color: 'var(--cat-med)',  bg: 'var(--cat-med-bg)', border: 'oklch(0.72 0.16 195 / 0.5)', activeBg: 'var(--cat-med-bg)' },
-  Utils:     { color: 'var(--cat-utl)',  bg: 'var(--cat-utl-bg)', border: 'oklch(0.72 0.14 260 / 0.5)', activeBg: 'var(--cat-utl-bg)' },
-  Frontend:  { color: 'oklch(0.70 0.18 190)', bg: 'oklch(0.70 0.18 190 / 0.1)', border: 'oklch(0.70 0.18 190 / 0.5)', activeBg: 'oklch(0.70 0.18 190 / 0.1)' },
-  Backend:   { color: 'oklch(0.65 0.12 160)', bg: 'oklch(0.65 0.12 160 / 0.1)', border: 'oklch(0.65 0.12 160 / 0.5)', activeBg: 'oklch(0.65 0.12 160 / 0.1)' },
+const CAT_EMOJIS: Record<string, string> = {
+  All:       '📦',
+  API:       '⚡',
+  Data:      '📊',
+  Security:  '🔐',
+  Generator: '▦',
+  Text:      '📝',
+  Design:    '🎨',
+  Media:     '🔍',
+  Utils:     '⚙️',
+  Frontend:  '📱',
+  Backend:   '🎛️',
+}
+
+const CAT_STYLE: Record<string, { color: string; bg: string }> = {
+  All:       { color: 'var(--sketch-text)', bg: 'var(--surface)' },
+  API:       { color: 'var(--card-api-text)', bg: 'var(--card-api-bg)' },
+  Data:      { color: 'var(--card-data-text)', bg: 'var(--card-data-bg)' },
+  Security:  { color: 'var(--card-sec-text)', bg: 'var(--card-sec-bg)' },
+  Generator: { color: 'var(--card-gen-text)', bg: 'var(--card-gen-bg)' },
+  Text:      { color: 'var(--card-txt-text)', bg: 'var(--card-txt-bg)' },
+  Design:    { color: 'var(--card-des-text)', bg: 'var(--card-des-bg)' },
+  Media:     { color: 'var(--card-med-text)', bg: 'var(--card-med-bg)' },
+  Utils:     { color: 'var(--card-utl-text)', bg: 'var(--card-utl-bg)' },
+  Frontend:  { color: 'var(--card-front-text)', bg: 'var(--card-front-bg)' },
+  Backend:   { color: 'var(--card-back-text)', bg: 'var(--card-back-bg)' },
 }
 
 interface Props {
@@ -30,16 +41,6 @@ interface Props {
 
 export default function Home({ search, setSearch, activeCat, setActiveCat }: Props) {
   const searchRef = useRef<HTMLInputElement>(null)
-  const { recent } = useHistory()
-  const { favorites } = useFavorites()
-
-  const recentTools = useMemo(() => 
-    recent.map(slug => tools.find(t => t.slug === slug)).filter(Boolean),
-  [recent])
-
-  const pinnedTools = useMemo(() => 
-    tools.filter(t => favorites.includes(t.slug)),
-  [favorites])
 
   const catCounts = useMemo(() => {
     const c: Record<string, number> = { All: tools.length }
@@ -68,185 +69,183 @@ export default function Home({ search, setSearch, activeCat, setActiveCat }: Pro
   }, [])
 
   return (
-    <div style={{ paddingTop: 54 }}>
-
-      {/* ── Hero ── */}
-      <div style={{
-        position: 'relative', overflow: 'hidden',
-        background: 'linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%)',
-        padding: '80px 32px 70px',
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
-        borderBottom: '1px solid var(--border)',
-      }}>
-        <HeroCanvas bgStyle="particles" />
-
-        <div style={{ position: 'relative', zIndex: 2, textAlign: 'center', maxWidth: 600 }}>
-          <div style={{
-            display: 'inline-flex', alignItems: 'center', gap: 8,
-            background: 'var(--accent-bg)', border: '1px solid var(--accent-dim)',
-            borderRadius: 100, padding: '6px 16px', marginBottom: 28,
-            fontSize: 13, fontWeight: 500, color: 'var(--accent)',
-            fontFamily: 'var(--font-sans)',
-            animation: 'fadeUp 0.5s ease both',
+    <div 
+      style={{ 
+        minHeight: 'calc(100vh - 54px)', 
+        marginTop: 54,
+        background: 'var(--sketch-bg)',
+        backgroundImage: 'radial-gradient(var(--sketch-dot) 1.2px, transparent 1.2px)',
+        backgroundSize: '20px 20px',
+        color: 'var(--sketch-text)',
+        padding: '60px 24px 80px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        fontFamily: "'Architects Daughter', var(--font-sans)",
+      }}
+    >
+      <div style={{ width: '100%', maxWidth: 1200 }}>
+        
+        {/* Header Titles */}
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <span style={{ fontSize: 16, opacity: 0.6, letterSpacing: '0.05em' }}>
+            — the whole collection —
+          </span>
+          <h1 style={{ 
+            fontSize: 'clamp(36px, 6vw, 56px)', 
+            fontWeight: 700, 
+            margin: '8px 0 0 0', 
+            letterSpacing: '-0.02em',
+            lineHeight: 1.1 
           }}>
-            <span style={{
-              width: 6, height: 6, borderRadius: '50%',
-              background: 'var(--accent)',
-              animation: 'pulseRing 2s infinite',
-              display: 'inline-block',
-            }} />
-            {tools.length} elite tools · Offline enabled
-          </div>
-
-          <h1 style={{
-            fontSize: 'clamp(38px, 6vw, 64px)', fontWeight: 700,
-            lineHeight: 1.1, letterSpacing: '-0.03em', marginBottom: 16,
-            background: 'linear-gradient(135deg, var(--text) 0%, var(--text-dim) 100%)',
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
-            animation: 'fadeUp 0.5s 0.1s ease both',
-            fontFamily: 'var(--font-sans)',
-          }}>
-            Developer Toolbox
+            everything on the bench
           </h1>
+        </div>
 
-          <p style={{
-            fontSize: 17, color: 'var(--text-dim)', marginBottom: 36, lineHeight: 1.6,
-            animation: 'fadeUp 0.5s 0.2s ease both',
-            fontFamily: 'var(--font-sans)',
-          }}>
-            Pro-grade utilities for your daily workflow.<br />
-            100% private. Works fully offline.
-          </p>
-
-          <div style={{
-            position: 'relative', maxWidth: 480, margin: '0 auto',
-            animation: 'fadeUp 0.5s 0.3s ease both',
-          }}>
+        {/* Centered Search Bar */}
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 28 }}>
+          <div style={{ position: 'relative', width: '100%', maxWidth: 800 }}>
             <span style={{
               position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)',
-              color: 'var(--text-muted)', fontSize: 16, pointerEvents: 'none',
+              color: 'var(--sketch-text)', fontSize: 20, pointerEvents: 'none',
             }}>⌕</span>
             <input
               ref={searchRef}
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search tools… (⌘K)"
+              placeholder="search the toolbox..."
               style={{
-                width: '100%', padding: '14px 52px', fontSize: 15,
+                width: '100%', 
+                padding: '12px 16px 12px 48px', 
+                fontSize: 18,
                 background: 'var(--surface)',
-                border: '1px solid var(--border)',
-                borderRadius: 12, color: 'var(--text)',
-                fontFamily: 'var(--font-sans)',
+                border: '2px solid var(--sketch-text)',
+                boxShadow: '3px 3px 0px var(--sketch-text)',
+                borderRadius: 4, 
+                color: 'var(--sketch-text)',
+                fontFamily: "'Architects Daughter', var(--font-sans)",
                 outline: 'none',
-                transition: 'box-shadow var(--transition), border-color var(--transition)',
+                transition: 'all 0.15s ease-out',
+              }}
+              onFocus={e => {
+                e.currentTarget.style.transform = 'translate(-1px, -1px)'
+                e.currentTarget.style.boxShadow = '4px 4px 0px var(--sketch-text)'
+              }}
+              onBlur={e => {
+                e.currentTarget.style.transform = 'translate(0, 0)'
+                e.currentTarget.style.boxShadow = '3px 3px 0px var(--sketch-text)'
               }}
             />
-            <kbd style={{
-              position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)',
-              fontSize: 11, color: 'var(--text-muted)', background: 'var(--surface)',
-              border: '1px solid var(--border)', borderRadius: 5, padding: '2px 6px',
-              fontFamily: 'var(--font-mono)',
-            }}>⌘P</kbd>
           </div>
         </div>
-      </div>
 
-      {/* ── Recents Bar ── */}
-      {recentTools.length > 0 && search === '' && activeCat === 'All' && (
-        <div style={{ background:'var(--surface2)', borderBottom:'1px solid var(--border)', padding:'10px 32px' }}>
-          <div style={{ maxWidth:1200, margin:'0 auto', display:'flex', alignItems:'center', gap:12, overflowX:'auto', whiteSpace:'nowrap' }}>
-            <span style={{ fontSize:10, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.15em', marginRight:4 }}>Recent:</span>
-            {recentTools.slice(0, 5).map((tool: any) => (
-              <Link
-                key={tool.slug}
-                to={`/${tool.slug}`}
-                style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 12px', borderRadius:100, background:'var(--surface)', border:'1px solid var(--border)', fontSize:12, color:'var(--text-dim)', textDecoration:'none', transition:'all 0.15s', fontFamily:'var(--font-sans)' }}
+        {/* Category Pills Selector */}
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          gap: 12, 
+          flexWrap: 'wrap', 
+          marginBottom: 36,
+          maxWidth: 960,
+          margin: '0 auto 40px'
+        }}>
+          {ALL_CATS.map(cat => {
+            const active = activeCat === cat
+            const styleInfo = CAT_STYLE[cat] || CAT_STYLE.Utils
+            
+            return (
+              <button
+                key={cat}
+                onClick={() => {
+                  setActiveCat(cat)
+                  setSearch('')
+                }}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '6px 14px',
+                  borderRadius: 4,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  fontFamily: "'Architects Daughter', var(--font-sans)",
+                  border: '2px solid var(--sketch-text)',
+                  background: active ? 'var(--sketch-text)' : 'var(--surface)',
+                  color: active ? 'var(--sketch-bg)' : 'var(--sketch-text)',
+                  boxShadow: active ? 'none' : '2px 2px 0px var(--sketch-text)',
+                  transform: active ? 'translate(2px, 2px)' : 'translate(0, 0)',
+                  transition: 'all 0.1s ease-out',
+                }}
+                onMouseEnter={e => {
+                  if (!active) {
+                    e.currentTarget.style.transform = 'translate(-1px, -1px)'
+                    e.currentTarget.style.boxShadow = '3px 3px 0px var(--sketch-text)'
+                  }
+                }}
+                onMouseLeave={e => {
+                  if (!active) {
+                    e.currentTarget.style.transform = 'translate(0, 0)'
+                    e.currentTarget.style.boxShadow = '2px 2px 0px var(--sketch-text)'
+                  }
+                }}
               >
-                <span style={{ fontFamily:'var(--font-mono)', fontSize:10, opacity:0.7 }}>{tool.icon}</span>
-                <span>{tool.name}</span>
-              </Link>
-            ))}
-          </div>
+                <span>{CAT_EMOJIS[cat]}</span>
+                <span>{cat}</span>
+                <span style={{ 
+                  fontSize: 11,
+                  fontFamily: 'var(--font-mono)',
+                  opacity: 0.8,
+                  border: `1px solid ${active ? 'var(--sketch-bg)' : 'var(--sketch-text)'}`,
+                  padding: '1px 5px',
+                  borderRadius: 3,
+                  marginLeft: 2,
+                }}>
+                  {catCounts[cat] ?? 0}
+                </span>
+              </button>
+            )
+          })}
         </div>
-      )}
 
-      {/* ── Category filter ── */}
-      <div style={{
-        padding: '24px 32px 0',
-        display: 'flex', gap: 8, flexWrap: 'wrap',
-        maxWidth: 1200, margin: '0 auto',
-        animation: 'fadeIn 0.5s 0.4s ease both',
-      }}>
-        {ALL_CATS.map(cat => {
-          const active = activeCat === cat
-          const s = CAT_STYLE[cat] ?? CAT_STYLE.Utils
-          return (
-            <button
-              key={cat}
-              onClick={() => setActiveCat(cat)}
-              style={{
-                padding: '8px 16px', borderRadius: 100,
-                fontSize: 13, fontWeight: 500,
-                cursor: 'pointer',
-                fontFamily: 'var(--font-sans)',
-                transition: 'all var(--transition)',
-                border: `1px solid ${active ? s.border : 'var(--border)'}`,
-                background: active ? (cat === 'All' ? 'var(--accent)' : s.bg) : 'transparent',
-                color: active ? (cat === 'All' ? 'var(--bg)' : s.color) : 'var(--text-dim)',
-              }}
-            >
-              {cat}
-              <span style={{ opacity: 0.65, marginLeft: 6, fontSize: 12 }}>
-                {catCounts[cat] ?? 0}
-              </span>
-            </button>
-          )
-        })}
-      </div>
+        {/* Separator Line */}
+        <div style={{ 
+          borderTop: '2px dashed var(--sketch-text)', 
+          opacity: 0.3, 
+          margin: '0 auto 32px',
+          maxWidth: '100%',
+        }} />
 
-      <div style={{ padding: '20px 32px 60px', maxWidth: 1200, margin: '0 auto' }}>
-        
-        {/* ── Pinned Section ── */}
-        {pinnedTools.length > 0 && search === '' && activeCat === 'All' && (
-          <div className="mb-12 animate-fade-in">
-            <h2 style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.2em', marginBottom:24, display:'flex', alignItems:'center', gap:12 }}>
-              <span style={{ color:'#f59e0b' }}>★</span> Pinned Tools
-              <div style={{ height:1, flex:1, background:'var(--border)' }} />
-            </h2>
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-              gap: 14,
-            }}>
-              {pinnedTools.map((tool, i) => (
-                <ToolCard key={`pinned-${tool.slug}`} tool={tool} index={i} />
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Grid Header / Counter */}
+        <div style={{ marginBottom: 24, textAlign: 'left' }}>
+          <span style={{ fontSize: 18, opacity: 0.8 }}>
+            {search !== '' 
+              ? `search matches (${filtered.length}) ↓` 
+              : activeCat === 'All' 
+                ? `all ${filtered.length} of them ↓` 
+                : `${activeCat.toLowerCase()} tools (${filtered.length}) ↓`
+            }
+          </span>
+        </div>
 
-        {/* ── Main Grid ── */}
-        <h2 style={{ fontSize:11, fontWeight:700, color:'var(--text-muted)', textTransform:'uppercase', letterSpacing:'0.2em', marginBottom:24, display:'flex', alignItems:'center', gap:12 }}>
-          {activeCat === 'All' ? 'All Tools' : activeCat}
-          <div style={{ height:1, flex:1, background:'var(--border)' }} />
-        </h2>
+        {/* Unified Undivided Grid of Cards */}
         {filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-muted)', fontSize: 15 }}>
-            No tools match "{search}"
+          <div style={{ padding: '60px 0', textAlign: 'center', color: 'var(--sketch-text)', fontSize: 18, opacity: 0.6 }}>
+            No tools matched your search "{search}"
           </div>
         ) : (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-            gap: 14,
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', 
+            gap: 20 
           }}>
             {filtered.map((tool, i) => (
               <ToolCard key={tool.slug} tool={tool} index={i} />
             ))}
           </div>
         )}
+
       </div>
     </div>
   )
