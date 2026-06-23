@@ -70,7 +70,7 @@ export const tools: Tool[] = [
 
   // ── Generator ──
   { name: 'UUID Generator',    slug: 'uuid-generator',    icon: 'UID', description: 'Generate random UUID v4 strings',                           category: 'Generator' },
-  { name: 'QR Generator',      slug: 'qr-generator',      icon: '▦',   description: 'Generate QR codes for any text or URL',                     category: 'Generator' },
+  { name: 'QR & Barcode Generator', slug: 'qr-generator',      icon: '▦',   description: 'Generate QR codes, PDF417, Data Matrix, and 1D barcodes',   category: 'Generator' },
   { name: 'Mock Data Generator',slug:'mock-data-generator',icon: '⊛',  description: 'Generate fake names, emails, addresses and more',           category: 'Generator' },
   { name: 'Lorem Ipsum',       slug: 'lorem-ipsum',       icon: '¶',   description: 'Generate placeholder lorem ipsum text',                     category: 'Generator' },
   { name: 'Meta Tag Generator',slug: 'meta-tag-generator', icon: '</>', description: 'Generate SEO, Open Graph and Twitter Card meta tags',      category: 'Generator' },
