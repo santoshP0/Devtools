@@ -50,8 +50,9 @@ export default function ToolLayout({ title, description, children, fullWidth = f
         animation: 'fadeUp 0.35s ease both',
       }}>
         <p style={{
-          fontSize: 14, color: 'var(--text-dim)',
-          marginBottom: 24, fontFamily: 'var(--font-sans)',
+          fontSize: 14, color: 'var(--sketch-text)',
+          marginBottom: 24, fontFamily: "'Architects Daughter', var(--font-sans)",
+          opacity: 0.8,
           flexShrink: 0,
         }}>
           {description}

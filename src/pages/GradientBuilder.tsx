@@ -193,7 +193,11 @@ export default function GradientBuilderPage() {
                   style={{ width: 60, fontFamily: 'var(--font-mono)', fontSize: 13 }}
                   placeholder="135"
                 />
-                <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>°</span>
+                <span style={{ fontSize: 12, color: 'var(--text-muted)', marginRight: 4 }}>°</span>
+                <input
+                  type="range" min={0} max={360} value={angle} onChange={e => setAngle(Number(e.target.value))}
+                  style={{ width: 100, cursor: 'pointer' }}
+                />
               </div>
             </div>
           )}

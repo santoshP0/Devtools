@@ -3,24 +3,31 @@ import { Link } from 'react-router-dom'
 import { Tool } from '../lib/tools'
 import { useFavorites } from '../lib/storage'
 
-const CATS: Record<string, { color: string; bg: string; glow: string }> = {
-  API:       { color: 'var(--accent)',   bg: 'var(--accent-bg)',  glow: 'var(--accent)' },
-  Data:      { color: 'var(--cat-data)', bg: 'var(--cat-data-bg)', glow: 'oklch(0.72 0.15 220)' },
-  Security:  { color: 'var(--cat-sec)',  bg: 'var(--cat-sec-bg)',  glow: 'oklch(0.72 0.16 25)'  },
-  Generator: { color: 'var(--cat-gen)',  bg: 'var(--cat-gen-bg)',  glow: 'oklch(0.72 0.15 145)' },
-  Text:      { color: 'var(--cat-txt)',  bg: 'var(--cat-txt-bg)',  glow: 'oklch(0.80 0.14 75)'  },
-  Design:    { color: 'var(--cat-des)',  bg: 'var(--cat-des-bg)',  glow: 'oklch(0.72 0.16 300)' },
-  Media:     { color: 'var(--cat-med)',  bg: 'var(--cat-med-bg)',  glow: 'oklch(0.72 0.16 195)' },
-  Utils:     { color: 'var(--cat-utl)',  bg: 'var(--cat-utl-bg)',  glow: 'oklch(0.72 0.14 260)' },
-  Frontend:  { color: 'oklch(0.70 0.18 190)', bg: 'oklch(0.70 0.18 190 / 0.1)', glow: 'oklch(0.70 0.18 190)' },
-  Backend:   { color: 'oklch(0.65 0.12 160)', bg: 'oklch(0.65 0.12 160 / 0.1)', glow: 'oklch(0.65 0.12 160)' },
+const CAT_STYLES: Record<string, { bg: string; text: string }> = {
+  API:       { bg: 'var(--card-api-bg)',       text: 'var(--card-api-text)' },
+  Data:      { bg: 'var(--card-data-bg)',      text: 'var(--card-data-text)' },
+  Security:  { bg: 'var(--card-sec-bg)',       text: 'var(--card-sec-text)' },
+  Generator: { bg: 'var(--card-gen-bg)',       text: 'var(--card-gen-text)' },
+  Text:      { bg: 'var(--card-txt-bg)',       text: 'var(--card-txt-text)' },
+  Design:    { bg: 'var(--card-des-bg)',       text: 'var(--card-des-text)' },
+  Media:     { bg: 'var(--card-med-bg)',       text: 'var(--card-med-text)' },
+  Utils:     { bg: 'var(--card-utl-bg)',       text: 'var(--card-utl-text)' },
+  Frontend:  { bg: 'var(--card-front-bg)',     text: 'var(--card-front-text)' },
+  Backend:   { bg: 'var(--card-back-bg)',      text: 'var(--card-back-text)' },
 }
 
-export default function ToolCard({ tool, index = 0 }: { tool: Tool; index?: number }) {
+interface ToolCardProps {
+  tool: Tool
+  index: number
+}
+
+export default function ToolCard({ tool, index }: ToolCardProps) {
   const [hovered, setHovered] = useState(false)
-  const cat = CATS[tool.category] ?? CATS.Utils
+  const catStyle = CAT_STYLES[tool.category] || CAT_STYLES.Utils
   const { isFavorite, toggleFavorite } = useFavorites()
   const fav = isFavorite(tool.slug)
+
+  const displayIndex = `#${String(index + 1).padStart(2, '0')}`
 
   return (
     <Link
@@ -28,83 +35,132 @@ export default function ToolCard({ tool, index = 0 }: { tool: Tool; index?: numb
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
-        display: 'flex', flexDirection: 'column', gap: 12,
-        padding: 20,
-        borderRadius: 'var(--radius-lg)',
-        background: hovered ? 'var(--surface2)' : 'var(--surface)',
-        border: `1px solid ${hovered ? cat.glow + '66' : 'var(--border)'}`,
-        boxShadow: hovered
-          ? `0 8px 32px ${cat.glow}22, 0 0 0 1px ${cat.glow}22`
-          : '0 1px 4px oklch(0 0 0 / 0.3)',
-        transform: hovered ? 'translateY(-3px)' : 'translateY(0)',
-        transition: 'all var(--transition)',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        padding: '24px 20px 20px',
+        borderRadius: 4,
+        background: catStyle.bg,
+        border: '2px solid var(--sketch-text)',
+        boxShadow: hovered 
+          ? '6px 6px 0px var(--sketch-text)' 
+          : '4px 4px 0px var(--sketch-text)',
+        transform: hovered ? 'translate(-2px, -2px)' : 'translate(0, 0)',
+        transition: 'all 0.15s ease-out',
         cursor: 'pointer',
         textDecoration: 'none',
         position: 'relative',
-        animation: 'fadeUp 0.4s ease both',
-        animationDelay: `${index * 0.04}s`,
+        minHeight: 180,
       }}
     >
-      {/* Icon + Fav button */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+      {/* Tape Graphic */}
+      <div 
+        style={{
+          position: 'absolute',
+          top: -7,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          width: 54,
+          height: 14,
+          background: 'rgba(0, 0, 0, 0.08)',
+          backdropFilter: 'blur(1px)',
+          borderLeft: '1px dashed rgba(0, 0, 0, 0.15)',
+          borderRight: '1px dashed rgba(0, 0, 0, 0.15)',
+          borderRadius: 1,
+        }}
+        className="dark:bg-white/10 dark:border-white/10"
+      />
+
+      {/* Card Header: Shorthand/Icon + Index & Pin */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
         <div style={{
-          width: 40, height: 40, borderRadius: 10,
-          background: `linear-gradient(135deg, ${cat.bg}, ${cat.glow}22)`,
-          border: `1px solid ${cat.glow}44`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 12, fontWeight: 700,
-          fontFamily: 'var(--font-mono)',
-          color: cat.color, flexShrink: 0,
-          letterSpacing: '-0.02em',
+          fontSize: 24,
+          fontWeight: 700,
+          color: catStyle.text,
+          fontFamily: 'var(--font-sans)',
         }}>
           {tool.icon}
         </div>
-        
-        <button
-          onClick={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            toggleFavorite(tool.slug)
-          }}
-          style={{
-            background: 'none', border: 'none', cursor: 'pointer',
-            fontSize: 18, color: fav ? '#facc15' : 'var(--text-muted)',
-            opacity: hovered || fav ? 1 : 0.2,
-            transition: 'all var(--transition)',
-            transform: fav ? 'scale(1.1)' : 'scale(1)',
-          }}
-        >
-          {fav ? '★' : '☆'}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{
+            fontSize: 11,
+            fontFamily: 'var(--font-mono)',
+            color: catStyle.text,
+            opacity: 0.6,
+          }}>
+            {displayIndex}
+          </span>
+          <button
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              toggleFavorite(tool.slug)
+            }}
+            style={{
+              background: fav ? 'var(--sketch-text)' : 'transparent',
+              border: '1.5px solid var(--sketch-text)',
+              borderRadius: '50%',
+              width: 20,
+              height: 20,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              fontSize: 10,
+              color: fav ? catStyle.bg : 'var(--sketch-text)',
+              padding: 0,
+              lineHeight: 1,
+            }}
+          >
+            ★
+          </button>
+        </div>
       </div>
 
-      {/* Name + description */}
-      <div>
-        <div style={{
-          fontWeight: 600, fontSize: 15, marginBottom: 4,
-          color: 'var(--text)', fontFamily: 'var(--font-sans)',
-        }}>
-          {tool.name}
+      {/* Main Metadata & Divider */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+        <div>
+          <h3 style={{
+            fontFamily: "'Architects Daughter', var(--font-sans)",
+            fontSize: 18,
+            fontWeight: 700,
+            color: 'var(--sketch-text)',
+            margin: '0 0 6px 0',
+            lineHeight: 1.2,
+          }}>
+            {tool.name}
+          </h3>
+          <p style={{
+            fontFamily: 'var(--font-sans)',
+            fontSize: 13,
+            color: 'var(--sketch-text)',
+            opacity: 0.8,
+            margin: 0,
+            lineHeight: 1.4,
+          }}>
+            {tool.description}
+          </p>
         </div>
-        <div style={{
-          fontSize: 13, color: 'var(--text-dim)',
-          lineHeight: 1.5, fontFamily: 'var(--font-sans)',
-        }}>
-          {tool.description}
-        </div>
-      </div>
 
-      {/* Category badge */}
-      <div>
-        <span style={{
-          display: 'inline-block', borderRadius: 100,
-          fontSize: 11, fontWeight: 600,
-          letterSpacing: '0.06em', padding: '3px 9px',
-          color: cat.color, background: cat.bg,
-          fontFamily: 'var(--font-sans)',
-        }}>
-          {tool.category}
-        </span>
+        {/* Bottom Metadata & dotted separator */}
+        <div style={{ marginTop: 14 }}>
+          <div style={{
+            borderTop: '1px dashed var(--sketch-text)',
+            opacity: 0.25,
+            marginBottom: 10,
+          }} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{
+              fontSize: 11,
+              fontWeight: 700,
+              textTransform: 'lowercase',
+              fontFamily: 'var(--font-sans)',
+              color: catStyle.text,
+            }}>
+              {tool.category.toLowerCase()}
+            </span>
+          </div>
+        </div>
       </div>
     </Link>
   )
