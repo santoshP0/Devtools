@@ -71,56 +71,56 @@
 
 /* Dark theme */
 [data-theme="dark"] {
-  /* Sketchbook / Workbench Dark Colors mapped directly to theme variables */
-  --sketch-bg:        #181816;
-  --sketch-dot:       #334155;
-  --sketch-text:      #f1f5f9;
+  /* Warm-tinted dark — easier on eyes than cold blue-black */
+  --sketch-bg:        #16161a;
+  --sketch-dot:       #2a2a32;
+  --sketch-text:      #c9c7c0;   /* warm off-white, not blinding */
 
   --bg:           var(--sketch-bg);
-  --bg2:          #22221f;
-  --surface:      #1e1e1c;
-  --surface2:     #282824;
-  --border:       var(--sketch-text);
-  --border-hi:    var(--sketch-text);
-  --accent:       var(--sketch-text);
-  --accent-dim:   var(--sketch-text);
-  --accent-bg:    #3a2f15; /* Dark yellow/amber highlighter */
-  --purple:       #a78bfa;
-  --purple-bg:    #2e1065;
+  --bg2:          #1e1e23;
+  --surface:      #1c1c21;
+  --surface2:     #24242b;
+  --border:       #3a3a45;       /* subtle border, not bright white */
+  --border-hi:    #55556a;
+  --accent:       #7eb8c9;       /* soft teal accent */
+  --accent-dim:   #4a7a8a;
+  --accent-bg:    #2a2818;       /* dim amber highlight */
+  --purple:       #9d8fd4;       /* muted purple */
+  --purple-bg:    #22193a;
   --text:         var(--sketch-text);
-  --text-dim:     #cbd5e1;
-  --text-muted:   #94a3b8;
-  --nav-bg:       #181816;
+  --text-dim:     #8e8c85;
+  --text-muted:   #606060;
+  --nav-bg:       #111114;
 
-  /* Per-category colors */
-  --cat-data:     #fef08a;   --cat-data-bg:  #713f12;
-  --cat-sec:      #fbcfe8;   --cat-sec-bg:   #701a75;
-  --cat-gen:      #bbf7d0;   --cat-gen-bg:   #064e3b;
-  --cat-txt:      #fed7aa;   --cat-txt-bg:   #7c2d12;
-  --cat-des:      #e9d5ff;   --cat-des-bg:   #4c1d95;
-  --cat-med:      #99f6e4;   --cat-med-bg:   #115e59;
-  --cat-utl:      #cbd5e1;   --cat-utl-bg:   #334155;
+  /* Per-category colors — muted, readable, not neon */
+  --cat-data:     #c9ad6a;   --cat-data-bg:  #2c2210;
+  --cat-sec:      #c98fa8;   --cat-sec-bg:   #2a1420;
+  --cat-gen:      #7ab896;   --cat-gen-bg:   #0e2419;
+  --cat-txt:      #c9a070;   --cat-txt-bg:   #2a1c0e;
+  --cat-des:      #a892d4;   --cat-des-bg:   #1e1530;
+  --cat-med:      #6ab8b0;   --cat-med-bg:   #0e2422;
+  --cat-utl:      #8a9aaa;   --cat-utl-bg:   #1e2430;
 
-  --card-api-bg:      #1e3a8a;
-  --card-api-text:    #93c5fd;
-  --card-data-bg:     #713f12;
-  --card-data-text:   #fef08a;
-  --card-sec-bg:      #701a75;
-  --card-sec-text:    #fbcfe8;
-  --card-gen-bg:      #064e3b;
-  --card-gen-text:    #bbf7d0;
-  --card-txt-bg:      #7c2d12;
-  --card-txt-text:    #fed7aa;
-  --card-des-bg:      #4c1d95;
-  --card-des-text:    #e9d5ff;
-  --card-med-bg:      #115e59;
-  --card-med-text:    #99f6e4;
-  --card-utl-bg:      #334155;
-  --card-utl-text:    #cbd5e1;
-  --card-front-bg:    #881337;
-  --card-front-text:  #fecdd3;
-  --card-back-bg:     #164e63;
-  --card-back-text:   #cffafe;
+  --card-api-bg:      #162040;
+  --card-api-text:    #7ab0d4;
+  --card-data-bg:     #2c2210;
+  --card-data-text:   #c9ad6a;
+  --card-sec-bg:      #2a1420;
+  --card-sec-text:    #c98fa8;
+  --card-gen-bg:      #0e2419;
+  --card-gen-text:    #7ab896;
+  --card-txt-bg:      #2a1c0e;
+  --card-txt-text:    #c9a070;
+  --card-des-bg:      #1e1530;
+  --card-des-text:    #a892d4;
+  --card-med-bg:      #0e2422;
+  --card-med-text:    #6ab8b0;
+  --card-utl-bg:      #1e2430;
+  --card-utl-text:    #8a9aaa;
+  --card-front-bg:    #2a1018;
+  --card-front-text:  #c98898;
+  --card-back-bg:     #0e2030;
+  --card-back-text:   #6ab8c8;
 }
 
 /* ── Base ── */
@@ -670,6 +670,13 @@ input[type="url"]:focus, input[type="email"]:focus, input[type="password"]:focus
   transform: translate(-1px, -1px) !important;
   box-shadow: 3px 3px 0px var(--sketch-text) !important;
 }
+/* Embedded inputs inside styled containers — no own border/shadow */
+input.input-bare, input.input-bare:focus {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  transform: none !important;
+}
 textarea { min-height: 120px; line-height: 1.6; }
 select { 
   resize: none !important; 
@@ -756,6 +763,26 @@ button:active, .btn:active {
   transform: translate(1px, 1px) !important;
   box-shadow: 1px 1px 0px var(--sketch-text) !important;
 }
+/* Icon-only buttons — no lift, no shadow (used for inline clear/close buttons) */
+button.btn-icon, button.btn-icon.btn-icon, .btn-icon {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  transform: none !important;
+  padding: 4px !important;
+  font-weight: normal !important;
+}
+button.btn-icon:hover, button.btn-icon.btn-icon:hover, .btn-icon:hover {
+  transform: none !important;
+  box-shadow: none !important;
+  background: var(--surface2) !important;
+  opacity: 0.7;
+}
+button.btn-icon:active, button.btn-icon.btn-icon:active, .btn-icon:active {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
 button:disabled, .btn:disabled {
   opacity: 0.4 !important;
   pointer-events: none !important;
