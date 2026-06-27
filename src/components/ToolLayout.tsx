@@ -15,15 +15,11 @@ export default function ToolLayout({ title, description, children, fullWidth = f
 
   useEffect(() => {
     document.title = `${title} | DevToolbox`
-    // Keep body overflow hidden so double scrollbars don't appear;
-    // the outer div below is the actual scroll container at full viewport width
-    document.body.style.overflow = 'hidden'
     const slug = pathname.split('/').pop()
     if (slug) trackVisit(slug)
 
     return () => {
       document.title = 'DevToolbox – Free Developer Tools'
-      document.body.style.overflow = ''
     }
   }, [title, pathname])
 
@@ -36,6 +32,9 @@ export default function ToolLayout({ title, description, children, fullWidth = f
       boxSizing: 'border-box',
       overflowY: 'auto',
       overflowX: 'hidden',
+      background: 'var(--sketch-bg)',
+      backgroundImage: 'radial-gradient(var(--sketch-dot) 1.2px, transparent 1.2px)',
+      backgroundSize: '20px 20px',
     }}>
       {/* Inner: constrains width + is a flex column so children can use flex:1 */}
       <div style={{
