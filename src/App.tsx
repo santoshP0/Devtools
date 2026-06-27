@@ -57,6 +57,7 @@ import LogPrettifier from './pages/LogPrettifier'
 import NoSqlViewer from './pages/NoSqlViewer'
 import Notes from './pages/Notes'
 import ExifViewer from './pages/ExifViewer'
+import ColorBlindSimulator from './pages/ColorBlindSimulator'
 
 export default function App() {
   // Persisted home state — survives navigation to tool pages and back
@@ -135,6 +136,7 @@ export default function App() {
             <Route path="/nosql-viewer"        element={<NoSqlViewer />} />
             <Route path="/notes"               element={<Notes />} />
             <Route path="/exif-viewer"         element={<ExifViewer />} />
+            <Route path="/color-blind-simulator" element={<ColorBlindSimulator />} />
           </Routes>
         </main>
         <Footer />

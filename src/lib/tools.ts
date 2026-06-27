@@ -67,6 +67,7 @@ export const tools: Tool[] = [
   { name: 'Image → Base64',    slug: 'image-to-base64',   icon: 'IMG', description: 'Convert images to Base64 data URIs for use in CSS or HTML', category: 'Media'   },
   { name: 'Base64 → Image',    slug: 'base64-to-image',   icon: 'B64', description: 'Decode a Base64 string or Data URI back into an image',    category: 'Media'     },
   { name: 'EXIF Viewer',       slug: 'exif-viewer',       icon: '🔍',  description: 'Extract camera, GPS and timestamp metadata from JPEG images — 100% offline', category: 'Media' },
+  { name: 'Color Blind Simulator', slug: 'color-blind-simulator', icon: '👁', description: 'Simulate how images look under different color vision deficiencies', category: 'Design' },
 
   // ── Generator ──
   { name: 'UUID Generator',    slug: 'uuid-generator',    icon: 'UID', description: 'Generate random UUID v4 strings',                           category: 'Generator' },
