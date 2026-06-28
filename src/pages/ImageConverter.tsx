@@ -1,0 +1,483 @@
+import { useState, useRef, useCallback, useEffect } from 'react'
+import ToolLayout from '../components/ToolLayout'
+
+interface ImageInfo {
+  width: number
+  height: number
+  format: string
+  size: number
+  name: string
+}
+
+interface ConvertedResult {
+  blob: Blob
+  url: string
+  width: number
+  height: number
+  size: number
+}
+
+function fmt(bytes: number) {
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  return (bytes / 1024 / 1024).toFixed(2) + ' MB'
+}
+
+function pct(original: number, converted: number) {
+  const diff = ((converted - original) / original) * 100
+  return diff > 0 ? `+${diff.toFixed(1)}%` : `${diff.toFixed(1)}%`
+}
+
+function mimeFromFormat(format: string): string {
+  const map: Record<string, string> = {
+    png: 'image/png',
+    jpeg: 'image/jpeg',
+    webp: 'image/webp',
+  }
+  return map[format] || 'image/png'
+}
+
+function extFromFormat(format: string): string {
+  const map: Record<string, string> = {
+    png: '.png',
+    jpeg: '.jpg',
+    webp: '.webp',
+  }
+  return map[format] || '.png'
+}
+
+function formatFromMime(mime: string): string {
+  if (mime.includes('png')) return 'PNG'
+  if (mime.includes('jpeg') || mime.includes('jpg')) return 'JPEG'
+  if (mime.includes('webp')) return 'WebP'
+  if (mime.includes('gif')) return 'GIF'
+  if (mime.includes('bmp')) return 'BMP'
+  if (mime.includes('svg')) return 'SVG'
+  if (mime.includes('avif')) return 'AVIF'
+  if (mime.includes('tiff')) return 'TIFF'
+  return mime.split('/')[1]?.toUpperCase() || 'Unknown'
+}
+
+const OUTPUT_FORMATS = [
+  { value: 'png', label: 'PNG' },
+  { value: 'jpeg', label: 'JPEG' },
+  { value: 'webp', label: 'WebP' },
+]
+
+export default function ImageConverter() {
+  const [sourceImage, setSourceImage] = useState<HTMLImageElement | null>(null)
+  const [sourceFile, setSourceFile] = useState<File | null>(null)
+  const [sourceInfo, setSourceInfo] = useState<ImageInfo | null>(null)
+  const [sourceUrl, setSourceUrl] = useState<string>('')
+
+  const [outputFormat, setOutputFormat] = useState('webp')
+  const [quality, setQuality] = useState(85)
+  const [resizeMode, setResizeMode] = useState<'none' | 'scale' | 'custom'>('none')
+  const [scale, setScale] = useState(100)
+  const [customWidth, setCustomWidth] = useState(0)
+  const [customHeight, setCustomHeight] = useState(0)
+  const [lockAspect, setLockAspect] = useState(true)
+
+  const [result, setResult] = useState<ConvertedResult | null>(null)
+  const [converting, setConverting] = useState(false)
+  const [dragging, setDragging] = useState(false)
+
+  const inputRef = useRef<HTMLInputElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const aspectRatio = useRef(1)
+
+  // Cleanup URLs on unmount
+  useEffect(() => {
+    return () => {
+      if (sourceUrl) URL.revokeObjectURL(sourceUrl)
+      if (result?.url) URL.revokeObjectURL(result.url)
+    }
+  }, [])
+
+  const loadImage = useCallback((file: File) => {
+    // Revoke old URLs
+    if (sourceUrl) URL.revokeObjectURL(sourceUrl)
+    if (result?.url) URL.revokeObjectURL(result.url)
+    setResult(null)
+
+    const url = URL.createObjectURL(file)
+    setSourceUrl(url)
+    setSourceFile(file)
+
+    const img = new Image()
+    img.onload = () => {
+      setSourceImage(img)
+      aspectRatio.current = img.width / img.height
+      setCustomWidth(img.width)
+      setCustomHeight(img.height)
+      setSourceInfo({
+        width: img.width,
+        height: img.height,
+        format: formatFromMime(file.type),
+        size: file.size,
+        name: file.name,
+      })
+    }
+    img.src = url
+  }, [sourceUrl, result])
+
+  const onFiles = (files: FileList | null) => {
+    if (!files || !files.length) return
+    const file = files[0]
+    if (!file.type.startsWith('image/')) return
+    loadImage(file)
+    if (inputRef.current) inputRef.current.value = ''
+  }
+
+  const onDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setDragging(false)
+    onFiles(e.dataTransfer.files)
+  }
+
+  const getOutputDimensions = useCallback(() => {
+    if (!sourceImage) return { w: 0, h: 0 }
+    if (resizeMode === 'scale') {
+      const factor = scale / 100
+      return { w: Math.round(sourceImage.width * factor), h: Math.round(sourceImage.height * factor) }
+    }
+    if (resizeMode === 'custom') {
+      return { w: customWidth, h: customHeight }
+    }
+    return { w: sourceImage.width, h: sourceImage.height }
+  }, [sourceImage, resizeMode, scale, customWidth, customHeight])
+
+  const convert = useCallback(() => {
+    if (!sourceImage) return
+    setConverting(true)
+
+    // Use a small timeout so the UI can update
+    setTimeout(() => {
+      const canvas = canvasRef.current || document.createElement('canvas')
+      const { w, h } = getOutputDimensions()
+      canvas.width = w
+      canvas.height = h
+
+      const ctx = canvas.getContext('2d')
+      if (!ctx) { setConverting(false); return }
+
+      // For JPEG, fill white background (no transparency)
+      if (outputFormat === 'jpeg') {
+        ctx.fillStyle = '#ffffff'
+        ctx.fillRect(0, 0, w, h)
+      }
+
+      ctx.drawImage(sourceImage, 0, 0, w, h)
+
+      const mime = mimeFromFormat(outputFormat)
+      const q = (outputFormat === 'png') ? undefined : quality / 100
+
+      canvas.toBlob((blob) => {
+        if (!blob) { setConverting(false); return }
+        // Revoke old result URL
+        if (result?.url) URL.revokeObjectURL(result.url)
+        const url = URL.createObjectURL(blob)
+        setResult({ blob, url, width: w, height: h, size: blob.size })
+        setConverting(false)
+      }, mime, q)
+    }, 50)
+  }, [sourceImage, outputFormat, quality, getOutputDimensions, result])
+
+  const download = () => {
+    if (!result || !sourceFile) return
+    const a = document.createElement('a')
+    a.href = result.url
+    const baseName = sourceFile.name.replace(/\.[^.]+$/, '')
+    a.download = baseName + extFromFormat(outputFormat)
+    a.click()
+  }
+
+  const onCustomWidthChange = (val: number) => {
+    setCustomWidth(val)
+    if (lockAspect && aspectRatio.current) {
+      setCustomHeight(Math.round(val / aspectRatio.current))
+    }
+  }
+
+  const onCustomHeightChange = (val: number) => {
+    setCustomHeight(val)
+    if (lockAspect && aspectRatio.current) {
+      setCustomWidth(Math.round(val * aspectRatio.current))
+    }
+  }
+
+  const supportsQuality = outputFormat === 'jpeg' || outputFormat === 'webp'
+
+  const cardStyle: React.CSSProperties = {
+    background: 'var(--surface)',
+    border: '1px solid var(--border)',
+    borderRadius: 10,
+    padding: 20,
+  }
+
+  const labelStyle: React.CSSProperties = {
+    fontSize: 13,
+    fontWeight: 600,
+    color: 'var(--text)',
+    fontFamily: 'var(--font-sans)',
+    marginBottom: 6,
+    display: 'block',
+  }
+
+  const selectStyle: React.CSSProperties = {
+    background: 'var(--surface2)',
+    color: 'var(--text)',
+    border: '1px solid var(--border)',
+    borderRadius: 6,
+    padding: '6px 10px',
+    fontFamily: 'var(--font-mono)',
+    fontSize: 13,
+    outline: 'none',
+    width: '100%',
+  }
+
+  const inputStyle: React.CSSProperties = {
+    ...selectStyle,
+    width: 80,
+  }
+
+  return (
+    <ToolLayout title="Image Converter" description="Convert images between formats with quality and resize controls. Everything runs in your browser.">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 20, flex: 1 }}>
+
+        {/* Upload Area */}
+        <div
+          onDragOver={e => { e.preventDefault(); setDragging(true) }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={onDrop}
+          onClick={() => inputRef.current?.click()}
+          style={{
+            ...cardStyle,
+            border: dragging ? '2px dashed var(--accent)' : '2px dashed var(--border)',
+            textAlign: 'center',
+            cursor: 'pointer',
+            padding: 40,
+            transition: 'border-color 0.15s',
+            background: dragging ? 'var(--surface2)' : 'var(--surface)',
+          }}
+        >
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*"
+            onChange={e => onFiles(e.target.files)}
+            style={{ display: 'none' }}
+          />
+          <div style={{ fontSize: 32, marginBottom: 8 }}>🖼</div>
+          <div style={{ color: 'var(--text)', fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: 15 }}>
+            Drop an image here or click to browse
+          </div>
+          <div style={{ color: 'var(--text-dim)', fontFamily: 'var(--font-sans)', fontSize: 13, marginTop: 4 }}>
+            Supports PNG, JPEG, WebP, GIF, BMP, AVIF, TIFF, and more
+          </div>
+        </div>
+
+        {/* Source + Controls Row */}
+        {sourceInfo && sourceImage && (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+
+            {/* Original Preview */}
+            <div style={cardStyle}>
+              <div style={labelStyle}>Original</div>
+              <img
+                src={sourceUrl}
+                alt="Original"
+                style={{ maxWidth: '100%', maxHeight: 260, borderRadius: 6, objectFit: 'contain', background: 'var(--surface2)' }}
+              />
+              <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 13, fontFamily: 'var(--font-mono)', color: 'var(--text-dim)' }}>
+                <span>{sourceInfo.format}</span>
+                <span>{sourceInfo.width} x {sourceInfo.height}</span>
+                <span>{fmt(sourceInfo.size)}</span>
+              </div>
+            </div>
+
+            {/* Conversion Controls */}
+            <div style={cardStyle}>
+              <div style={labelStyle}>Conversion Settings</div>
+
+              {/* Output Format */}
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ ...labelStyle, fontSize: 12, color: 'var(--text-dim)' }}>Output Format</label>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {OUTPUT_FORMATS.map(f => (
+                    <button
+                      key={f.value}
+                      className={outputFormat === f.value ? 'btn btn-primary btn-sm' : 'btn btn-ghost btn-sm'}
+                      onClick={() => setOutputFormat(f.value)}
+                    >
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Quality Slider */}
+              {supportsQuality && (
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ ...labelStyle, fontSize: 12, color: 'var(--text-dim)' }}>
+                    Quality: {quality}%
+                  </label>
+                  <input
+                    type="range"
+                    min={1}
+                    max={100}
+                    value={quality}
+                    onChange={e => setQuality(Number(e.target.value))}
+                    style={{ width: '100%', accentColor: 'var(--accent)' }}
+                  />
+                </div>
+              )}
+
+              {/* Resize Mode */}
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ ...labelStyle, fontSize: 12, color: 'var(--text-dim)' }}>Resize</label>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {(['none', 'scale', 'custom'] as const).map(m => (
+                    <button
+                      key={m}
+                      className={resizeMode === m ? 'btn btn-primary btn-sm' : 'btn btn-ghost btn-sm'}
+                      onClick={() => setResizeMode(m)}
+                    >
+                      {m === 'none' ? 'Original' : m === 'scale' ? 'Scale %' : 'Custom'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {resizeMode === 'scale' && (
+                <div style={{ marginBottom: 14 }}>
+                  <label style={{ ...labelStyle, fontSize: 12, color: 'var(--text-dim)' }}>
+                    Scale: {scale}%
+                  </label>
+                  <input
+                    type="range"
+                    min={1}
+                    max={400}
+                    value={scale}
+                    onChange={e => setScale(Number(e.target.value))}
+                    style={{ width: '100%', accentColor: 'var(--accent)' }}
+                  />
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: 4 }}>
+                    {getOutputDimensions().w} x {getOutputDimensions().h}
+                  </div>
+                </div>
+              )}
+
+              {resizeMode === 'custom' && (
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div>
+                      <label style={{ ...labelStyle, fontSize: 11, color: 'var(--text-muted)' }}>Width</label>
+                      <input
+                        type="number"
+                        value={customWidth}
+                        min={1}
+                        onChange={e => onCustomWidthChange(Number(e.target.value))}
+                        style={inputStyle}
+                      />
+                    </div>
+                    <div style={{ fontSize: 16, color: 'var(--text-muted)', marginTop: 18 }}>x</div>
+                    <div>
+                      <label style={{ ...labelStyle, fontSize: 11, color: 'var(--text-muted)' }}>Height</label>
+                      <input
+                        type="number"
+                        value={customHeight}
+                        min={1}
+                        onChange={e => onCustomHeightChange(Number(e.target.value))}
+                        style={inputStyle}
+                      />
+                    </div>
+                    <button
+                      className={lockAspect ? 'btn btn-primary btn-sm' : 'btn btn-ghost btn-sm'}
+                      onClick={() => setLockAspect(!lockAspect)}
+                      title={lockAspect ? 'Aspect ratio locked' : 'Aspect ratio unlocked'}
+                      style={{ marginTop: 18, minWidth: 36 }}
+                    >
+                      {lockAspect ? '🔒' : '🔓'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Convert Button */}
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={convert}
+                disabled={converting}
+                style={{ width: '100%', marginTop: 6, padding: '8px 0' }}
+              >
+                {converting ? 'Converting...' : 'Convert'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Output Result */}
+        {result && sourceInfo && (
+          <div style={cardStyle}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'start' }}>
+              {/* Output Preview */}
+              <div>
+                <div style={labelStyle}>Converted Preview</div>
+                <img
+                  src={result.url}
+                  alt="Converted"
+                  style={{ maxWidth: '100%', maxHeight: 260, borderRadius: 6, objectFit: 'contain', background: 'var(--surface2)' }}
+                />
+                <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 12, fontSize: 13, fontFamily: 'var(--font-mono)', color: 'var(--text-dim)' }}>
+                  <span>{outputFormat.toUpperCase()}</span>
+                  <span>{result.width} x {result.height}</span>
+                  <span>{fmt(result.size)}</span>
+                </div>
+              </div>
+
+              {/* Size Comparison */}
+              <div>
+                <div style={labelStyle}>File Size Comparison</div>
+                <div style={{
+                  display: 'flex', flexDirection: 'column', gap: 12,
+                  background: 'var(--surface2)', borderRadius: 8, padding: 16,
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-mono)', fontSize: 13 }}>
+                    <span style={{ color: 'var(--text-dim)' }}>Original</span>
+                    <span style={{ color: 'var(--text)' }}>{fmt(sourceInfo.size)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-mono)', fontSize: 13 }}>
+                    <span style={{ color: 'var(--text-dim)' }}>Converted</span>
+                    <span style={{ color: 'var(--text)' }}>{fmt(result.size)}</span>
+                  </div>
+                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: 10, display: 'flex', justifyContent: 'space-between', fontFamily: 'var(--font-mono)', fontSize: 13 }}>
+                    <span style={{ color: 'var(--text-dim)' }}>Difference</span>
+                    <span style={{
+                      color: result.size <= sourceInfo.size ? '#22c55e' : '#ef4444',
+                      fontWeight: 600,
+                    }}>
+                      {pct(sourceInfo.size, result.size)}
+                      {result.size <= sourceInfo.size ? ' smaller' : ' larger'}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={download}
+                  style={{ width: '100%', marginTop: 14, padding: '8px 0' }}
+                >
+                  Download {outputFormat.toUpperCase()}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Hidden canvas */}
+        <canvas ref={canvasRef} style={{ display: 'none' }} />
+      </div>
+    </ToolLayout>
+  )
+}

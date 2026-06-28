@@ -57,6 +57,10 @@ import LogPrettifier from './pages/LogPrettifier'
 import NoSqlViewer from './pages/NoSqlViewer'
 import Notes from './pages/Notes'
 import ExifViewer from './pages/ExifViewer'
+import ColorBlindSimulator from './pages/ColorBlindSimulator'
+import ImageConverter from './pages/ImageConverter'
+import JwtGenerator from './pages/JwtGenerator'
+import BlurHashGenerator from './pages/BlurHashGenerator'
 
 export default function App() {
   // Persisted home state — survives navigation to tool pages and back
@@ -135,6 +139,10 @@ export default function App() {
             <Route path="/nosql-viewer"        element={<NoSqlViewer />} />
             <Route path="/notes"               element={<Notes />} />
             <Route path="/exif-viewer"         element={<ExifViewer />} />
+            <Route path="/color-blind-simulator" element={<ColorBlindSimulator />} />
+            <Route path="/image-converter"       element={<ImageConverter />} />
+            <Route path="/jwt-generator"         element={<JwtGenerator />} />
+            <Route path="/blurhash-generator"  element={<BlurHashGenerator />} />
           </Routes>
         </main>
         <Footer />

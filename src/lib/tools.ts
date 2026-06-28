@@ -61,12 +61,16 @@ export const tools: Tool[] = [
   // ── Security ──
   { name: 'Hash Generator',    slug: 'hash-generator',    icon: '##',  description: 'Generate SHA-1, SHA-256, SHA-512 hashes',                   category: 'Security'  },
   { name: 'Password Generator',slug: 'password-generator',icon: '***', description: 'Generate strong, secure passwords',                         category: 'Security'  },
+  { name: 'JWT Generator',    slug: 'jwt-generator',     icon: '🔑',  description: 'Generate signed JWT tokens and decode existing ones',     category: 'Security'  },
 
   // ── Media ──
   { name: 'Image Compressor',  slug: 'image-compressor',  icon: '⊟',   description: 'Compress images in your browser, no upload needed',       category: 'Media'     },
   { name: 'Image → Base64',    slug: 'image-to-base64',   icon: 'IMG', description: 'Convert images to Base64 data URIs for use in CSS or HTML', category: 'Media'   },
   { name: 'Base64 → Image',    slug: 'base64-to-image',   icon: 'B64', description: 'Decode a Base64 string or Data URI back into an image',    category: 'Media'     },
   { name: 'EXIF Viewer',       slug: 'exif-viewer',       icon: '🔍',  description: 'Extract camera, GPS and timestamp metadata from JPEG images — 100% offline', category: 'Media' },
+  { name: 'Image Converter',   slug: 'image-converter',   icon: '⇄',   description: 'Convert images between PNG, JPEG and WebP with quality and resize controls', category: 'Media' },
+  { name: 'BlurHash Generator', slug: 'blurhash-generator', icon: '▧', description: 'Generate and decode BlurHash placeholder strings from images', category: 'Media' },
+  { name: 'Color Blind Simulator', slug: 'color-blind-simulator', icon: '👁', description: 'Simulate how images look under different color vision deficiencies', category: 'Design' },
 
   // ── Generator ──
   { name: 'UUID Generator',    slug: 'uuid-generator',    icon: 'UID', description: 'Generate random UUID v4 strings',                           category: 'Generator' },
