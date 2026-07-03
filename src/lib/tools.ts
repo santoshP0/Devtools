@@ -29,7 +29,7 @@ export const tools: Tool[] = [
   { name: 'JSON ↔ XML',        slug: 'json-xml',          icon: '⇄',   description: 'Convert between JSON and XML formats',                     category: 'Data'      },
 
   // ── Text ──
-  { name: 'Markdown Preview',  slug: 'markdown-preview',  icon: 'MD',  description: 'Live Markdown editor with rendered preview',               category: 'Text'      },
+  { name: 'Markdown Preview',  slug: 'markdown-preview',  icon: 'MD',  description: 'Live Markdown editor with rendered preview & Mermaid diagrams', category: 'Text'      },
   { name: 'Text Case',         slug: 'text-case',         icon: 'Tt',  description: 'Convert text between camelCase, snake_case, and more',     category: 'Text'      },
   { name: 'Word Counter',      slug: 'word-counter',      icon: 'Wc',  description: 'Count words, characters and reading time',                 category: 'Text'      },
   { name: 'HTML Entities',     slug: 'html-entities',     icon: '&amp;', description: 'Encode and decode HTML entities',                        category: 'Text'      },
