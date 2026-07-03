@@ -974,4 +974,37 @@ button:disabled, .btn:disabled {
   .md-preview table td { padding: 7px 12px; border: 2px solid var(--sketch-text) !important; color: var(--sketch-text); }
   .md-preview table tr:nth-child(even) td { background: var(--surface2); }
   .md-preview img { max-width: 100%; border: 2px solid var(--sketch-text); border-radius: 4px; box-shadow: 3px 3px 0 var(--sketch-text); }
+
+  /* Mermaid diagrams */
+  .md-preview .mermaid-diagram {
+    display: flex;
+    justify-content: center;
+    margin: 1.25em 0;
+  }
+  .md-preview .mermaid-diagram.mermaid-rendered {
+    background: var(--surface2);
+    border: 2px solid var(--sketch-text);
+    border-radius: 6px;
+    box-shadow: 3px 3px 0 var(--sketch-text);
+    padding: 16px;
+    overflow-x: auto;
+  }
+  .md-preview .mermaid-diagram svg { max-width: 100%; height: auto; }
+  /* Fallback source shown until (or if) the diagram renders */
+  .md-preview .mermaid-fallback {
+    width: 100%;
+    margin: 0;
+    opacity: 0.6;
+    font-size: 12px;
+  }
+  .md-preview .mermaid-diagram.mermaid-rendered .mermaid-fallback { display: none; }
+  .md-preview .mermaid-error {
+    width: 100%;
+    color: #c0392b;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    border: 2px dashed #c0392b;
+    border-radius: 6px;
+    padding: 12px;
+  }
 }
