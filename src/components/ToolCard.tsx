@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Tool } from '../lib/tools'
 import { useFavorites } from '../lib/storage'
+import ToolIcon from './ToolIcon'
 
 const CAT_STYLES: Record<string, { bg: string; text: string }> = {
   API:       { bg: 'var(--card-api-bg)',       text: 'var(--card-api-text)' },
@@ -79,7 +80,7 @@ export default function ToolCard({ tool, index }: ToolCardProps) {
           color: catStyle.text,
           fontFamily: 'var(--font-sans)',
         }}>
-          {tool.icon}
+          <ToolIcon name={tool.icon} size={24} />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{
