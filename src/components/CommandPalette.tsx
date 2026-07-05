@@ -9,10 +9,13 @@ export default function CommandPalette() {
   const navigate = useNavigate()
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const filtered = query === '' ? tools.slice(0, 8) : tools.filter(t => 
-    t.name.toLowerCase().includes(query.toLowerCase()) || 
-    t.category.toLowerCase().includes(query.toLowerCase())
-  ).slice(0, 8)
+  const filtered = query === '' ? tools.slice(0, 8) : tools.filter(t => {
+    const q = query.toLowerCase()
+    return t.name.toLowerCase().includes(q) ||
+      t.category.toLowerCase().includes(q) ||
+      t.description.toLowerCase().includes(q) ||
+      t.keywords?.some(k => k.includes(q))
+  }).slice(0, 8)
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {

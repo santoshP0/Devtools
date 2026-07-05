@@ -62,6 +62,7 @@ import ColorBlindSimulator from './pages/ColorBlindSimulator'
 import ImageConverter from './pages/ImageConverter'
 import JwtGenerator from './pages/JwtGenerator'
 import BlurHashGenerator from './pages/BlurHashGenerator'
+import DarkLightConverter from './pages/DarkLightConverter'
 
 export default function App() {
   // Persisted home state — survives navigation to tool pages and back
@@ -145,6 +146,7 @@ export default function App() {
             <Route path="/image-converter"       element={<ImageConverter />} />
             <Route path="/jwt-generator"         element={<JwtGenerator />} />
             <Route path="/blurhash-generator"  element={<BlurHashGenerator />} />
+            <Route path="/dark-light-converter" element={<DarkLightConverter />} />
           </Routes>
         </main>
         <Footer />
