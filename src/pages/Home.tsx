@@ -52,7 +52,7 @@ export default function Home({ search, setSearch, activeCat, setActiveCat }: Pro
   const filtered = useMemo(() => {
     const q = search.toLowerCase()
     return tools.filter(t => {
-      const matchQ = !q || t.name.toLowerCase().includes(q) || t.description.toLowerCase().includes(q)
+      const matchQ = !q || t.name.toLowerCase().includes(q) || t.description.toLowerCase().includes(q) || t.keywords?.some(k => k.includes(q))
       const matchCat = q ? true : (activeCat === 'All' || t.category === activeCat)
       return matchCat && matchQ
     })
