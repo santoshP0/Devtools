@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import { useClipboardCopy } from '../hooks/useClipboardCopy'
 
 function hexToHsl(hex: string): [number, number, number] {
   const n = parseInt(hex.slice(1), 16)
@@ -102,16 +103,10 @@ const PALETTE_TYPES: { key: PaletteType; label: string }[] = [
 export default function ColorPalette() {
   const [color, setColor] = useState('#3b82f6')
   const [type, setType] = useState<PaletteType>('complementary')
-  const [copied, setCopied] = useState('')
+  const { copied, copy } = useClipboardCopy()
 
   const palette = generatePalette(color, type)
   const [h, s, l] = hexToHsl(color)
-
-  const copy = async (hex: string) => {
-    await navigator.clipboard.writeText(hex)
-    setCopied(hex)
-    setTimeout(() => setCopied(''), 1500)
-  }
 
   return (
     <ToolLayout title="Color Palette Generator" description="Generate complementary, triadic, analogous and more palettes from any color.">
@@ -148,7 +143,7 @@ export default function ColorPalette() {
           {palette.map(({ hex, label }) => (
             <div key={hex + label} className="flex flex-col gap-2">
               <button
-                onClick={() => copy(hex)}
+                onClick={() => copy(hex, hex)}
                 className="w-full rounded-xl aspect-square flex flex-col items-center justify-center gap-1 shadow-sm border border-black/10 transition-transform hover:scale-105 active:scale-95"
                 style={{ backgroundColor: hex }}
               >
@@ -165,7 +160,7 @@ export default function ColorPalette() {
           <div className="text-xs text-slate-500 font-semibold uppercase tracking-wide mb-3">All Hex Values</div>
           <div className="flex flex-wrap gap-2">
             {palette.map(({ hex, label }) => (
-              <button key={hex + label} onClick={() => copy(hex)} className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 rounded-lg px-3 py-2 text-sm font-mono transition-colors border border-slate-200">
+              <button key={hex + label} onClick={() => copy(hex, hex)} className="flex items-center gap-2 bg-slate-50 hover:bg-slate-100 rounded-lg px-3 py-2 text-sm font-mono transition-colors border border-slate-200">
                 <span className="w-4 h-4 rounded-sm border border-black/10 inline-block flex-shrink-0" style={{ backgroundColor: hex }} />
                 {hex.toUpperCase()}
                 <span className="text-slate-400 text-xs">{label}</span>

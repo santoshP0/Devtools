@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import CopyBtn from '../components/CopyBtn'
 
 /* ── Base64-URL helpers ── */
 function base64UrlEncode(data: Uint8Array | string): string {
@@ -78,14 +79,6 @@ const tokenOutputStyle: React.CSSProperties = {
   minHeight: 80,
   wordBreak: 'break-all' as const,
   whiteSpace: 'pre-wrap',
-}
-
-function CopyBtn({ text, label = 'Copy' }: { text: string; label?: string }) {
-  const [copied, setCopied] = useState(false)
-  const click = () => {
-    navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500) })
-  }
-  return <button className="btn btn-ghost btn-sm" onClick={click}>{copied ? '✓ Copied' : label}</button>
 }
 
 /* ── Component ── */

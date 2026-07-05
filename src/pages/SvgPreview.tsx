@@ -1,11 +1,7 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import ToolLayout from '../components/ToolLayout'
-
-function CopyBtn({ text, label = 'Copy' }: { text: string; label?: string }) {
-  const [copied, setCopied] = useState(false)
-  const click = () => { navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500) }) }
-  return <button className="btn btn-ghost btn-sm" onClick={click}>{copied ? '✓ Copied' : label}</button>
-}
+import CopyBtn from '../components/CopyBtn'
+import { useFileDrop } from '../hooks/useFileDrop'
 
 function optimizeSVG(svg: string): string {
   return svg
@@ -29,9 +25,7 @@ const SAMPLE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100
 
 export default function SvgPreviewPage() {
   const [svg, setSvg] = useState(SAMPLE_SVG)
-  const [dragging, setDragging] = useState(false)
   const [bgStyle, setBgStyle] = useState<'dark'|'light'|'checker'>('dark')
-  const fileRef = useRef<HTMLInputElement>(null)
 
   const optimized = (() => { try { return optimizeSVG(svg) } catch { return svg } })()
   const savings = svg.length > 0 ? Math.round((1 - optimized.length / svg.length) * 100) : 0
@@ -49,6 +43,8 @@ export default function SvgPreviewPage() {
     file.text().then(setSvg)
   }
 
+  const { dragging, inputRef, dragProps, openPicker, onInputChange } = useFileDrop(handleFile, '.svg,image/svg+xml')
+
   const download = (content: string, name: string) => {
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([content], { type:'image/svg+xml' })); a.download = name; a.click()
   }
@@ -61,13 +57,11 @@ export default function SvgPreviewPage() {
         <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
             <div className="section-label">SVG Source</div>
-            <button className="btn btn-ghost btn-sm" onClick={() => fileRef.current?.click()}>Upload .svg</button>
-            <input ref={fileRef} type="file" accept=".svg,image/svg+xml" style={{ display:'none' }} onChange={e => { if (e.target.files?.[0]) handleFile(e.target.files[0]) }} />
+            <button className="btn btn-ghost btn-sm" onClick={openPicker}>Upload .svg</button>
+            <input ref={inputRef} type="file" accept=".svg,image/svg+xml" style={{ display:'none' }} onChange={onInputChange} />
           </div>
           <textarea value={svg} onChange={e => setSvg(e.target.value)}
-            onDragOver={e => { e.preventDefault(); setDragging(true) }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={e => { e.preventDefault(); setDragging(false); if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]) }}
+            {...dragProps}
             style={{ minHeight:280, fontSize:12, outline: dragging ? '2px solid var(--accent)' : undefined }} spellCheck={false} />
           {!isValid && svg.trim() && <div className="error-msg">⚠ Doesn't look like valid SVG</div>}
           <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>

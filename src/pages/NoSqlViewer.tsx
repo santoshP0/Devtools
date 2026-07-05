@@ -1,12 +1,6 @@
 import { useState, useMemo } from 'react'
 import ToolLayout from '../components/ToolLayout'
 
-function CopyBtn({ text, label = 'Copy' }: { text: string; label?: string }) {
-  const [copied, setCopied] = useState(false)
-  const click = () => { navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500) }) }
-  return <button className="btn btn-ghost btn-sm" onClick={click}>{copied ? '✓ Copied' : label}</button>
-}
-
 const SAMPLE_DB = `{
   "users": [
     { "id": 1, "name": "Alice Smith", "email": "alice@example.com", "role": "admin", "active": true, "created": "2024-01-15" },

@@ -1,11 +1,6 @@
 import { useState, useMemo } from 'react'
 import ToolLayout from '../components/ToolLayout'
-
-function CopyBtn({ text, label = 'Copy' }: { text: string; label?: string }) {
-  const [copied, setCopied] = useState(false)
-  const click = () => { navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500) }) }
-  return <button className="btn btn-ghost btn-sm" onClick={click}>{copied ? '✓ Copied' : label}</button>
-}
+import CopyBtn from '../components/CopyBtn'
 
 const COLORS = ['oklch(0.72 0.16 195)','oklch(0.72 0.16 285)','oklch(0.72 0.15 145)','oklch(0.80 0.14 75)','oklch(0.72 0.16 25)','oklch(0.72 0.14 260)','oklch(0.75 0.16 200)','oklch(0.80 0.12 300)','oklch(0.70 0.16 60)']
 

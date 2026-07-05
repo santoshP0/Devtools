@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import { useClipboardCopy } from '../hooks/useClipboardCopy'
 
 const WORDS = 'lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur excepteur sint occaecat cupidatat non proident sunt in culpa qui officia deserunt mollit anim id est laborum'.split(' ')
 
@@ -22,7 +23,7 @@ export default function LoremIpsum() {
   const [mode, setMode] = useState<Mode>('paragraphs')
   const [count, setCount] = useState(3)
   const [output, setOutput] = useState('')
-  const [copied, setCopied] = useState(false)
+  const { copied, copy } = useClipboardCopy()
 
   const generate = () => {
     if (mode === 'paragraphs') {
@@ -32,12 +33,6 @@ export default function LoremIpsum() {
     } else {
       setOutput(Array.from({ length: count }, () => WORDS[rand(WORDS.length)]).join(' '))
     }
-  }
-
-  const copy = async () => {
-    await navigator.clipboard.writeText(output)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
   }
 
   return (
@@ -70,7 +65,7 @@ export default function LoremIpsum() {
         <div className="flex flex-col flex-1">
           <div className="flex justify-between items-center mb-1.5">
             <label className="label mb-0">Output</label>
-            {output && <button onClick={copy} className="copy-btn">{copied ? '✓ Copied' : 'Copy'}</button>}
+            {output && <button onClick={() => copy(output)} className="copy-btn">{copied ? '✓ Copied' : 'Copy'}</button>}
           </div>
           <textarea
             value={output}
