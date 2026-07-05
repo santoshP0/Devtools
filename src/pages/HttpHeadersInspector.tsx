@@ -1,11 +1,6 @@
 import { useState } from 'react'
 import ToolLayout from '../components/ToolLayout'
-
-function CopyBtn({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false)
-  const click = () => { navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500) }) }
-  return <button className="btn btn-ghost btn-sm" onClick={click}>{copied ? '✓' : 'Copy'}</button>
-}
+import CopyBtn from '../components/CopyBtn'
 
 const SENSITIVE = ['authorization','cookie','set-cookie','x-api-key','x-auth-token','x-access-token']
 const HEADER_DOCS: Record<string, string> = {

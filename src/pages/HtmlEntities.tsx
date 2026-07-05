@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import { useClipboardCopy } from '../hooks/useClipboardCopy'
 
 function encodeEntities(str: string): string {
   return str
@@ -31,16 +32,10 @@ export default function HtmlEntities() {
   const [input, setInput] = useState('')
   const [output, setOutput] = useState('')
   const [mode, setMode] = useState<'encode' | 'decode'>('encode')
-  const [copied, setCopied] = useState(false)
+  const { copied, copy } = useClipboardCopy()
 
   const convert = () => {
     setOutput(mode === 'encode' ? encodeEntities(input) : decodeEntities(input))
-  }
-
-  const copy = async () => {
-    await navigator.clipboard.writeText(output)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
   }
 
   const swap = () => {
@@ -75,7 +70,7 @@ export default function HtmlEntities() {
           <div className="flex flex-col">
             <div className="flex justify-between items-center mb-1.5">
               <label className="label mb-0">{mode === 'encode' ? 'HTML Entities' : 'Plain Text / HTML'}</label>
-              {output && <button onClick={copy} className="copy-btn">{copied ? '✓ Copied' : 'Copy'}</button>}
+              {output && <button onClick={() => copy(output)} className="copy-btn">{copied ? '✓ Copied' : 'Copy'}</button>}
             </div>
             <textarea
               value={output}

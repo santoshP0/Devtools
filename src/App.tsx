@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { ToastProvider } from './components/Toast'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import CommandPalette from './components/CommandPalette'
@@ -61,6 +62,7 @@ import ColorBlindSimulator from './pages/ColorBlindSimulator'
 import ImageConverter from './pages/ImageConverter'
 import JwtGenerator from './pages/JwtGenerator'
 import BlurHashGenerator from './pages/BlurHashGenerator'
+import DarkLightConverter from './pages/DarkLightConverter'
 
 export default function App() {
   // Persisted home state — survives navigation to tool pages and back
@@ -68,6 +70,7 @@ export default function App() {
   const [homeActiveCat, setHomeActiveCat] = useState('All')
 
   return (
+    <ToastProvider>
     <BrowserRouter>
       <div style={{
         minHeight: '100vh',
@@ -143,10 +146,12 @@ export default function App() {
             <Route path="/image-converter"       element={<ImageConverter />} />
             <Route path="/jwt-generator"         element={<JwtGenerator />} />
             <Route path="/blurhash-generator"  element={<BlurHashGenerator />} />
+            <Route path="/dark-light-converter" element={<DarkLightConverter />} />
           </Routes>
         </main>
         <Footer />
       </div>
     </BrowserRouter>
+    </ToastProvider>
   )
 }

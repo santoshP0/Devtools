@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import { useClipboardCopy } from '../hooks/useClipboardCopy'
 
 // ─── Persistence ──────────────────────────────────────────────────────────────
 const STORAGE_KEY = 'devtools:json-formatter:input'
@@ -290,7 +291,7 @@ export default function JsonFormatter() {
   const [error, setError]   = useState<{ title: string; detail: string; lineNo: number; colNo: number } | null>(null)
   const [status, setStatus] = useState<'idle' | 'valid' | 'error'>('idle')
   const [indent, setIndent] = useState<number | string>(2)
-  const [copied, setCopied] = useState(false)
+  const { copied, copy } = useClipboardCopy()
   const [viewMode, setViewMode] = useState<'tree' | 'raw'>('tree')
   const [isDark, setIsDark] = useState(() => document.documentElement.dataset.theme === 'dark')
 
@@ -343,12 +344,6 @@ export default function JsonFormatter() {
       setStatus('error')
     }
   }, [input])
-
-  const copy = async () => {
-    await navigator.clipboard.writeText(output)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
-  }
 
   const clear = () => { setInput(''); setOutput(''); setError(null); setParsed(null); setStatus('idle'); saveToDisk('') }
 
@@ -420,7 +415,7 @@ export default function JsonFormatter() {
                 </span>
               )}
               {isValid && (
-                <button onClick={copy} className="copy-btn">{copied ? '✓ Copied' : 'Copy'}</button>
+                <button onClick={() => copy(output)} className="copy-btn">{copied ? '✓ Copied' : 'Copy'}</button>
               )}
             </div>
           </div>

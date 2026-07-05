@@ -1,11 +1,7 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import ToolLayout from '../components/ToolLayout'
-
-function CopyBtn({ text, label = 'Copy' }: { text: string; label?: string }) {
-  const [copied, setCopied] = useState(false)
-  const click = () => { navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500) }) }
-  return <button className="btn btn-ghost btn-sm" onClick={click}>{copied ? '✓ Copied' : label}</button>
-}
+import CopyBtn from '../components/CopyBtn'
+import { useFileDrop } from '../hooks/useFileDrop'
 
 interface Result {
   dataUrl: string; base64: string; type: string; name: string
@@ -15,8 +11,6 @@ interface Result {
 
 export default function ImageToBase64Page() {
   const [result, setResult] = useState<Result | null>(null)
-  const [dragging, setDragging] = useState(false)
-  const fileRef = useRef<HTMLInputElement>(null)
 
   const handleFile = (file: File) => {
     if (!file || !file.type.startsWith('image/')) return
@@ -37,6 +31,8 @@ export default function ImageToBase64Page() {
     reader.readAsDataURL(file)
   }
 
+  const { dragging, inputRef, dragProps, openPicker, onInputChange } = useFileDrop(handleFile, 'image/*')
+
   const formats = result ? [
     { label:'Data URI',    val: result.dataUrl },
     { label:'Base64 only', val: result.base64 },
@@ -49,10 +45,8 @@ export default function ImageToBase64Page() {
       <div className="one-col">
         {!result ? (
           <div
-            onDragOver={e => { e.preventDefault(); setDragging(true) }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={e => { e.preventDefault(); setDragging(false); handleFile(e.dataTransfer.files[0]) }}
-            onClick={() => fileRef.current?.click()}
+            {...dragProps}
+            onClick={openPicker}
             style={{
               border:`2px dashed ${dragging ? 'var(--accent)' : 'var(--border)'}`,
               borderRadius:16, padding:'64px 32px', textAlign:'center',
@@ -63,7 +57,7 @@ export default function ImageToBase64Page() {
             <div style={{ fontSize:48, marginBottom:16, opacity:0.5 }}>IMG</div>
             <div style={{ fontSize:16, fontWeight:600, marginBottom:8 }}>Drop an image here</div>
             <div style={{ fontSize:14, color:'var(--text-muted)' }}>or click to browse · PNG, JPG, GIF, SVG, WebP</div>
-            <input ref={fileRef} type="file" accept="image/*" style={{ display:'none' }} onChange={e => { if (e.target.files?.[0]) handleFile(e.target.files[0]) }} />
+            <input ref={inputRef} type="file" accept="image/*" style={{ display:'none' }} onChange={onInputChange} />
           </div>
         ) : (
           <>

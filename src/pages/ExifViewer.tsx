@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import { useClipboardCopy } from '../hooks/useClipboardCopy'
 
 /* ── EXIF Tag Definitions ── */
 const EXIF_TAGS: Record<number, string> = {
@@ -549,7 +550,7 @@ export default function ExifViewer() {
   const [isDragging, setIsDragging] = useState(false)
   const [imgNaturalW, setImgNaturalW] = useState(0)
   const [imgNaturalH, setImgNaturalH] = useState(0)
-  const [copiedJson, setCopiedJson] = useState(false)
+  const { copied: copiedJson, copy: copyJson } = useClipboardCopy()
   const bufferRef = useRef<ArrayBuffer | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -629,9 +630,7 @@ export default function ExifViewer() {
     for (const [key, tag] of Object.entries(tags)) {
       simplified[key] = tag.value
     }
-    navigator.clipboard.writeText(JSON.stringify(simplified, null, 2)).then(() => {
-      setCopiedJson(true); setTimeout(() => setCopiedJson(false), 1500)
-    })
+    copyJson(JSON.stringify(simplified, null, 2))
   }
 
   const fmtSize = (b: number) => b > 1e6 ? `${(b / 1e6).toFixed(1)} MB` : `${(b / 1024).toFixed(0)} KB`

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import { useClipboardCopy } from '../hooks/useClipboardCopy'
 
 const ACCENT_MAP: Record<string, string> = {
   à:'a',á:'a',â:'a',ã:'a',ä:'a',å:'a',æ:'ae',ç:'c',è:'e',é:'e',ê:'e',ë:'e',
@@ -19,15 +20,9 @@ function slugify(str: string, sep: string): string {
 export default function Slugify() {
   const [input, setInput] = useState('')
   const [sep, setSep] = useState('-')
-  const [copied, setCopied] = useState(false)
+  const { copied, copy } = useClipboardCopy()
 
   const result = input ? slugify(input, sep) : ''
-
-  const copy = async () => {
-    await navigator.clipboard.writeText(result)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
-  }
 
   return (
     <ToolLayout title="Slugify" description="Convert text to URL-friendly slugs.">
@@ -60,7 +55,7 @@ export default function Slugify() {
           <div className="tool-panel">
             <div className="flex justify-between items-center mb-2">
               <label className="label mb-0">Slug</label>
-              {result && <button onClick={copy} className="copy-btn">{copied ? '✓ Copied' : 'Copy'}</button>}
+              {result && <button onClick={() => copy(result)} className="copy-btn">{copied ? '✓ Copied' : 'Copy'}</button>}
             </div>
             <div className="font-mono text-lg text-slate-800 bg-slate-50 rounded-lg px-4 py-3 min-h-[48px] break-all">
               {result || <span className="text-slate-400">slug will appear here…</span>}

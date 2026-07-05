@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import { useClipboardCopy } from '../hooks/useClipboardCopy'
 
 const CHARS = {
   lower: 'abcdefghijklmnopqrstuvwxyz',
@@ -27,7 +28,7 @@ export default function PasswordGenerator() {
   const [opts, setOpts] = useState({ lower: true, upper: true, numbers: true, symbols: false })
   const [count, setCount] = useState(1)
   const [passwords, setPasswords] = useState<string[]>([])
-  const [copied, setCopied] = useState('')
+  const { copied, copy } = useClipboardCopy()
 
   const generate = useCallback(() => {
     const pool = Object.entries(opts).filter(([, v]) => v).map(([k]) => CHARS[k as keyof typeof CHARS]).join('')
@@ -37,12 +38,6 @@ export default function PasswordGenerator() {
     )
     setPasswords(arr)
   }, [length, opts, count])
-
-  const copy = async (pwd: string) => {
-    await navigator.clipboard.writeText(pwd)
-    setCopied(pwd)
-    setTimeout(() => setCopied(''), 1500)
-  }
 
   const toggle = (key: keyof typeof opts) => setOpts(o => ({ ...o, [key]: !o[key] }))
 
@@ -88,7 +83,7 @@ export default function PasswordGenerator() {
                 <div key={i} className="border border-slate-200 rounded-lg p-3">
                   <div className="flex justify-between items-center mb-2">
                     <span className="font-mono text-sm text-slate-800 break-all mr-4">{pwd}</span>
-                    <button onClick={() => copy(pwd)} className="copy-btn flex-shrink-0">
+                    <button onClick={() => copy(pwd, pwd)} className="copy-btn flex-shrink-0">
                       {copied === pwd ? '✓' : 'Copy'}
                     </button>
                   </div>

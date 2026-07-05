@@ -15,6 +15,8 @@ export default function Navbar() {
     const next = dark ? 'light' : 'dark'
     document.documentElement.dataset.theme = next
     localStorage.setItem('dt-theme', next)
+    const favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"]')
+    if (favicon) favicon.href = next === 'dark' ? '/AppIconDarkTheme.png' : '/AppIconLightTheme.png'
     setDark(!dark)
   }
 
@@ -28,15 +30,14 @@ export default function Navbar() {
       borderBottom: '2px solid var(--sketch-text)',
     }}>
       {/* Left side */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <Link to="/" style={{
-          width: 32, height: 32, borderRadius: 4, flexShrink: 0,
-          background: 'var(--sketch-text)',
-          border: '2px solid var(--sketch-text)',
+          width: 34, height: 34, flexShrink: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 13, fontWeight: 700, color: 'var(--sketch-bg)',
-          fontFamily: "'Architects Daughter', var(--font-sans)", textDecoration: 'none',
-        }}>DT</Link>
+          textDecoration: 'none',
+        }}>
+          <img src={dark ? '/AppIconDarkTheme.png' : '/AppIconLightTheme.png'} alt="DevToolbox" style={{ width: 34, height: 34, objectFit: 'contain' }} />
+        </Link>
 
         {tool ? (
           <>
@@ -44,7 +45,7 @@ export default function Navbar() {
               to="/"
               style={{
                 fontSize: 13, color: 'var(--sketch-text)',
-                textDecoration: 'none', 
+                textDecoration: 'none',
                 fontFamily: "'Architects Daughter', var(--font-sans)",
                 transition: 'opacity 0.18s',
                 display: 'flex', alignItems: 'center', gap: 5,
@@ -59,7 +60,7 @@ export default function Navbar() {
             <span style={{ color: 'var(--sketch-text)', opacity: 0.3, fontSize: 18, lineHeight: 1 }}>|</span>
             <span style={{
               fontSize: 15, fontWeight: 700,
-              color: 'var(--sketch-text)', 
+              color: 'var(--sketch-text)',
               fontFamily: "'Architects Daughter', var(--font-sans)",
             }}>
               {tool.name.toLowerCase()}
@@ -67,7 +68,7 @@ export default function Navbar() {
           </>
         ) : (
           <Link to="/" style={{
-            fontSize: 16, fontWeight: 700, 
+            fontSize: 18, fontWeight: 700,
             fontFamily: "'Architects Daughter', var(--font-sans)",
             textDecoration: 'none', color: 'var(--sketch-text)',
           }}>

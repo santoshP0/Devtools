@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { tools } from '../lib/tools'
+import ToolIcon from './ToolIcon'
 
 export default function CommandPalette() {
   const [open, setOpen] = useState(false)
@@ -9,10 +10,13 @@ export default function CommandPalette() {
   const navigate = useNavigate()
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const filtered = query === '' ? tools.slice(0, 8) : tools.filter(t => 
-    t.name.toLowerCase().includes(query.toLowerCase()) || 
-    t.category.toLowerCase().includes(query.toLowerCase())
-  ).slice(0, 8)
+  const filtered = query === '' ? tools.slice(0, 8) : tools.filter(t => {
+    const q = query.toLowerCase()
+    return t.name.toLowerCase().includes(q) ||
+      t.category.toLowerCase().includes(q) ||
+      t.description.toLowerCase().includes(q) ||
+      t.keywords?.some(k => k.includes(q))
+  }).slice(0, 8)
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -90,7 +94,7 @@ export default function CommandPalette() {
               >
                 <div className="flex items-center gap-3">
                   <span className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-800 text-[12px] font-mono border border-slate-700">
-                    {tool.icon}
+                    <ToolIcon name={tool.icon} size={14} />
                   </span>
                   <div className="text-left">
                     <div className={`text-sm font-medium ${i === selectedIndex ? 'text-accent' : 'text-slate-200'}`}>{tool.name}</div>

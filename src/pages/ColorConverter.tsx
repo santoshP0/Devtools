@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import { useClipboardCopy } from '../hooks/useClipboardCopy'
 
 function hexToRgb(hex: string): [number, number, number] {
   const h = hex.replace('#', '')
@@ -48,7 +49,7 @@ export default function ColorConverter() {
   const [hex, setHex] = useState('#2563eb')
   const [rgb, setRgb] = useState<[number, number, number]>([37, 99, 235])
   const [hsl, setHsl] = useState<[number, number, number]>([221, 83, 53])
-  const [copied, setCopied] = useState('')
+  const { copied, copy } = useClipboardCopy()
 
   const fromHex = useCallback((h: string) => {
     if (!isValidHex(h)) return
@@ -70,12 +71,6 @@ export default function ColorConverter() {
     setRgb(r)
     setHex(rgbToHex(...r))
   }, [])
-
-  const copy = async (val: string, key: string) => {
-    await navigator.clipboard.writeText(val)
-    setCopied(key)
-    setTimeout(() => setCopied(''), 1500)
-  }
 
   const hexStr = hex
   const rgbStr = `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import { useClipboardCopy } from '../hooks/useClipboardCopy'
 
 const ALGORITHMS = ['SHA-1', 'SHA-256', 'SHA-384', 'SHA-512'] as const
 
@@ -12,7 +13,7 @@ export default function HashGenerator() {
   const [input, setInput] = useState('')
   const [hashes, setHashes] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
-  const [copiedKey, setCopiedKey] = useState('')
+  const { copied: copiedKey, copy } = useClipboardCopy()
 
   const generate = async () => {
     if (!input) return
@@ -23,12 +24,6 @@ export default function HashGenerator() {
     }
     setHashes(results)
     setLoading(false)
-  }
-
-  const copy = async (key: string, value: string) => {
-    await navigator.clipboard.writeText(value)
-    setCopiedKey(key)
-    setTimeout(() => setCopiedKey(''), 1500)
   }
 
   return (
@@ -55,7 +50,7 @@ export default function HashGenerator() {
               <div key={alg} className="bg-white border border-slate-200 rounded-lg p-4">
                 <div className="flex justify-between items-center mb-1">
                   <span className="text-xs font-semibold text-slate-500">{alg}</span>
-                  <button onClick={() => copy(alg, hashes[alg])} className="copy-btn">
+                  <button onClick={() => copy(hashes[alg], alg)} className="copy-btn">
                     {copiedKey === alg ? '✓ Copied' : 'Copy'}
                   </button>
                 </div>
