@@ -30,13 +30,12 @@ export default function Navbar() {
       {/* Left side */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
         <Link to="/" style={{
-          width: 32, height: 32, borderRadius: 4, flexShrink: 0,
-          background: 'var(--sketch-text)',
-          border: '2px solid var(--sketch-text)',
+          width: 36, height: 36, flexShrink: 0,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 13, fontWeight: 700, color: 'var(--sketch-bg)',
-          fontFamily: "'Architects Daughter', var(--font-sans)", textDecoration: 'none',
-        }}>DT</Link>
+          textDecoration: 'none',
+        }}>
+          <img src={dark ? '/AppIconDarkTheme.png' : '/AppIconLightTheme.png'} alt="DevToolbox" style={{ width: 36, height: 36, objectFit: 'contain' }} />
+        </Link>
 
         {tool ? (
           <>
