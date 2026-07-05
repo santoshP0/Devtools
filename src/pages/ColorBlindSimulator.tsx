@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import { useFileDrop } from '../hooks/useFileDrop'
 
 type SimType =
   | 'protanopia' | 'deuteranopia' | 'tritanopia'
@@ -125,10 +126,8 @@ export default function ColorBlindSimulator() {
   const [imageSrc, setImageSrc] = useState<string | null>(null)
   const [simType, setSimType] = useState<SimType>('deuteranopia')
   const [severity, setSeverity] = useState(100)
-  const [dragging, setDragging] = useState(false)
   const [processing, setProcessing] = useState(false)
 
-  const inputRef = useRef<HTMLInputElement>(null)
   const originalCanvasRef = useRef<HTMLCanvasElement>(null)
   const simCanvasRef = useRef<HTMLCanvasElement>(null)
   const imageRef = useRef<HTMLImageElement | null>(null)
@@ -144,18 +143,7 @@ export default function ColorBlindSimulator() {
     reader.readAsDataURL(file)
   }, [])
 
-  const onDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    setDragging(false)
-    const file = e.dataTransfer.files[0]
-    if (file) loadImage(file)
-  }
-
-  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) loadImage(file)
-    if (inputRef.current) inputRef.current.value = ''
-  }
+  const { dragging, inputRef, dragProps, openPicker, onInputChange } = useFileDrop(loadImage, 'image/*')
 
   // Draw original and simulated when image, type, or severity changes
   useEffect(() => {
@@ -251,10 +239,8 @@ export default function ColorBlindSimulator() {
 
         {/* Drop zone */}
         <div
-          onDrop={onDrop}
-          onDragOver={e => { e.preventDefault(); setDragging(true) }}
-          onDragLeave={() => setDragging(false)}
-          onClick={() => inputRef.current?.click()}
+          {...dragProps}
+          onClick={openPicker}
           style={{
             border: `2px dashed ${dragging ? 'var(--accent)' : 'var(--border)'}`,
             borderRadius: 12,
@@ -284,7 +270,7 @@ export default function ColorBlindSimulator() {
             ref={inputRef}
             type="file"
             accept="image/*"
-            onChange={onFileChange}
+            onChange={onInputChange}
             style={{ display: 'none' }}
           />
         </div>
