@@ -14,7 +14,7 @@ export const tools: Tool[] = [
   { name: 'Base64',            slug: 'base64',            icon: 'B64', description: 'Encode and decode Base64 strings and files',                category: 'Data', keywords: ['b64', 'encode', 'decode', 'binary'] },
   { name: 'JWT Decoder',       slug: 'jwt-decoder',       icon: 'JWT', description: 'Decode and inspect JWT tokens',                            category: 'Data', keywords: ['token', 'auth', 'claims', 'payload', 'bearer'] },
   { name: 'Regex Tester',      slug: 'regex-tester',      icon: '.*',  description: 'Test regular expressions with live match highlighting',     category: 'Text', keywords: ['regexp', 'pattern', 'match', 'replace', 'regex101'] },
-  { name: 'Unix Timestamp',    slug: 'unix-timestamp',    icon: '⏱',   description: 'Convert between Unix timestamps and human-readable dates', category: 'Utils', keywords: ['epoch', 'time', 'date', 'datetime', 'utc', 'iso'] },
+  { name: 'Unix Timestamp',    slug: 'unix-timestamp',    icon: '🕐',   description: 'Convert between Unix timestamps and human-readable dates', category: 'Utils', keywords: ['epoch', 'time', 'date', 'datetime', 'utc', 'iso'] },
   { name: 'URL Encoder',       slug: 'url-encoder',       icon: '🔗',  description: 'Encode and decode URL components',                          category: 'Data', keywords: ['uri', 'percent', 'encode', 'decode', 'query', 'param'] },
   { name: 'Diff Checker',      slug: 'diff-checker',      icon: '📄',   description: 'Compare two texts and highlight differences',               category: 'Text', keywords: ['compare', 'merge', 'patch', 'changes'] },
   { name: 'SVG Preview',       slug: 'svg-preview',       icon: 'SVG', description: 'Preview SVG files, remove bloat and export optimized code', category: 'Frontend', keywords: ['vector', 'icon', 'optimize', 'svgo', 'xml'] },
@@ -26,22 +26,22 @@ export const tools: Tool[] = [
   { name: 'JSON → TypeScript', slug: 'json-typescript',   icon: 'TS',  description: 'Generate TypeScript interfaces from any JSON object',      category: 'Data', keywords: ['ts', 'type', 'interface', 'schema', 'codegen'] },
   { name: 'SQL Formatter',     slug: 'sql-formatter',     icon: 'SQL', description: 'Beautify and indent SQL queries instantly',                 category: 'Data', keywords: ['query', 'database', 'db', 'mysql', 'postgres', 'prettify'] },
   { name: 'CSV ↔ JSON',        slug: 'csv-json',          icon: 'CSV', description: 'Convert between CSV and JSON formats',                     category: 'Data', keywords: ['spreadsheet', 'excel', 'table', 'tsv'] },
-  { name: 'CSV Viewer',        slug: 'csv-viewer',        icon: '📊',  description: 'Open large CSV files instantly with virtual scrolling and sortable columns', category: 'Data', keywords: ['spreadsheet', 'excel', 'table', 'tsv', 'data'] },
+  { name: 'CSV Viewer',        slug: 'csv-viewer',        icon: '📋',  description: 'Open large CSV files instantly with virtual scrolling and sortable columns', category: 'Data', keywords: ['spreadsheet', 'excel', 'table', 'tsv', 'data'] },
   { name: 'JSON ↔ XML',        slug: 'json-xml',          icon: '🔀',   description: 'Convert between JSON and XML formats',                     category: 'Data', keywords: ['convert', 'transform', 'soap', 'api'] },
 
   // ── Text ──
   { name: 'Markdown Preview',  slug: 'markdown-preview',  icon: 'MD',  description: 'Live Markdown editor with rendered preview & Mermaid diagrams', category: 'Text', keywords: ['md', 'readme', 'preview', 'editor', 'mermaid', 'github', 'mdx', 'markup'] },
   { name: 'Text Case',         slug: 'text-case',         icon: 'Tt',  description: 'Convert text between camelCase, snake_case, and more',     category: 'Text', keywords: ['camel', 'snake', 'pascal', 'kebab', 'upper', 'lower', 'title', 'capitalize'] },
-  { name: 'Word Counter',      slug: 'word-counter',      icon: 'Wc',  description: 'Count words, characters and reading time',                 category: 'Text', keywords: ['char', 'length', 'stats', 'wc'] },
+  { name: 'Word Counter',      slug: 'word-counter',      icon: '🔢',  description: 'Count words, characters and reading time',                 category: 'Text', keywords: ['char', 'length', 'stats', 'wc'] },
   { name: 'HTML Entities',     slug: 'html-entities',     icon: '&amp;', description: 'Encode and decode HTML entities',                        category: 'Text', keywords: ['escape', 'unescape', 'amp', 'entity', 'special'] },
   { name: 'Slugify',           slug: 'slugify',           icon: '🔤',   description: 'Convert text to URL-friendly slugs',                       category: 'Text', keywords: ['url', 'seo', 'permalink', 'slug', 'dash'] },
   { name: 'Line Sorter',       slug: 'line-sorter',       icon: '📋',   description: 'Sort, deduplicate and shuffle lines of text instantly',    category: 'Text', keywords: ['sort', 'dedup', 'unique', 'shuffle', 'alphabetical', 'reverse'] },
 
   // ── Frontend ──
-  { name: 'Flexbox Playground',slug: 'flexbox-playground',icon: '⊞',  description: 'Visually explore CSS flexbox properties with live preview', category: 'Frontend', keywords: ['css', 'flex', 'layout', 'align', 'justify', 'gap'] },
-  { name: 'Grid Playground',   slug: 'grid-playground',   icon: '🔲',  description: 'Build CSS Grid layouts visually with live preview',        category: 'Frontend', keywords: ['css', 'layout', 'columns', 'rows', 'template'] },
-  { name: 'Favicon Generator', slug: 'favicon-generator', icon: '⭐',   description: 'Create favicons from text or emoji in all required sizes', category: 'Frontend', keywords: ['icon', 'ico', 'apple-touch', 'pwa', 'tab'] },
-  { name: 'Keyframe Builder',  slug: 'keyframe-builder',  icon: '🎬',   description: 'Visually build CSS @keyframes animations and export code', category: 'Frontend', keywords: ['css', 'animation', 'transition', 'motion', 'animate'] },
+  { name: 'Flexbox Playground',slug: 'flexbox-playground',icon: '📐',  description: 'Visually explore CSS flexbox properties with live preview', category: 'Frontend', keywords: ['css', 'flex', 'layout', 'align', 'justify', 'gap'] },
+  { name: 'Grid Playground',   slug: 'grid-playground',   icon: '⊞',  description: 'Build CSS Grid layouts visually with live preview',        category: 'Frontend', keywords: ['css', 'layout', 'columns', 'rows', 'template'] },
+  { name: 'Favicon Generator', slug: 'favicon-generator', icon: '🌐',   description: 'Create favicons from text or emoji in all required sizes', category: 'Frontend', keywords: ['icon', 'ico', 'apple-touch', 'pwa', 'tab'] },
+  { name: 'Keyframe Builder',  slug: 'keyframe-builder',  icon: '💫',   description: 'Visually build CSS @keyframes animations and export code', category: 'Frontend', keywords: ['css', 'animation', 'transition', 'motion', 'animate'] },
 
   // ── Utils ──
   { name: 'Notes',             slug: 'notes',             icon: '📝',  description: 'Write multiple notes saved in your browser, persist with localStorage', category: 'Utils', keywords: ['notepad', 'memo', 'scratch', 'text', 'todo', 'write'] },
@@ -66,16 +66,16 @@ export const tools: Tool[] = [
 
   // ── Media ──
   { name: 'Image Compressor',  slug: 'image-compressor',  icon: '📦',   description: 'Compress images in your browser, no upload needed',       category: 'Media', keywords: ['img', 'compress', 'resize', 'optimize', 'shrink', 'png', 'jpg', 'webp', 'photo'] },
-  { name: 'Image → Base64',    slug: 'image-to-base64',   icon: 'IMG', description: 'Convert images to Base64 data URIs for use in CSS or HTML', category: 'Media', keywords: ['img', 'b64', 'data-uri', 'encode', 'inline'] },
-  { name: 'Base64 → Image',    slug: 'base64-to-image',   icon: 'B64', description: 'Decode a Base64 string or Data URI back into an image',    category: 'Media', keywords: ['img', 'b64', 'data-uri', 'decode', 'preview'] },
-  { name: 'EXIF Viewer',       slug: 'exif-viewer',       icon: '🔍',  description: 'Extract camera, GPS and timestamp metadata from JPEG images — 100% offline', category: 'Media', keywords: ['metadata', 'photo', 'camera', 'gps', 'location', 'jpg', 'image'] },
-  { name: 'Image Converter',   slug: 'image-converter',   icon: '🖼',   description: 'Convert images between PNG, JPEG and WebP with quality and resize controls', category: 'Media', keywords: ['img', 'png', 'jpg', 'jpeg', 'webp', 'format', 'convert', 'photo'] },
+  { name: 'Image → Base64',    slug: 'image-to-base64',   icon: '🖼️', description: 'Convert images to Base64 data URIs for use in CSS or HTML', category: 'Media', keywords: ['img', 'b64', 'data-uri', 'encode', 'inline'] },
+  { name: 'Base64 → Image',    slug: 'base64-to-image',   icon: '📷', description: 'Decode a Base64 string or Data URI back into an image',    category: 'Media', keywords: ['img', 'b64', 'data-uri', 'decode', 'preview'] },
+  { name: 'EXIF Viewer',       slug: 'exif-viewer',       icon: '📸',  description: 'Extract camera, GPS and timestamp metadata from JPEG images — 100% offline', category: 'Media', keywords: ['metadata', 'photo', 'camera', 'gps', 'location', 'jpg', 'image'] },
+  { name: 'Image Converter',   slug: 'image-converter',   icon: '🔄',   description: 'Convert images between PNG, JPEG and WebP with quality and resize controls', category: 'Media', keywords: ['img', 'png', 'jpg', 'jpeg', 'webp', 'format', 'convert', 'photo'] },
   { name: 'BlurHash Generator', slug: 'blurhash-generator', icon: '🌫', description: 'Generate and decode BlurHash placeholder strings from images', category: 'Media', keywords: ['blur', 'placeholder', 'lazy', 'loading', 'preview', 'image'] },
   { name: 'Color Blind Simulator', slug: 'color-blind-simulator', icon: '👁', description: 'Simulate how images look under different color vision deficiencies', category: 'Design', keywords: ['a11y', 'accessibility', 'daltonism', 'protanopia', 'deuteranopia', 'vision'] },
   { name: 'Dark/Light Converter', slug: 'dark-light-converter', icon: '🌗', description: 'Convert images between dark and light mode — invert screenshots, logos, UI designs', category: 'Design', keywords: ['dark', 'light', 'theme', 'invert', 'mode', 'night', 'screenshot', 'logo'] },
 
   // ── Generator ──
-  { name: 'UUID Generator',    slug: 'uuid-generator',    icon: 'UID', description: 'Generate random UUID v4 strings',                           category: 'Generator', keywords: ['guid', 'id', 'unique', 'random'] },
+  { name: 'UUID Generator',    slug: 'uuid-generator',    icon: '🆔', description: 'Generate random UUID v4 strings',                           category: 'Generator', keywords: ['guid', 'id', 'unique', 'random'] },
   { name: 'QR & Barcode Generator', slug: 'qr-generator',      icon: '▦',   description: 'Generate QR codes, PDF417, Data Matrix, and 1D barcodes',   category: 'Generator', keywords: ['qr', 'barcode', 'scan', 'code128', 'ean', 'upc'] },
   { name: 'Mock Data Generator',slug:'mock-data-generator',icon: '🎲',  description: 'Generate fake names, emails, addresses and more',           category: 'Generator', keywords: ['fake', 'dummy', 'seed', 'faker', 'sample', 'test'] },
   { name: 'Lorem Ipsum',       slug: 'lorem-ipsum',       icon: '¶',   description: 'Generate placeholder lorem ipsum text',                     category: 'Generator', keywords: ['placeholder', 'dummy', 'text', 'filler', 'lipsum'] },
