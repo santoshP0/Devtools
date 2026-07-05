@@ -10,7 +10,7 @@ export default defineConfig({
       workbox: {
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
       },
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      includeAssets: ['AppIconLightTheme.png', 'AppIconDarkTheme.png'],
       manifest: {
         name: 'DevToolbox',
         short_name: 'DevToolbox',
@@ -18,9 +18,9 @@ export default defineConfig({
         theme_color: '#0a0a0c',
         icons: [
           {
-            src: 'favicon.svg',
-            sizes: 'any',
-            type: 'image/svg+xml',
+            src: 'AppIconLightTheme.png',
+            sizes: '512x512',
+            type: 'image/png',
             purpose: 'any maskable'
           }
         ]
