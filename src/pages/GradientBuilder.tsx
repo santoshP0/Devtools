@@ -1,17 +1,8 @@
-import { useState, useMemo, useRef, useCallback } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import CopyBtn from '../components/CopyBtn'
 
 /* ── Helpers ── */
-function CopyBtn({ text, label = 'Copy CSS' }: { text: string; label?: string }) {
-  const [copied, setCopied] = useState(false)
-  const click = () => navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500) })
-  return (
-    <button className="btn btn-ghost btn-sm" onClick={click}>
-      {copied ? '✓ Copied' : label}
-    </button>
-  )
-}
-
 interface Stop { id: number; color: string; pos: number }
 
 const DIRECTIONS = [
@@ -278,7 +269,7 @@ export default function GradientBuilderPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexWrap: 'wrap', gap: 10 }}>
             <span className="section-label" style={{ margin: 0 }}>Export</span>
             <div style={{ display: 'flex', gap: 8 }}>
-              <CopyBtn text={`background: ${gradientCSS};\nbackground-image: ${gradientCSS};`} />
+              <CopyBtn text={`background: ${gradientCSS};\nbackground-image: ${gradientCSS};`} label="Copy CSS" />
               <button className="btn btn-primary btn-sm" onClick={handleExportPng} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
                   <path d="M8 2v8M5 7l3 3 3-3M2 12v1.5A1.5 1.5 0 003.5 15h9a1.5 1.5 0 001.5-1.5V12" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import { useClipboardCopy } from '../hooks/useClipboardCopy'
 import { marked, Renderer } from 'marked'
 import { markedHighlight } from 'marked-highlight'
 import hljs from 'highlight.js'
@@ -264,8 +265,8 @@ export default function MarkdownPreview() {
   const [markdown, setMarkdown] = useState(SAMPLE)
   const [sanitizedHtml, setSanitizedHtml] = useState('')
   const [view, setView] = useState<'split' | 'editor' | 'preview'>('split')
-  const [copiedMd, setCopiedMd] = useState(false)
-  const [copiedHtml, setCopiedHtml] = useState(false)
+  const { copied: copiedMd, copy: copyMd } = useClipboardCopy(2000)
+  const { copied: copiedHtml, copy: copyHtml } = useClipboardCopy(2000)
   const [fileName, setFileName] = useState<string | null>(null)
 
   // Draggable split
@@ -348,17 +349,6 @@ export default function MarkdownPreview() {
     if (file) handleFile(file)
   }, [handleFile])
 
-  const copyMd = () => {
-    navigator.clipboard.writeText(markdown)
-    setCopiedMd(true)
-    setTimeout(() => setCopiedMd(false), 2000)
-  }
-  const copyHtml = () => {
-    navigator.clipboard.writeText(sanitizedHtml)
-    setCopiedHtml(true)
-    setTimeout(() => setCopiedHtml(false), 2000)
-  }
-
   const editorPanel = (
     <div style={{ display: 'flex', flexDirection: 'column', flex: view === 'split' ? 'none' : 1, minHeight: 0, width: view === 'split' ? `${splitPercent}%` : undefined }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexShrink: 0 }}>
@@ -372,7 +362,7 @@ export default function MarkdownPreview() {
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
           <button onClick={() => fileInputRef.current?.click()} className="copy-btn">Open File</button>
-          <button onClick={copyMd} className="copy-btn">{copiedMd ? '✓ Copied' : 'Copy MD'}</button>
+          <button onClick={() => copyMd(markdown)} className="copy-btn">{copiedMd ? '✓ Copied' : 'Copy MD'}</button>
         </div>
       </div>
       <textarea
@@ -399,7 +389,7 @@ export default function MarkdownPreview() {
     <div style={{ display: 'flex', flexDirection: 'column', flex: view === 'split' ? 1 : 1, minHeight: 0 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexShrink: 0 }}>
         <label className="label" style={{ margin: 0 }}>Preview</label>
-        <button onClick={copyHtml} className="copy-btn">{copiedHtml ? '✓ Copied' : 'Copy HTML'}</button>
+        <button onClick={() => copyHtml(sanitizedHtml)} className="copy-btn">{copiedHtml ? '✓ Copied' : 'Copy HTML'}</button>
       </div>
       {/* sanitizedHtml is DOMPurify-sanitized before being set — XSS-safe */}
       <div

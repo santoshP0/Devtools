@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { ToastProvider } from './components/Toast'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import CommandPalette from './components/CommandPalette'
@@ -68,6 +69,7 @@ export default function App() {
   const [homeActiveCat, setHomeActiveCat] = useState('All')
 
   return (
+    <ToastProvider>
     <BrowserRouter>
       <div style={{
         minHeight: '100vh',
@@ -148,5 +150,6 @@ export default function App() {
         <Footer />
       </div>
     </BrowserRouter>
+    </ToastProvider>
   )
 }

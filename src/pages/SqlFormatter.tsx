@@ -1,11 +1,6 @@
 import { useState, useEffect } from 'react'
 import ToolLayout from '../components/ToolLayout'
-
-function CopyBtn({ text, label = 'Copy' }: { text: string; label?: string }) {
-  const [copied, setCopied] = useState(false)
-  const click = () => { navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500) }) }
-  return <button className="btn btn-ghost btn-sm" onClick={click}>{copied ? '✓ Copied' : label}</button>
-}
+import CopyBtn from '../components/CopyBtn'
 
 const SQL_KEYWORDS = ['SELECT','FROM','WHERE','AND','OR','NOT','IN','BETWEEN','LIKE','IS','NULL','JOIN','LEFT','RIGHT','INNER','OUTER','FULL','CROSS','ON','AS','ORDER','BY','GROUP','HAVING','LIMIT','OFFSET','INSERT','INTO','VALUES','UPDATE','SET','DELETE','CREATE','TABLE','DROP','ALTER','ADD','COLUMN','PRIMARY','KEY','FOREIGN','REFERENCES','UNIQUE','INDEX','VIEW','CASE','WHEN','THEN','ELSE','END','UNION','ALL','DISTINCT','TOP','EXISTS','WITH']
 

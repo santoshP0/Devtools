@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import { useClipboardCopy } from '../hooks/useClipboardCopy'
 
 interface Note {
   id: string
@@ -44,7 +45,7 @@ export default function Notes() {
   const [activeId, setActiveId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
-  const [copiedNote, setCopiedNote] = useState(false)
+  const { copied: copiedNote, copy: copyNote } = useClipboardCopy(2000)
   const contentRef = useRef<HTMLTextAreaElement>(null)
 
   const active = notes.find(n => n.id === activeId) ?? null
@@ -244,7 +245,7 @@ export default function Notes() {
                   Created {new Date(active.createdAt).toLocaleDateString()}
                 </span>
                 <button
-                  onClick={() => { navigator.clipboard.writeText(active.content); setCopiedNote(true); setTimeout(() => setCopiedNote(false), 2000) }}
+                  onClick={() => copyNote(active.content)}
                   style={{ fontSize: 12, color: activeColor.text + '80', background: 'none', border: 'none', cursor: 'pointer', padding: 0, transition: 'color 0.15s' }}
                   onMouseEnter={e => (e.currentTarget.style.color = activeColor.swatch)}
                   onMouseLeave={e => (e.currentTarget.style.color = activeColor.text + '80')}

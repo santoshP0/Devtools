@@ -1,14 +1,7 @@
 import { useState, useEffect } from 'react'
 import yaml from 'js-yaml'
 import ToolLayout from '../components/ToolLayout'
-
-function CopyBtn({ text, label = 'Copy' }: { text: string; label?: string }) {
-  const [copied, setCopied] = useState(false)
-  const click = () => {
-    navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500) })
-  }
-  return <button className="btn btn-ghost btn-sm" onClick={click}>{copied ? '✓ Copied' : label}</button>
-}
+import CopyBtn from '../components/CopyBtn'
 
 const SAMPLE_YAML = `name: DevToolbox
 version: 2.0

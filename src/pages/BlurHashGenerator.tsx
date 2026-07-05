@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { encode, decode } from 'blurhash'
 import ToolLayout from '../components/ToolLayout'
+import { useClipboardCopy } from '../hooks/useClipboardCopy'
 
 /* ─── Helpers ─── */
 
@@ -39,7 +40,7 @@ export default function BlurHashGenerator() {
   const [hash, setHash] = useState('')
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
-  const [copied, setCopied] = useState(false)
+  const { copied, copy: copyToClipboard } = useClipboardCopy()
   const [imgDimensions, setImgDimensions] = useState({ w: 0, h: 0 })
 
   // Decode mode
@@ -95,10 +96,8 @@ export default function BlurHashGenerator() {
 
   const copyHash = useCallback(() => {
     if (!hash) return
-    navigator.clipboard.writeText(hash)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
-  }, [hash])
+    copyToClipboard(hash)
+  }, [hash, copyToClipboard])
 
   const decodeHash = useCallback(() => {
     const input = decodeInput.trim()
