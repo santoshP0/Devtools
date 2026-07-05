@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { tools } from '../lib/tools'
+import ToolIcon from './ToolIcon'
 
 export default function CommandPalette() {
   const [open, setOpen] = useState(false)
@@ -93,7 +94,7 @@ export default function CommandPalette() {
               >
                 <div className="flex items-center gap-3">
                   <span className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-800 text-[12px] font-mono border border-slate-700">
-                    {tool.icon}
+                    <ToolIcon name={tool.icon} size={14} />
                   </span>
                   <div className="text-left">
                     <div className={`text-sm font-medium ${i === selectedIndex ? 'text-accent' : 'text-slate-200'}`}>{tool.name}</div>
