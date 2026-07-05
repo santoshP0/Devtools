@@ -1,7 +1,8 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { encode, decode } from 'blurhash'
 import ToolLayout from '../components/ToolLayout'
 import { useClipboardCopy } from '../hooks/useClipboardCopy'
+import { useFileDrop } from '../hooks/useFileDrop'
 
 /* ─── Helpers ─── */
 
@@ -39,7 +40,6 @@ export default function BlurHashGenerator() {
   const [imgSrc, setImgSrc] = useState<string | null>(null)
   const [hash, setHash] = useState('')
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const [dragging, setDragging] = useState(false)
   const { copied, copy: copyToClipboard } = useClipboardCopy()
   const [imgDimensions, setImgDimensions] = useState({ w: 0, h: 0 })
 
@@ -49,8 +49,6 @@ export default function BlurHashGenerator() {
   const [decodeH, setDecodeH] = useState(400)
   const [decodedUrl, setDecodedUrl] = useState<string | null>(null)
   const [decodeError, setDecodeError] = useState('')
-
-  const fileRef = useRef<HTMLInputElement>(null)
 
   // Auto-encode when image loads
   useEffect(() => {
@@ -94,6 +92,8 @@ export default function BlurHashGenerator() {
     reader.readAsDataURL(file)
   }, [])
 
+  const { dragging, inputRef, dragProps, openPicker, onInputChange } = useFileDrop(handleFile, 'image/*')
+
   const copyHash = useCallback(() => {
     if (!hash) return
     copyToClipboard(hash)
@@ -113,13 +113,6 @@ export default function BlurHashGenerator() {
       setDecodedUrl(null)
     }
   }, [decodeInput, decodeW, decodeH])
-
-  const onDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault()
-    setDragging(false)
-    const file = e.dataTransfer.files[0]
-    if (file) handleFile(file)
-  }, [handleFile])
 
   const cardStyle: React.CSSProperties = {
     background: 'var(--surface)',
@@ -144,10 +137,8 @@ export default function BlurHashGenerator() {
 
         {/* Upload area */}
         <div
-          onDragOver={e => { e.preventDefault(); setDragging(true) }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={onDrop}
-          onClick={() => fileRef.current?.click()}
+          {...dragProps}
+          onClick={openPicker}
           style={{
             ...cardStyle,
             border: dragging ? '2px dashed var(--accent)' : '2px dashed var(--border)',
@@ -158,15 +149,11 @@ export default function BlurHashGenerator() {
           }}
         >
           <input
-            ref={fileRef}
+            ref={inputRef}
             type="file"
             accept="image/*"
             style={{ display: 'none' }}
-            onChange={e => {
-              const f = e.target.files?.[0]
-              if (f) handleFile(f)
-              if (fileRef.current) fileRef.current.value = ''
-            }}
+            onChange={onInputChange}
           />
           {!imgSrc ? (
             <>

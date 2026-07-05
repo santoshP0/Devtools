@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import { useFileDrop } from '../hooks/useFileDrop'
 
 interface ImageInfo {
   width: number
@@ -80,9 +81,7 @@ export default function ImageConverter() {
 
   const [result, setResult] = useState<ConvertedResult | null>(null)
   const [converting, setConverting] = useState(false)
-  const [dragging, setDragging] = useState(false)
 
-  const inputRef = useRef<HTMLInputElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const aspectRatio = useRef(1)
 
@@ -121,19 +120,12 @@ export default function ImageConverter() {
     img.src = url
   }, [sourceUrl, result])
 
-  const onFiles = (files: FileList | null) => {
-    if (!files || !files.length) return
-    const file = files[0]
+  const handleFile = useCallback((file: File) => {
     if (!file.type.startsWith('image/')) return
     loadImage(file)
-    if (inputRef.current) inputRef.current.value = ''
-  }
+  }, [loadImage])
 
-  const onDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    setDragging(false)
-    onFiles(e.dataTransfer.files)
-  }
+  const { dragging, inputRef, dragProps, openPicker, onInputChange } = useFileDrop(handleFile, 'image/*')
 
   const getOutputDimensions = useCallback(() => {
     if (!sourceImage) return { w: 0, h: 0 }
@@ -247,10 +239,8 @@ export default function ImageConverter() {
 
         {/* Upload Area */}
         <div
-          onDragOver={e => { e.preventDefault(); setDragging(true) }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={onDrop}
-          onClick={() => inputRef.current?.click()}
+          {...dragProps}
+          onClick={openPicker}
           style={{
             ...cardStyle,
             border: dragging ? '2px dashed var(--accent)' : '2px dashed var(--border)',
@@ -265,7 +255,7 @@ export default function ImageConverter() {
             ref={inputRef}
             type="file"
             accept="image/*"
-            onChange={e => onFiles(e.target.files)}
+            onChange={onInputChange}
             style={{ display: 'none' }}
           />
           <div style={{ fontSize: 32, marginBottom: 8 }}>🖼</div>
