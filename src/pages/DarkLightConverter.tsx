@@ -93,6 +93,7 @@ export default function DarkLightConverter() {
   const [resultUrl, setResultUrl] = useState('')
   const [outputFormat, setOutputFormat] = useState('png')
   const [converting, setConverting] = useState(false)
+  const [fadeIn, setFadeIn] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
@@ -102,9 +103,10 @@ export default function DarkLightConverter() {
     }
   }, [])
 
-  const processImage = useCallback((img: HTMLImageElement, convMode: Mode) => {
-    setConverting(true)
-    setTimeout(() => {
+  const processImage = useCallback((img: HTMLImageElement, convMode: Mode, isInitial = false) => {
+    if (isInitial) setConverting(true)
+    // Use requestAnimationFrame to avoid blocking UI
+    requestAnimationFrame(() => {
       const canvas = canvasRef.current || document.createElement('canvas')
       canvas.width = img.width
       canvas.height = img.height
@@ -116,12 +118,19 @@ export default function DarkLightConverter() {
       ctx.putImageData(converted, 0, 0)
       canvas.toBlob((blob) => {
         if (!blob) { setConverting(false); return }
-        if (resultUrl) URL.revokeObjectURL(resultUrl)
-        setResultUrl(URL.createObjectURL(blob))
-        setConverting(false)
+        setFadeIn(false)
+        // Trigger fade-in on next frame after URL swap
+        requestAnimationFrame(() => {
+          setResultUrl(prev => {
+            if (prev) URL.revokeObjectURL(prev)
+            return URL.createObjectURL(blob)
+          })
+          setConverting(false)
+          requestAnimationFrame(() => setFadeIn(true))
+        })
       }, 'image/png')
-    }, 30)
-  }, [resultUrl])
+    })
+  }, [])
 
   const loadFile = useCallback((file: File) => {
     if (!file.type.startsWith('image/')) return
@@ -136,7 +145,7 @@ export default function DarkLightConverter() {
     const img = new Image()
     img.onload = () => {
       setSourceImg(img)
-      processImage(img, mode)
+      processImage(img, mode, true)
     }
     img.src = url
   }, [sourceUrl, resultUrl, mode, processImage])
@@ -347,7 +356,17 @@ export default function DarkLightConverter() {
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   minHeight: 200,
                 }}>
-                  {converting ? (
+                  {resultUrl ? (
+                    <img
+                      src={resultUrl}
+                      alt="Converted"
+                      style={{
+                        maxWidth: '100%', maxHeight: 360, objectFit: 'contain',
+                        opacity: fadeIn ? 1 : 0.3,
+                        transition: 'opacity 0.2s ease-out',
+                      }}
+                    />
+                  ) : converting ? (
                     <div style={{
                       padding: 40,
                       color: 'var(--text-dim)',
@@ -356,12 +375,6 @@ export default function DarkLightConverter() {
                     }}>
                       Converting...
                     </div>
-                  ) : resultUrl ? (
-                    <img
-                      src={resultUrl}
-                      alt="Converted"
-                      style={{ maxWidth: '100%', maxHeight: 360, objectFit: 'contain' }}
-                    />
                   ) : null}
                 </div>
 
