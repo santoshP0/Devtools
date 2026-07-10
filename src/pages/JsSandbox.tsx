@@ -66,7 +66,7 @@ export default function JsSandbox() {
 
   return (
     <ToolLayout title="JavaScript Sandbox" description="Lightweight playground to run and test JavaScript snippets in the browser." fullWidth>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, flex: 1, minHeight: 0, height: 'calc(100dvh - 160px)', maxHeight: 'calc(100dvh - 160px)' }}>
+      <div className="tool-split-2">
         {/* Editor */}
         <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexShrink: 0 }}>

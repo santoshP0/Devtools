@@ -40,7 +40,7 @@ export default function FlexboxPlaygroundPage() {
   return (
     <ToolLayout title="Flexbox Playground" description="Visually explore CSS flexbox properties with live preview">
       <div className="one-col">
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+        <div className="two-col" style={{ gap:14 }}>
           <Prop label="flex-direction" opts={['row','row-reverse','column','column-reverse']} val={dir} set={v => setDir(v as FlexDir)} />
           <Prop label="flex-wrap" opts={['nowrap','wrap','wrap-reverse']} val={wrap} set={v => setWrap(v as FlexWrap)} />
           <Prop label="justify-content" opts={['flex-start','flex-end','center','space-between','space-around','space-evenly']} val={justify} set={v => setJustify(v as JustifyContent)} />

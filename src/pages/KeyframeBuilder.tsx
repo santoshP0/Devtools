@@ -353,7 +353,7 @@ export default function KeyframeBuilder() {
       </div>
 
       {/* Main Two Column Layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 20, alignItems: 'start' }}>
+      <div className="grid-side">
 
         {/* Left Column: Timeline & Properties */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -474,7 +474,7 @@ export default function KeyframeBuilder() {
             </div>
 
             {/* Properties Sliders */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px 24px', marginBottom: 16 }}>
+            <div className="two-col" style={{ gap: '16px 24px', marginBottom: 16 }}>
               <PropSlider label="Opacity" value={selected.opacity} min={0} max={1} step={0.05} unit="" onChange={v => updateKeyframeProp('opacity', v)} />
               <PropSlider label="Scale" value={selected.scale} min={0.2} max={2.5} step={0.05} unit="×" onChange={v => updateKeyframeProp('scale', v)} />
               <PropSlider label="Rotate" value={selected.rotate} min={-360} max={360} step={5} unit="°" onChange={v => updateKeyframeProp('rotate', v)} />

@@ -48,7 +48,7 @@ export default function GridPlaygroundPage() {
             >{p.label}</button>
           ))}
         </div>
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+        <div className="two-col" style={{ gap:14 }}>
           <div>
             <label>grid-template-columns</label>
             <input type="text" value={cols} onChange={e => setCols(e.target.value)} style={{ fontFamily:'var(--font-mono)' }} />
