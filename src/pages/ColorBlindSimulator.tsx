@@ -336,11 +336,7 @@ export default function ColorBlindSimulator() {
             )}
 
             {/* Side-by-side canvases */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: 16,
-            }}>
+            <div className="two-col">
               <div style={{
                 background: 'var(--surface)',
                 border: '1px solid var(--border)',

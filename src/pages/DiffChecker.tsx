@@ -477,7 +477,7 @@ export default function DiffChecker() {
         </div>}
 
         {/* ════ INPUT PANELS ════ */}
-        <div style={{ flexShrink:0, height: showDiffArea ? 200 : undefined, flex: showDiffArea ? '0 0 200px' : 1, display:'grid', gridTemplateColumns:'1fr 1fr', border:'1px solid var(--border)', borderRadius:12, overflow:'hidden', marginBottom:10 }}>
+        <div className="diff-inputs" style={{ flexShrink:0, height: showDiffArea ? 200 : undefined, flex: showDiffArea ? '0 0 200px' : 1, display:'grid', gridTemplateColumns:'1fr 1fr', border:'1px solid var(--border)', borderRadius:12, overflow:'hidden', marginBottom:10 }}>
           <div style={{ display:'flex', flexDirection:'column', borderRight:'1px solid var(--border)', minHeight:0 }}>
             <CodeInput label="Original text" value={left} onChange={setLeft} />
           </div>
