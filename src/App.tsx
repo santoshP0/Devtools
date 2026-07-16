@@ -64,6 +64,12 @@ import ImageConverter from './pages/ImageConverter'
 import JwtGenerator from './pages/JwtGenerator'
 import BlurHashGenerator from './pages/BlurHashGenerator'
 import DarkLightConverter from './pages/DarkLightConverter'
+import TimezoneConverter from './pages/TimezoneConverter'
+import PomodoroTimer from './pages/PomodoroTimer'
+import HtmlPreview from './pages/HtmlPreview'
+import TomlJson from './pages/TomlJson'
+import JsonPathTester from './pages/JsonPathTester'
+import TextBinaryHex from './pages/TextBinaryHex'
 
 export default function App() {
   // Persisted home state — survives navigation to tool pages and back
@@ -147,7 +153,13 @@ export default function App() {
             <Route path="/image-converter"       element={<ImageConverter />} />
             <Route path="/jwt-generator"         element={<JwtGenerator />} />
             <Route path="/blurhash-generator"  element={<BlurHashGenerator />} />
-            <Route path="/dark-light-converter" element={<DarkLightConverter />} />
+            <Route path="/dark-light-converter"  element={<DarkLightConverter />} />
+            <Route path="/timezone-converter"    element={<TimezoneConverter />} />
+            <Route path="/pomodoro"              element={<PomodoroTimer />} />
+            <Route path="/html-preview"          element={<HtmlPreview />} />
+            <Route path="/toml-json"             element={<TomlJson />} />
+            <Route path="/json-path"             element={<JsonPathTester />} />
+            <Route path="/text-binary"           element={<TextBinaryHex />} />
           </Routes>
         </main>
         <Footer />
