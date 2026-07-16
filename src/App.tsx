@@ -1,11 +1,11 @@
-import { useState } from 'react'
+import { useState, lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { ToastProvider } from './components/Toast'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import CommandPalette from './components/CommandPalette'
 import Home from './pages/Home'
-import JsonFormatter from './pages/JsonFormatter'
+const JsonFormatter = lazy(() => import('./pages/JsonFormatter'))
 import JsonXml from './pages/JsonXml'
 import Base64 from './pages/Base64'
 import UrlEncoder from './pages/UrlEncoder'
@@ -18,11 +18,12 @@ import UuidGenerator from './pages/UuidGenerator'
 import WordCounter from './pages/WordCounter'
 import GlassmorphismBuilder from './pages/GlassmorphismBuilder'
 import KeyframeBuilder from './pages/KeyframeBuilder'
-import JsSandbox from './pages/JsSandbox'
+const JsSandbox = lazy(() => import('./pages/JsSandbox'))
 import TextCase from './pages/TextCase'
 import MarkdownPreview from './pages/MarkdownPreview'
 import RegexTester from './pages/RegexTester'
-import DiffChecker from './pages/DiffChecker'
+// lazy: pulls in Monaco (~2MB) — keep it out of the main bundle
+const DiffChecker = lazy(() => import('./pages/DiffChecker'))
 import ColorConverter from './pages/ColorConverter'
 import UnixTimestamp from './pages/UnixTimestamp'
 import BaseConverter from './pages/BaseConverter'
@@ -95,7 +96,7 @@ export default function App() {
                 setActiveCat={setHomeActiveCat}
               />
             } />
-            <Route path="/json-formatter"      element={<JsonFormatter />} />
+            <Route path="/json-formatter"      element={<Suspense fallback={null}><JsonFormatter /></Suspense>} />
             <Route path="/json-xml"            element={<JsonXml />} />
             <Route path="/base64"              element={<Base64 />} />
             <Route path="/url-encoder"         element={<UrlEncoder />} />
@@ -109,7 +110,7 @@ export default function App() {
             <Route path="/text-case"           element={<TextCase />} />
             <Route path="/markdown-preview"    element={<MarkdownPreview />} />
             <Route path="/regex-tester"        element={<RegexTester />} />
-            <Route path="/diff-checker"        element={<DiffChecker />} />
+            <Route path="/diff-checker"        element={<Suspense fallback={null}><DiffChecker /></Suspense>} />
             <Route path="/color-converter"     element={<ColorConverter />} />
             <Route path="/unix-timestamp"      element={<UnixTimestamp />} />
             <Route path="/base-converter"      element={<BaseConverter />} />
@@ -143,7 +144,7 @@ export default function App() {
             <Route path="/responsive-tester"   element={<ResponsiveTester />} />
             <Route path="/glassmorphism-builder" element={<GlassmorphismBuilder />} />
             <Route path="/keyframe-builder"    element={<KeyframeBuilder />} />
-            <Route path="/js-sandbox"          element={<JsSandbox />} />
+            <Route path="/js-sandbox"          element={<Suspense fallback={null}><JsSandbox /></Suspense>} />
             <Route path="/log-prettifier"      element={<LogPrettifier />} />
             <Route path="/nosql-viewer"        element={<NoSqlViewer />} />
             <Route path="/notes"               element={<Notes />} />

@@ -104,8 +104,8 @@ export default function BlurHashGenerator() {
     if (!input) return
     setDecodeError('')
     try {
-      const w = Math.max(1, Math.min(1024, decodeW))
-      const h = Math.max(1, Math.min(1024, decodeH))
+      const w = Math.max(1, Math.min(1024, decodeW || 400))
+      const h = Math.max(1, Math.min(1024, decodeH || 400))
       const pixels = decode(input, w, h)
       setDecodedUrl(renderToDataURL(pixels, w, h))
     } catch (e) {
@@ -267,8 +267,9 @@ export default function BlurHashGenerator() {
             <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
               <input
                 type="number"
-                value={decodeW}
-                onChange={e => setDecodeW(Math.max(1, +e.target.value))}
+                value={Number.isNaN(decodeW) ? '' : decodeW}
+                onChange={e => setDecodeW(e.target.valueAsNumber)}
+                onBlur={() => setDecodeW(d => Math.min(1024, Math.max(1, d || 400)))}
                 style={{
                   width: 64,
                   padding: '8px 6px',
@@ -285,8 +286,9 @@ export default function BlurHashGenerator() {
               <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>×</span>
               <input
                 type="number"
-                value={decodeH}
-                onChange={e => setDecodeH(Math.max(1, +e.target.value))}
+                value={Number.isNaN(decodeH) ? '' : decodeH}
+                onChange={e => setDecodeH(e.target.valueAsNumber)}
+                onBlur={() => setDecodeH(d => Math.min(1024, Math.max(1, d || 400)))}
                 style={{
                   width: 64,
                   padding: '8px 6px',
