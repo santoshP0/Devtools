@@ -587,6 +587,9 @@
 .one-col { display: flex; flex-direction: column; gap: 14px; }
 @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
 
+/* Monaco decoration: line carrying a JSON parse error */
+.json-error-line { background: rgba(248, 113, 113, 0.22); }
+
 /* ── Split tool layout: input | actions | output ── */
 /* Desktop: fullWidth tool pages fill the viewport so panes scroll internally */
 @media (min-width: 769px) { .tool-inner-full { height: 100%; } }
@@ -628,10 +631,6 @@
   .md-split { flex-direction: column; gap: 12px !important; }
   .md-split > * { width: 100% !important; flex: none !important; height: 45dvh; }
   .md-split .md-drag { display: none !important; }
-  /* diff input panels: side-by-side → stacked (overrides inline grid/height) */
-  .diff-inputs { display: flex !important; flex-direction: column; height: auto !important; flex: none !important; }
-  .diff-inputs > * { min-height: 150px; }
-  .diff-inputs > *:first-child { border-right: none !important; border-bottom: 1px solid var(--border); }
 }
 
 /* Section label — matching reference .section-label */
