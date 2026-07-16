@@ -36,8 +36,10 @@ export default function ToolLayout({ title, description, children, fullWidth = f
       backgroundImage: 'radial-gradient(var(--sketch-dot) 1.2px, transparent 1.2px)',
       backgroundSize: '20px 20px',
     }}>
-      {/* Inner: constrains width + is a flex column so children can use flex:1 */}
-      <div style={{
+      {/* Inner: constrains width + is a flex column so children can use flex:1.
+          fullWidth: bounded to viewport height on desktop (.tool-inner-full) so
+          panes with flex:1/minHeight:0 scroll internally instead of the page. */}
+      <div className={fullWidth ? 'tool-inner-full' : undefined} style={{
         display: 'flex',
         flexDirection: 'column',
         minHeight: '100%',

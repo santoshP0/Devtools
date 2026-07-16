@@ -159,7 +159,7 @@ export default function RegexTester() {
         </div>
 
         {/* ── Side-by-side: editable | highlighted ── */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <div className="two-col" style={{ gap: 12 }}>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <label className="label">Test string</label>
             <textarea

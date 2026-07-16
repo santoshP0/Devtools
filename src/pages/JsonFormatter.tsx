@@ -1,14 +1,18 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import CodeEditor from '../components/CodeEditor'
+import { monaco } from '../lib/monacoSetup'
+import type { OnMount } from '@monaco-editor/react'
 import { useClipboardCopy } from '../hooks/useClipboardCopy'
+import { useIsDark } from '../hooks/useIsDark'
 
 // ─── Persistence ──────────────────────────────────────────────────────────────
 const STORAGE_KEY = 'devtools:json-formatter:input'
 function loadSaved() { try { return localStorage.getItem(STORAGE_KEY) ?? '' } catch { return '' } }
 function saveToDisk(v: string) { try { localStorage.setItem(STORAGE_KEY, v) } catch {} }
 
-// ─── Error prettifier ─────────────────────────────────────────────────────────
-function prettifyJsonError(raw: string, input: string): { title: string; detail: string; lineNo: number; colNo: number } {
+// ─── Error prettifier (fallback when Monaco markers unavailable) ──────────────
+function prettifyJsonError(raw: string, input: string): JsonIssue {
   // Extract position from different browser error formats
   let pos = -1
   let lineNo = 0
@@ -30,16 +34,6 @@ function prettifyJsonError(raw: string, input: string): { title: string; detail:
     colNo = (parts[parts.length - 1]?.length ?? 0) + 1
   }
 
-  // Extract a snippet around the problem
-  let snippet = ''
-  if (pos >= 0) {
-    const start = Math.max(0, pos - 20)
-    const end = Math.min(input.length, pos + 20)
-    const before = input.slice(start, pos).replace(/\n/g, '↵')
-    const after  = input.slice(pos, end).replace(/\n/g, '↵')
-    snippet = `…${before}⚑${after}…`
-  }
-
   // Human-readable titles for common errors
   let title = 'Invalid JSON'
   const msg = raw.toLowerCase()
@@ -50,12 +44,24 @@ function prettifyJsonError(raw: string, input: string): { title: string; detail:
   else if (msg.includes('expected') && msg.includes('colon')) title = 'Missing colon (:) between key and value'
   else if (msg.includes('expected') && msg.includes('comma')) title = 'Missing comma (,) between values'
 
-  const detail = [
-    lineNo > 0 ? `Line ${lineNo}, column ${colNo}` : '',
-    snippet ? `Near: ${snippet}` : '',
-  ].filter(Boolean).join('  ·  ')
+  return { message: title, lineNo, colNo, frame: codeFrame(input, lineNo, colNo) }
+}
 
-  return { title, detail, lineNo, colNo }
+type JsonIssue = { message: string; lineNo: number; colNo: number; frame: string }
+
+// Code frame: the offending line with a caret under the exact column
+function codeFrame(input: string, lineNo: number, colNo: number): string {
+  if (lineNo <= 0) return ''
+  let line = input.split('\n')[lineNo - 1] ?? ''
+  let col = Math.max(1, colNo)
+  // window long lines around the error column
+  if (line.length > 74) {
+    const start = Math.max(0, col - 38)
+    line = (start > 0 ? '…' : '') + line.slice(start, start + 74) + (start + 74 < line.length ? '…' : '')
+    col = col - start + (start > 0 ? 1 : 0)
+  }
+  const prefix = `${lineNo} | `
+  return `${prefix}${line}\n${' '.repeat(prefix.length + col - 1)}^`
 }
 
 // ─── Collapsible JSON Tree ────────────────────────────────────────────────────
@@ -288,22 +294,44 @@ export default function JsonFormatter() {
   const [input, setInput]   = useState<string>(() => loadSaved())
   const [output, setOutput] = useState('')
   const [parsed, setParsed] = useState<JsonVal | null>(null)  // for tree view
-  const [error, setError]   = useState<{ title: string; detail: string; lineNo: number; colNo: number } | null>(null)
+  const [errors, setErrors] = useState<JsonIssue[] | null>(null)
   const [status, setStatus] = useState<'idle' | 'valid' | 'error'>('idle')
   const [indent, setIndent] = useState<number | string>(2)
   const { copied, copy } = useClipboardCopy()
   const [viewMode, setViewMode] = useState<'tree' | 'raw'>('tree')
-  const [isDark, setIsDark] = useState(() => document.documentElement.dataset.theme === 'dark')
-
-  useEffect(() => {
-    const observer = new MutationObserver(() => {
-      setIsDark(document.documentElement.dataset.theme === 'dark')
-    })
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
-    return () => observer.disconnect()
-  }, [])
+  const isDark = useIsDark()
 
   const colors = isDark ? PALETTES.dark : PALETTES.light
+
+  // Highlight + jump to the error line in the input editor
+  const editorRef = useRef<Parameters<OnMount>[0] | null>(null)
+  const errDecos = useRef<monaco.editor.IEditorDecorationsCollection | null>(null)
+  const onEditorMount: OnMount = (editor) => {
+    editorRef.current = editor
+    errDecos.current = editor.createDecorationsCollection()
+  }
+  const markErrors = (issues: JsonIssue[] | null) => {
+    if (!errDecos.current) return
+    const lines = (issues ?? []).filter(i => i.lineNo > 0)
+    if (!lines.length) { errDecos.current.clear(); return }
+    errDecos.current.set(lines.map(i => ({
+      range: new monaco.Range(i.lineNo, 1, i.lineNo, 1),
+      options: { isWholeLine: true, className: 'json-error-line' },
+    })))
+    editorRef.current?.revealLineInCenter(lines[0].lineNo)
+  }
+
+  // Monaco's JSON language service marks every problem with a precise
+  // message + position — far better than JSON.parse exception text.
+  const collectIssues = (raw: string): JsonIssue[] => {
+    const model = editorRef.current?.getModel()
+    const markers = model ? monaco.editor.getModelMarkers({ resource: model.uri }) : []
+    const issues = markers
+      .filter(m => m.severity === monaco.MarkerSeverity.Error)
+      .slice(0, 5)
+      .map(m => ({ message: m.message, lineNo: m.startLineNumber, colNo: m.startColumn, frame: codeFrame(input, m.startLineNumber, m.startColumn) }))
+    return issues.length ? issues : [prettifyJsonError(raw, input)]
+  }
 
   // Persist input
   useEffect(() => {
@@ -318,14 +346,16 @@ export default function JsonFormatter() {
       const out = minify ? JSON.stringify(obj) : JSON.stringify(obj, null, indent === '\t' ? '\t' : Number(indent))
       setOutput(out)
       setParsed(minify ? null : obj as JsonVal)  // no tree for minified
-      setError(null)
+      setErrors(null)
       setStatus('valid')
+      markErrors(null)
     } catch (e) {
-      const raw = (e as Error).message
-      setError(prettifyJsonError(raw, input))
+      const issues = collectIssues((e as Error).message)
+      setErrors(issues)
       setOutput('')
       setParsed(null)
       setStatus('error')
+      markErrors(issues)
     }
   }, [input, indent])
 
@@ -333,46 +363,45 @@ export default function JsonFormatter() {
     if (!input.trim()) return
     try {
       JSON.parse(input)
-      setError(null)
+      setErrors(null)
       setOutput('✓ Valid JSON')
       setParsed(null)
       setStatus('valid')
+      markErrors(null)
     } catch (e) {
-      setError(prettifyJsonError((e as Error).message, input))
+      const issues = collectIssues((e as Error).message)
+      setErrors(issues)
       setOutput('')
       setParsed(null)
       setStatus('error')
+      markErrors(issues)
     }
   }, [input])
 
-  const clear = () => { setInput(''); setOutput(''); setError(null); setParsed(null); setStatus('idle'); saveToDisk('') }
+  const clear = () => { setInput(''); setOutput(''); setErrors(null); setParsed(null); setStatus('idle'); saveToDisk(''); markErrors(null) }
+
+  // stale position once the user edits — drop the highlight
+  const onInputChange = (v: string) => { setInput(v); errDecos.current?.clear() }
 
   const isValid = status === 'valid' && output && output !== '✓ Valid JSON'
 
   return (
     <ToolLayout title="JSON Formatter" description="Format, validate and minify JSON with syntax highlighting." fullWidth>
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto minmax(0, 1fr)', gap: 16, flex: 1, minHeight: 0 }}>
+      <div className="tool-split">
 
         {/* ── Input ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <div className="split-pane">
           <label className="label">Input JSON</label>
-          <textarea
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            placeholder={'{\n  "hello": "world"\n}'}
-            className="tool-textarea"
-            style={{ flex: 1, minHeight: 0, resize: 'none' }}
-            spellCheck={false}
-          />
+          <CodeEditor language="json" value={input} onChange={onInputChange} onMount={onEditorMount} placeholder={'{ "hello": "world" }'} />
         </div>
 
         {/* ── Center actions ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 8, width: 112, flexShrink: 0 }}>
-          <button onClick={() => process(false)} className="btn-ghost" style={{ width: '100%' }}>Format →</button>
-          <button onClick={() => process(true)}  className="btn-ghost" style={{ width: '100%' }}>Minify →</button>
-          <button onClick={validate}             className="btn-ghost" style={{ width: '100%' }}>Validate</button>
-          <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <div className="split-actions">
+          <button onClick={() => process(false)} className="btn-ghost">Format →</button>
+          <button onClick={() => process(true)}  className="btn-ghost">Minify →</button>
+          <button onClick={validate}             className="btn-ghost">Validate</button>
+          <div className="split-divider" />
+          <div className="split-field" style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             <span style={{ fontSize: 11, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Indent</span>
             <select value={indent} onChange={e => setIndent(e.target.value === '\t' ? '\t' : Number(e.target.value))} className="tool-select" style={{ width: '100%' }}>
               <option value={2}>2 spaces</option>
@@ -380,12 +409,12 @@ export default function JsonFormatter() {
               <option value={'\t'}>Tab</option>
             </select>
           </div>
-          <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
-          <button onClick={clear} className="btn-ghost" style={{ width: '100%', fontSize: 12 }}>Clear</button>
+          <div className="split-divider" />
+          <button onClick={clear} className="btn-ghost" style={{ fontSize: 12 }}>Clear</button>
         </div>
 
         {/* ── Output ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <div className="split-pane">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexShrink: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <label className="label" style={{ margin: 0 }}>Output</label>
@@ -405,12 +434,12 @@ export default function JsonFormatter() {
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               {status === 'valid' && (
-                <span style={{ fontSize: 12, color: '#4ade80', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ fontSize: 12, color: isDark ? '#4ade80' : '#15803d', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
                   <span style={{ fontSize: 15 }}>✓</span> Valid JSON
                 </span>
               )}
               {status === 'error' && (
-                <span style={{ fontSize: 12, color: '#f87171', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ fontSize: 12, color: isDark ? '#f87171' : '#b91c1c', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
                   <span style={{ fontSize: 15 }}>✗</span> Invalid JSON
                 </span>
               )}
@@ -421,50 +450,65 @@ export default function JsonFormatter() {
           </div>
 
           {/* Error panel */}
-          {error && (
-            <div style={{
-              borderRadius: 10, padding: '14px 16px', marginBottom: 12, flexShrink: 0,
-              background: 'rgba(248,113,113,0.08)',
-              border: '1px solid rgba(248,113,113,0.3)',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                <span style={{ fontSize: 20, lineHeight: 1, color: '#f87171', flexShrink: 0 }}>✗</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#f87171', marginBottom: 4 }}>
-                    {error.title}
-                  </div>
-                  {error.detail && (
-                    <div style={{ fontSize: 12, color: '#fca5a5', fontFamily: 'var(--font-mono)', lineHeight: 1.5, wordBreak: 'break-all' }}>
-                      {error.detail}
+          {errors && (() => {
+            const errFg  = isDark ? '#f87171' : '#b91c1c'
+            const errDim = isDark ? '#fca5a5' : '#7f1d1d'
+            const chipBg = isDark ? 'rgba(248,113,113,0.15)' : 'rgba(185,28,28,0.12)'
+            return (
+              <div style={{
+                borderRadius: 10, padding: '14px 16px', marginBottom: 12, flexShrink: 0,
+                maxHeight: '45%', overflowY: 'auto',
+                background: isDark ? 'rgba(248,113,113,0.08)' : '#fbe9e7',
+                border: `1px solid ${isDark ? 'rgba(248,113,113,0.3)' : '#e8a49c'}`,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                  <span style={{ fontSize: 18, lineHeight: 1, color: errFg }}>✗</span>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: errFg }}>
+                    Invalid JSON{errors.length > 1 ? ` — ${errors.length} problems` : ''}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {errors.map((issue, i) => (
+                    <div
+                      key={i}
+                      onClick={() => issue.lineNo > 0 && editorRef.current?.revealLineInCenter(issue.lineNo)}
+                      title={issue.lineNo > 0 ? 'Click to jump to line' : undefined}
+                      style={{ cursor: issue.lineNo > 0 ? 'pointer' : 'default' }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+                        {issue.lineNo > 0 && (
+                          <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: chipBg, color: errFg, fontFamily: 'var(--font-mono)', fontWeight: 600, flexShrink: 0 }}>
+                            Ln {issue.lineNo}, Col {issue.colNo}
+                          </span>
+                        )}
+                        <span style={{ fontSize: 13, fontWeight: 600, color: errFg }}>{issue.message}</span>
+                      </div>
+                      {issue.frame && (
+                        <pre style={{
+                          margin: 0, padding: '8px 10px', borderRadius: 6, overflowX: 'auto',
+                          background: isDark ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.75)',
+                          color: errDim, fontFamily: 'var(--font-mono)', fontSize: 12, lineHeight: 1.5,
+                        }}>{issue.frame}</pre>
+                      )}
                     </div>
-                  )}
-                  {error.lineNo > 0 && (
-                    <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-                      <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: 'rgba(248,113,113,0.15)', color: '#f87171', fontFamily: 'var(--font-mono)' }}>
-                        Line {error.lineNo}
-                      </span>
-                      <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: 'rgba(248,113,113,0.15)', color: '#f87171', fontFamily: 'var(--font-mono)' }}>
-                        Col {error.colNo}
-                      </span>
-                    </div>
-                  )}
+                  ))}
                 </div>
               </div>
-            </div>
-          )}
+            )
+          })()}
 
           {/* Validate success banner */}
           {status === 'valid' && output === '✓ Valid JSON' && (
             <div style={{
               borderRadius: 10, padding: '14px 16px', flexShrink: 0,
-              background: 'rgba(74,222,128,0.08)',
-              border: '1px solid rgba(74,222,128,0.3)',
+              background: isDark ? 'rgba(74,222,128,0.08)' : '#e6f4ea',
+              border: `1px solid ${isDark ? 'rgba(74,222,128,0.3)' : '#a3d9b1'}`,
               display: 'flex', alignItems: 'center', gap: 10,
             }}>
-              <span style={{ fontSize: 22, color: '#4ade80' }}>✓</span>
+              <span style={{ fontSize: 22, color: isDark ? '#4ade80' : '#15803d' }}>✓</span>
               <div>
-                <div style={{ fontSize: 14, fontWeight: 600, color: '#4ade80' }}>Valid JSON</div>
-                <div style={{ fontSize: 12, color: '#86efac', marginTop: 2 }}>Your JSON is syntactically correct.</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: isDark ? '#4ade80' : '#15803d' }}>Valid JSON</div>
+                <div style={{ fontSize: 12, color: isDark ? '#86efac' : '#166534', marginTop: 2 }}>Your JSON is syntactically correct.</div>
               </div>
             </div>
           )}

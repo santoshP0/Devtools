@@ -427,10 +427,11 @@ export default function MarkdownPreview() {
         </div>
 
         {view === 'split' ? (
-          <div ref={containerRef} style={{ display: 'flex', gap: 0, flex: 1, minHeight: 0 }}>
+          <div ref={containerRef} className="md-split" style={{ display: 'flex', gap: 0, flex: 1, minHeight: 0 }}>
             {editorPanel}
             {/* Drag handle */}
             <div
+              className="md-drag"
               onMouseDown={onMouseDown}
               style={{
                 width: 8, cursor: 'col-resize', flexShrink: 0,

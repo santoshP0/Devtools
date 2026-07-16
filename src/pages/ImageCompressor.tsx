@@ -37,7 +37,7 @@ export default function ImageCompressor() {
       try {
         const blob = await imageCompression(file, {
           maxSizeMB: 10,
-          maxWidthOrHeight: maxWidth,
+          maxWidthOrHeight: Math.min(8000, Math.max(100, maxWidth || 1920)),
           useWebWorker: true,
           initialQuality: quality / 100,
           onProgress: p => setProgress(Math.round(((i / images.length) + p / 100 / images.length) * 100)),
@@ -99,8 +99,9 @@ export default function ImageCompressor() {
           <div>
             <label className="label">Max dimension (px)</label>
             <input
-              type="number" value={maxWidth}
-              onChange={e => setMaxWidth(Math.max(100, Number(e.target.value)))}
+              type="number" value={Number.isNaN(maxWidth) ? '' : maxWidth}
+              onChange={e => setMaxWidth(e.target.valueAsNumber)}
+              onBlur={() => setMaxWidth(m => Math.min(8000, Math.max(100, m || 1920)))}
               min={100} max={8000}
               className="tool-input"
             />

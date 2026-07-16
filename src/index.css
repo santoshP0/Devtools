@@ -587,6 +587,52 @@
 .one-col { display: flex; flex-direction: column; gap: 14px; }
 @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
 
+/* Monaco decoration: line carrying a JSON parse error */
+.json-error-line { background: rgba(248, 113, 113, 0.22); }
+
+/* ── Split tool layout: input | actions | output ── */
+/* Desktop: fullWidth tool pages fill the viewport so panes scroll internally */
+@media (min-width: 769px) { .tool-inner-full { height: 100%; } }
+.tool-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
+}
+.split-pane { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.split-actions {
+  display: flex; flex-direction: column; justify-content: center;
+  gap: 8px; width: 112px; flex-shrink: 0;
+}
+.split-divider { height: 1px; background: var(--border); margin: 4px 0; }
+/* 2-pane full-height split: editor | output */
+.tool-split-2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
+}
+/* main content + fixed-width side panel */
+.grid-side { display: grid; grid-template-columns: 1fr 340px; gap: 20px; align-items: start; }
+@media (max-width: 768px) {
+  .tool-split, .tool-split-2 { display: flex; flex-direction: column; }
+  /* Fixed pane height on mobile → content scrolls inside, page scrolls between panes */
+  .split-pane, .tool-split-2 > * { height: 45dvh; min-height: 280px; flex: none; }
+  .split-actions { flex-direction: row; flex-wrap: wrap; align-items: center; width: 100%; }
+  .split-actions > button { flex: 1 1 30%; }
+  /* inline field (label + select) sits beside remaining buttons in one row */
+  .split-field { flex-direction: row !important; align-items: center; flex: 1 1 40%; }
+  .split-field > select { flex: 1; }
+  .split-divider { display: none; }
+  .grid-side { grid-template-columns: 1fr; }
+  /* markdown split view: stack panes, drag divider is meaningless vertically */
+  .md-split { flex-direction: column; gap: 12px !important; }
+  .md-split > * { width: 100% !important; flex: none !important; height: 45dvh; }
+  .md-split .md-drag { display: none !important; }
+}
+
 /* Section label — matching reference .section-label */
 .section-label {
   font-size: 11px; font-weight: 600; letter-spacing: 0.09em;

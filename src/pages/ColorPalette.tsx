@@ -139,7 +139,7 @@ export default function ColorPalette() {
           </div>
         </div>
 
-        <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${palette.length}, minmax(0, 1fr))` }}>
+        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))' }}>
           {palette.map(({ hex, label }) => (
             <div key={hex + label} className="flex flex-col gap-2">
               <button
