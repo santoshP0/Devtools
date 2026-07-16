@@ -1,5 +1,7 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import CodeEditor from '../components/CodeEditor'
+import type { OnMount } from '@monaco-editor/react'
 
 const SAMPLE = `// Quick scratchpad
 console.log("Hello, world!");
@@ -64,6 +66,13 @@ export default function JsSandbox() {
 
   const speedColor = execTime !== null ? getSpeedColor(execTime) : null
 
+  // Ctrl/Cmd+Enter inside Monaco — ref avoids a stale runCode closure
+  const runRef = useRef(runCode)
+  runRef.current = runCode
+  const onEditorMount: OnMount = (editor, m) => {
+    editor.addCommand(m.KeyMod.CtrlCmd | m.KeyCode.Enter, () => runRef.current())
+  }
+
   return (
     <ToolLayout title="JavaScript Sandbox" description="Lightweight playground to run and test JavaScript snippets in the browser." fullWidth>
       <div className="tool-split-2">
@@ -73,13 +82,7 @@ export default function JsSandbox() {
             <label className="label" style={{ margin: 0 }}>Script Editor</label>
             <button onClick={runCode} className="btn-primary" style={{ padding: '6px 20px' }}>Run (Ctrl+Enter)</button>
           </div>
-          <textarea
-            value={code} onChange={e => setCode(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) runCode() }}
-            className="tool-textarea"
-            style={{ flex: 1, minHeight: 0, fontFamily: 'var(--font-mono)', fontSize: 13, lineHeight: 1.7, resize: 'none' }}
-            spellCheck={false}
-          />
+          <CodeEditor language="javascript" value={code} onChange={setCode} onMount={onEditorMount} />
         </div>
 
         {/* Output */}

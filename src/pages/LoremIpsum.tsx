@@ -26,12 +26,13 @@ export default function LoremIpsum() {
   const { copied, copy } = useClipboardCopy()
 
   const generate = () => {
+    const n = Math.min(50, Math.max(1, count || 3))
     if (mode === 'paragraphs') {
-      setOutput(Array.from({ length: count }, () => paragraph()).join('\n\n'))
+      setOutput(Array.from({ length: n }, () => paragraph()).join('\n\n'))
     } else if (mode === 'sentences') {
-      setOutput(Array.from({ length: count }, () => sentence()).join(' '))
+      setOutput(Array.from({ length: n }, () => sentence()).join(' '))
     } else {
-      setOutput(Array.from({ length: count }, () => WORDS[rand(WORDS.length)]).join(' '))
+      setOutput(Array.from({ length: n }, () => WORDS[rand(WORDS.length)]).join(' '))
     }
   }
 
@@ -53,8 +54,9 @@ export default function LoremIpsum() {
             <label className="label">Count</label>
             <input
               type="number"
-              value={count}
-              onChange={e => setCount(Math.max(1, Math.min(50, Number(e.target.value))))}
+              value={Number.isNaN(count) ? '' : count}
+              onChange={e => setCount(e.target.valueAsNumber)}
+              onBlur={() => setCount(c => Math.max(1, Math.min(50, c || 3)))}
               min={1} max={50}
               className="tool-input w-24"
             />

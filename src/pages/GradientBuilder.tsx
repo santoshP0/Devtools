@@ -104,11 +104,11 @@ export default function GradientBuilderPage() {
     setStops(s => s.map(x => x.id === id ? { ...x, [key]: val } : x))
 
   const handleExportPng = () => {
-    exportGradientPng(gradientCSS, type, angle, radialShape, stops, exportW, exportH)
+    exportGradientPng(gradientCSS, type, angle, radialShape, stops, exportW || 800, exportH || 400)
   }
 
   // Preview aspect ratio mirrors export
-  const previewAspect = Math.max(0.25, Math.min(4, exportW / exportH))
+  const previewAspect = Math.max(0.25, Math.min(4, (exportW || 800) / (exportH || 400)))
 
   return (
     <ToolLayout title="Gradient Builder" description="Visual CSS gradient editor with live preview, adjustable export size, and PNG download">
@@ -283,14 +283,16 @@ export default function GradientBuilderPage() {
           <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 14 }}>
             <span style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-sans)' }}>Size:</span>
             <input
-              type="number" value={exportW} min={1} max={8000}
-              onChange={e => setExportW(Math.max(1, Math.min(8000, parseInt(e.target.value) || 800)))}
+              type="number" value={Number.isNaN(exportW) ? '' : exportW} min={1} max={8000}
+              onChange={e => setExportW(e.target.valueAsNumber)}
+              onBlur={() => setExportW(w => Math.max(1, Math.min(8000, w || 800)))}
               style={{ width: 80, fontFamily: 'var(--font-mono)', fontSize: 13 }}
             />
             <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>×</span>
             <input
-              type="number" value={exportH} min={1} max={8000}
-              onChange={e => setExportH(Math.max(1, Math.min(8000, parseInt(e.target.value) || 400)))}
+              type="number" value={Number.isNaN(exportH) ? '' : exportH} min={1} max={8000}
+              onChange={e => setExportH(e.target.valueAsNumber)}
+              onBlur={() => setExportH(h => Math.max(1, Math.min(8000, h || 400)))}
               style={{ width: 80, fontFamily: 'var(--font-mono)', fontSize: 13 }}
             />
             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>px</span>
