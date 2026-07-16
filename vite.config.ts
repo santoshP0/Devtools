@@ -30,4 +30,9 @@ export default defineConfig({
   optimizeDeps: {
     include: ['qrcode'],
   },
+  server: {
+    // keep vite's watcher out of the Rust build output — it's huge and
+    // makes dev startup hang after a tauri build
+    watch: { ignored: ['**/src-tauri/**'] },
+  },
 })
