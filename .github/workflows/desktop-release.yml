@@ -46,6 +46,6 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'DevToolbox ${{ github.ref_name }}'
-          releaseBody: 'See the assets below to download and install.'
+          releaseBody: 'Download for your OS below: .dmg (macOS), .msi/.exe (Windows), .AppImage/.deb (Linux).'
           releaseDraft: true
           args: ${{ matrix.args }}
