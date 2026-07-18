@@ -102,42 +102,30 @@ function DesktopCompressor() {
     const target = await save({ defaultPath: `${base}-compressed.${targetExt}` })
     if (!target) return
 
-    const args: string[] = []
-    if (kind === 'image') {
-      const filters: string[] = []
-      if (imgWidth && Number(imgWidth) > 0) filters.push(`scale='min(${Number(imgWidth)},iw)':-2`)
-      if (targetExt === 'gif') {
-        // Real GIF savings come from fewer colors + lower fps, not just re-encoding.
-        // Palette pipeline is mandatory or ffmpeg bloats the file.
-        if (gifFps !== 'same') filters.unshift(`fps=${gifFps}`)
-        const colors = Math.round(64 + ((imgQuality - 40) / 60) * 192) // 40→64, 100→256
-        const chain = filters.length ? filters.join(',') + ',' : ''
-        args.push('-filter_complex',
-          `[0:v]${chain}split[a][b];[a]palettegen=max_colors=${colors}:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle`)
-      } else {
-        if (filters.length) args.push('-vf', filters.join(','))
-        if (targetExt === 'jpg' || targetExt === 'jpeg') args.push('-q:v', String(Math.round(31 - (imgQuality / 100) * 29)))
-        else if (targetExt === 'webp') args.push('-quality', String(imgQuality))
-        else if (targetExt === 'png') args.push('-compression_level', '9')
-        // other formats (bmp/tiff/avif): ffmpeg defaults
-      }
-    } else {
-      const codec = targetExt === 'webm' ? 'libvpx-vp9' : vCodec
-      args.push('-c:v', codec, '-crf', String(crf))
-      const filters: string[] = []
-      if (vHeight && Number(vHeight) > 0) filters.push(`scale=-2:'min(${Number(vHeight)},ih)'`)
-      if (vFps !== 'same') filters.push(`fps=${vFps}`)
-      if (filters.length) args.push('-vf', filters.join(','))
-      if (codec !== 'libvpx-vp9') args.push('-preset', preset, '-movflags', '+faststart')
-      else args.push('-b:v', '0')
-      if (audioBr === 'none') args.push('-an')
-      else args.push('-c:a', codec === 'libvpx-vp9' ? 'libopus' : 'aac', '-b:a', audioBr)
-    }
-    if (stripMeta) args.push('-map_metadata', '-1')
+    // Send bounded options only — ffmpeg flags are built in Rust (no arg injection surface)
+    const opts = kind === 'image'
+      ? {
+          kind: 'image',
+          format: targetExt,
+          quality: imgQuality,
+          width: imgWidth ? Number(imgWidth) : null,
+          gif_fps: gifFps !== 'same' ? Number(gifFps) : null,
+        }
+      : {
+          kind: 'video',
+          codec: targetExt === 'webm' ? 'libvpx-vp9' : vCodec,
+          crf,
+          preset,
+          height: vHeight ? Number(vHeight) : null,
+          fps: vFps !== 'same' ? Number(vFps) : null,
+          audio: audioBr,
+        }
 
     setBusy(true); setResult(null); setOutPath(target)
     try {
-      const r = await invoke<Result>('ffmpeg_compress', { input, output: target, args })
+      const r = await invoke<Result>('ffmpeg_compress', {
+        req: { input, output: target, strip_metadata: stripMeta, ...opts },
+      })
       setResult(r)
     } catch (e) {
       setResult({ ok: false, log: String(e), in_size: 0, out_size: 0 })
