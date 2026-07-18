@@ -2,14 +2,42 @@ import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { tools } from '../lib/tools'
 
+const REPO_URL = 'https://github.com/santoshP0/Devtools'
+
+function assetLabel(name: string): string | null {
+  if (name.endsWith('.dmg')) return '🍎 macOS'
+  if (name.endsWith('.exe')) return '🪟 Windows'
+  if (name.endsWith('.AppImage')) return '🐧 Linux (AppImage)'
+  if (name.endsWith('.deb')) return '🐧 Linux (deb)'
+  return null
+}
+
 export default function Navbar() {
   const { pathname } = useLocation()
   const slug = pathname.split('/').filter(Boolean)[0]
   const tool = slug ? tools.find(t => t.slug === slug) : null
+  // hide the download button when already running inside the desktop app
+  const inApp = '__TAURI_INTERNALS__' in window
 
   const [dark, setDark] = useState(() =>
     document.documentElement.dataset.theme === 'dark'
   )
+  const [dlOpen, setDlOpen] = useState(false)
+  const [assets, setAssets] = useState<{ label: string; url: string }[] | null>(null)
+
+  const toggleDownload = () => {
+    setDlOpen(o => !o)
+    if (assets) return
+    fetch('https://api.github.com/repos/santoshP0/Devtools/releases/latest')
+      .then(r => r.json())
+      .then(j => setAssets(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ((j.assets ?? []) as any[])
+          .map(a => ({ label: assetLabel(a.name), url: a.browser_download_url as string }))
+          .filter((a): a is { label: string; url: string } => a.label !== null)
+      ))
+      .catch(() => setAssets([]))
+  }
 
   const toggleTheme = () => {
     const next = dark ? 'light' : 'dark'
@@ -91,6 +119,82 @@ export default function Navbar() {
           border: '1px solid var(--sketch-text)',
         }} />
         <span className="hidden sm:inline" style={{ opacity: 0.7 }}>local toolbox · 100% private</span>
+
+        {/* GitHub link */}
+        <a
+          href={REPO_URL} target="_blank" rel="noreferrer"
+          title="View source on GitHub"
+          style={{
+            color: 'var(--sketch-text)', textDecoration: 'none', fontWeight: 700,
+            fontSize: 13, opacity: 0.8, transition: 'opacity 0.15s',
+          }}
+          onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+          onMouseLeave={e => (e.currentTarget.style.opacity = '0.8')}
+        >
+          github ↗
+        </a>
+
+        {/* Download desktop app */}
+        {!inApp && (
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={toggleDownload}
+              title="Download the desktop app — includes exclusive tools like the FFmpeg Media Compressor"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '4px 10px', borderRadius: 4,
+                background: 'var(--surface)',
+                border: '2px solid var(--sketch-text)',
+                boxShadow: '2px 2px 0px var(--sketch-text)',
+                cursor: 'pointer', fontSize: 13, color: 'var(--sketch-text)',
+                fontFamily: "'Architects Daughter', var(--font-sans)",
+                fontWeight: 700,
+                transition: 'all 0.1s ease-out',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = 'translate(-1px, -1px)'
+                e.currentTarget.style.boxShadow = '3px 3px 0px var(--sketch-text)'
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = 'translate(0, 0)'
+                e.currentTarget.style.boxShadow = '2px 2px 0px var(--sketch-text)'
+              }}
+            >
+              <span style={{ fontSize: 14, lineHeight: 1 }}>⬇</span>
+              <span className="hidden sm:inline">get app</span>
+            </button>
+            {dlOpen && (
+              <>
+                <div onClick={() => setDlOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 60 }} />
+                <div style={{
+                  position: 'absolute', right: 0, top: 'calc(100% + 8px)', zIndex: 61,
+                  background: 'var(--surface)', border: '2px solid var(--sketch-text)',
+                  borderRadius: 6, boxShadow: '3px 3px 0px var(--sketch-text)',
+                  minWidth: 210, padding: 6,
+                  display: 'flex', flexDirection: 'column',
+                }}>
+                  {assets === null && (
+                    <span style={{ padding: '8px 10px', fontSize: 12, opacity: 0.7 }}>loading…</span>
+                  )}
+                  {assets?.map(a => (
+                    <a key={a.url} href={a.url}
+                      style={{ padding: '8px 10px', fontSize: 13, color: 'var(--sketch-text)', textDecoration: 'none', borderRadius: 4, fontWeight: 700 }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      {a.label}
+                    </a>
+                  ))}
+                  <a href={`${REPO_URL}/releases/latest`} target="_blank" rel="noreferrer"
+                    style={{ padding: '8px 10px', fontSize: 12, color: 'var(--sketch-text)', textDecoration: 'none', opacity: 0.7, borderTop: '1px dashed var(--sketch-text)', marginTop: 4 }}
+                  >
+                    all downloads →
+                  </a>
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Theme toggle */}
         <button
