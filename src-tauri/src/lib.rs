@@ -43,14 +43,53 @@ pub struct CompressResult {
   out_size: u64,
 }
 
-/// Runs ffmpeg on a user-picked local file. Args come from our own UI,
-/// executing on the user's own machine against their own files.
+const MEDIA_EXTS: &[&str] = &[
+  "jpg", "jpeg", "png", "webp", "gif", "bmp", "tiff", "avif",
+  "mp4", "mov", "mkv", "webm", "avi", "m4v",
+];
+
+fn media_ext_ok(path: &str) -> bool {
+  path
+    .rsplit('.')
+    .next()
+    .map(|e| MEDIA_EXTS.contains(&e.to_ascii_lowercase().as_str()))
+    .unwrap_or(false)
+}
+
+// Only the flags our UI generates, and value strings restricted to the
+// characters our filter/codec strings actually use — blocks smuggling of
+// `-i`, protocol URLs, or shell-ish payloads through the IPC boundary.
+fn arg_ok(a: &str) -> bool {
+  const FLAGS: &[&str] = &[
+    "-vf", "-filter_complex", "-q:v", "-quality", "-compression_level",
+    "-c:v", "-c:a", "-crf", "-preset", "-b:v", "-b:a", "-an",
+    "-movflags", "-map_metadata",
+  ];
+  if FLAGS.contains(&a) {
+    return true;
+  }
+  a.len() < 500
+    && !a.starts_with("--")
+    && a.chars().all(|c| {
+      c.is_ascii_alphanumeric() || "=:',().;[]+-_%".contains(c)
+    })
+}
+
+/// Runs ffmpeg on a user-picked local file. Args are rebuilt UI options —
+/// validated against an allowlist so a compromised webview can't turn this
+/// into an arbitrary-command or arbitrary-file-write primitive.
 #[tauri::command]
 async fn ffmpeg_compress(
   input: String,
   output: String,
   args: Vec<String>,
 ) -> Result<CompressResult, String> {
+  if !media_ext_ok(&input) || !media_ext_ok(&output) {
+    return Err("input and output must be media files".into());
+  }
+  if let Some(bad) = args.iter().find(|a| !arg_ok(a)) {
+    return Err(format!("rejected ffmpeg argument: {bad}"));
+  }
   let mut cmd = ffmpeg_cmd();
   cmd.arg("-y").arg("-i").arg(&input);
   for a in &args {
