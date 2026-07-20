@@ -20,6 +20,7 @@
     "bwip-js": "^4.11.1",
     "dompurify": "^3.1.5",
     "fast-xml-parser": "^4.3.6",
+    "heic2any": "^0.0.4",
     "highlight.js": "^11.11.1",
     "js-yaml": "^4.1.1",
     "lucide-react": "^1.23.0",

@@ -81,6 +81,8 @@ export default function ImageConverter() {
 
   const [result, setResult] = useState<ConvertedResult | null>(null)
   const [converting, setConverting] = useState(false)
+  const [decoding, setDecoding] = useState(false)
+  const [error, setError] = useState('')
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const aspectRatio = useRef(1)
@@ -93,7 +95,9 @@ export default function ImageConverter() {
     }
   }, [])
 
-  const loadImage = useCallback((file: File) => {
+  // meta overrides the displayed name/size/format — used for HEIC, where the
+  // <img> loads a decoded PNG but we still want to show the real source stats
+  const loadImage = useCallback((file: File, meta?: { name: string; size: number; format: string }) => {
     // Revoke old URLs
     if (sourceUrl) URL.revokeObjectURL(sourceUrl)
     if (result?.url) URL.revokeObjectURL(result.url)
@@ -112,20 +116,42 @@ export default function ImageConverter() {
       setSourceInfo({
         width: img.width,
         height: img.height,
-        format: formatFromMime(file.type),
-        size: file.size,
-        name: file.name,
+        format: meta?.format ?? formatFromMime(file.type),
+        size: meta?.size ?? file.size,
+        name: meta?.name ?? file.name,
       })
     }
     img.src = url
   }, [sourceUrl, result])
 
-  const handleFile = useCallback((file: File) => {
-    if (!file.type.startsWith('image/')) return
+  const handleFile = useCallback(async (file: File) => {
+    setError('')
+    const isHeic = /heic|heif/i.test(file.type) || /\.(heic|heif)$/i.test(file.name)
+    if (isHeic) {
+      // Browsers (except Safari) can't decode HEIC on a canvas — decode to PNG
+      // first via libheif-wasm, lazy-loaded so the base bundle stays light.
+      setDecoding(true)
+      try {
+        const heic2any = (await import('heic2any')).default
+        const out = await heic2any({ blob: file, toType: 'image/png' })
+        const png = Array.isArray(out) ? out[0] : out // multi-image HEIC → take first frame
+        loadImage(new File([png], file.name, { type: 'image/png' }),
+          { name: file.name, size: file.size, format: 'HEIC' })
+      } catch {
+        setError('Could not decode this HEIC file. It may be corrupted or an unsupported variant.')
+      } finally {
+        setDecoding(false)
+      }
+      return
+    }
+    if (!file.type.startsWith('image/')) {
+      setError('Unsupported file type.')
+      return
+    }
     loadImage(file)
   }, [loadImage])
 
-  const { dragging, inputRef, dragProps, openPicker, onInputChange } = useFileDrop(handleFile, 'image/*')
+  const { dragging, inputRef, dragProps, openPicker, onInputChange } = useFileDrop(handleFile, 'image/*,.heic,.heif')
 
   const getOutputDimensions = useCallback(() => {
     if (!sourceImage) return { w: 0, h: 0 }
@@ -254,18 +280,27 @@ export default function ImageConverter() {
           <input
             ref={inputRef}
             type="file"
-            accept="image/*"
+            accept="image/*,.heic,.heif"
             onChange={onInputChange}
             style={{ display: 'none' }}
           />
-          <div style={{ fontSize: 32, marginBottom: 8 }}>🖼</div>
+          <div style={{ fontSize: 32, marginBottom: 8 }}>{decoding ? '⏳' : '🖼'}</div>
           <div style={{ color: 'var(--text)', fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: 15 }}>
-            Drop an image here or click to browse
+            {decoding ? 'Decoding HEIC…' : 'Drop an image here or click to browse'}
           </div>
           <div style={{ color: 'var(--text-dim)', fontFamily: 'var(--font-sans)', fontSize: 13, marginTop: 4 }}>
-            Supports PNG, JPEG, WebP, GIF, BMP, AVIF, TIFF, and more
+            PNG, JPEG, WebP, GIF, BMP — plus HEIC/HEIF from iPhone
           </div>
         </div>
+
+        {error && (
+          <div style={{
+            ...cardStyle, padding: 12, borderColor: '#ef4444',
+            color: '#ef4444', fontFamily: 'var(--font-sans)', fontSize: 13,
+          }}>
+            {error}
+          </div>
+        )}
 
         {/* Source + Controls Row */}
         {sourceInfo && sourceImage && (

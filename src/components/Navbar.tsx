@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { tools } from '../lib/tools'
+import { syncWindowTheme } from '../lib/windowTheme'
 
 const REPO_URL = 'https://github.com/santoshP0/Devtools'
 
@@ -45,6 +46,7 @@ export default function Navbar() {
     localStorage.setItem('dt-theme', next)
     const favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"]')
     if (favicon) favicon.href = next === 'dark' ? '/AppIconDarkTheme.png' : '/AppIconLightTheme.png'
+    syncWindowTheme(next)
     setDark(!dark)
   }
 
