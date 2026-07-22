@@ -5,9 +5,12 @@ export interface Tool {
   description: string
   category: string
   keywords?: string[]
+  desktopOnly?: boolean  // hidden from the web grid/search; only shown inside the desktop app
 }
 
-export const tools: Tool[] = [
+const IN_APP = typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
+
+const ALL_TOOLS: Tool[] = [
   // ── Top picks (shown first in "All" view) — most universally useful tools across categories ──
   { name: 'JSON Formatter',    slug: 'json-formatter',    icon: 'Braces',          description: 'Format, validate and minify JSON data',                     category: 'Data', keywords: ['prettify', 'beautify', 'lint', 'parse', 'minify'] },
   { name: 'Regex Tester',      slug: 'regex-tester',      icon: 'Regex',           description: 'Test regular expressions with live match highlighting',     category: 'Text', keywords: ['regexp', 'pattern', 'match', 'replace', 'regex101'] },
@@ -18,7 +21,7 @@ export const tools: Tool[] = [
   { name: 'Color Converter',   slug: 'color-converter',   icon: 'Palette',         description: 'Convert between HEX, RGB, HSL, and OKLCH formats',        category: 'Design', keywords: ['hex', 'rgb', 'hsl', 'oklch', 'color', 'colour', 'picker'] },
   { name: 'URL Encoder',       slug: 'url-encoder',       icon: 'Link',            description: 'Encode and decode URL components',                          category: 'Data', keywords: ['uri', 'percent', 'encode', 'decode', 'query', 'param'] },
   { name: 'Image Compressor',  slug: 'image-compressor',  icon: 'FileDown',        description: 'Compress images in your browser, no upload needed',       category: 'Media', keywords: ['img', 'compress', 'resize', 'optimize', 'shrink', 'png', 'jpg', 'webp', 'photo'] },
-  { name: 'Media Compressor',  slug: 'media-compressor',  icon: 'Film',            description: 'FFmpeg-grade image & video compression (desktop app)',    category: 'Media', keywords: ['ffmpeg', 'video', 'mp4', 'webm', 'h264', 'h265', 'compress', 'shrink', 'desktop'] },
+  { name: 'Media Compressor',  slug: 'media-compressor',  icon: 'Film',            description: 'FFmpeg-grade image & video compression (desktop app)',    category: 'Media', keywords: ['ffmpeg', 'video', 'mp4', 'webm', 'h264', 'h265', 'compress', 'shrink', 'desktop'], desktopOnly: true },
   { name: 'JavaScript Sandbox',slug: 'js-sandbox',        icon: 'SquareTerminal',  description: 'A lightweight playground to run and test JS snippets in browser', category: 'Utils', keywords: ['javascript', 'console', 'repl', 'playground', 'run', 'execute', 'node'] },
   { name: 'Hash Generator',    slug: 'hash-generator',    icon: 'FingerprintPattern', description: 'Generate SHA-1, SHA-256, SHA-512 hashes',                category: 'Security', keywords: ['sha', 'md5', 'checksum', 'digest', 'crypto'] },
   { name: 'Markdown Preview',  slug: 'markdown-preview',  icon: 'BookOpen',        description: 'Live Markdown editor with rendered preview & Mermaid diagrams', category: 'Text', keywords: ['md', 'readme', 'preview', 'editor', 'mermaid', 'github', 'mdx', 'markup'] },
@@ -69,7 +72,8 @@ export const tools: Tool[] = [
   { name: 'JWT Generator',    slug: 'jwt-generator',     icon: 'ShieldCheck',     description: 'Generate signed JWT tokens and decode existing ones',     category: 'Security', keywords: ['token', 'auth', 'sign', 'hs256', 'bearer'] },
 
   // ── Remaining Media ──
-  { name: 'Image Converter',   slug: 'image-converter',   icon: 'ImageDown',       description: 'Convert images between PNG, JPEG and WebP with quality and resize controls', category: 'Media', keywords: ['img', 'png', 'jpg', 'jpeg', 'webp', 'format', 'convert', 'photo'] },
+  { name: 'Image Converter',   slug: 'image-converter',   icon: 'ImageDown',       description: 'Convert images between PNG, JPEG and WebP with quality and resize controls', category: 'Media', keywords: ['img', 'png', 'jpg', 'jpeg', 'webp', 'format', 'convert', 'photo', 'heic', 'heif', 'iphone'] },
+  { name: 'Video → GIF',       slug: 'video-to-gif',      icon: 'ImagePlay',       description: 'Trim a video clip and export an optimized GIF (desktop app)', category: 'Media', keywords: ['gif', 'video', 'mp4', 'mov', 'animate', 'convert', 'ffmpeg', 'clip', 'desktop'], desktopOnly: true },
   { name: 'EXIF Viewer',       slug: 'exif-viewer',       icon: 'Camera',          description: 'Extract camera, GPS and timestamp metadata from JPEG images — 100% offline', category: 'Media', keywords: ['metadata', 'photo', 'camera', 'gps', 'location', 'jpg', 'image'] },
   { name: 'BlurHash Generator', slug: 'blurhash-generator', icon: 'Cloudy',        description: 'Generate and decode BlurHash placeholder strings from images', category: 'Media', keywords: ['blur', 'placeholder', 'lazy', 'loading', 'preview', 'image'] },
   { name: 'Image → Base64',    slug: 'image-to-base64',   icon: 'Image',           description: 'Convert images to Base64 data URIs for use in CSS or HTML', category: 'Media', keywords: ['img', 'b64', 'data-uri', 'encode', 'inline'] },
@@ -97,6 +101,9 @@ export const tools: Tool[] = [
   // ── API (last) ──
   { name: 'REST Client',       slug: 'rest-client',       icon: 'Plug',            description: 'Advanced REST client — send requests, manage collections, view responses', category: 'API', keywords: ['api', 'http', 'fetch', 'request', 'postman', 'get', 'post', 'put', 'delete', 'endpoint'] },
 ]
+
+// Desktop-only tools are hidden from the web grid/search; shown inside the app
+export const tools: Tool[] = ALL_TOOLS.filter(t => IN_APP || !t.desktopOnly)
 
 // Category order: derived from tool array order
 export const categories = ['All', ...new Set(tools.map(t => t.category))]

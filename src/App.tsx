@@ -14,6 +14,7 @@ import HashGenerator from './pages/HashGenerator'
 import PasswordGenerator from './pages/PasswordGenerator'
 import ImageCompressor from './pages/ImageCompressor'
 import MediaCompressor from './pages/MediaCompressor'
+import VideoToGif from './pages/VideoToGif'
 import QrGenerator from './pages/QrGenerator'
 import UuidGenerator from './pages/UuidGenerator'
 import WordCounter from './pages/WordCounter'
@@ -106,6 +107,7 @@ export default function App() {
             <Route path="/password-generator"  element={<PasswordGenerator />} />
             <Route path="/image-compressor"    element={<ImageCompressor />} />
             <Route path="/media-compressor"    element={<MediaCompressor />} />
+            <Route path="/video-to-gif"        element={<VideoToGif />} />
             <Route path="/qr-generator"        element={<QrGenerator />} />
             <Route path="/uuid-generator"      element={<UuidGenerator />} />
             <Route path="/word-counter"        element={<WordCounter />} />

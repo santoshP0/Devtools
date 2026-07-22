@@ -42,7 +42,13 @@ pub struct CompressResult {
   log: String,
   in_size: u64,
   out_size: u64,
+  // Small GIF results are returned inline as base64 so the UI can preview them
+  // via a data: URL — no asset protocol / broad filesystem scope needed.
+  preview_b64: Option<String>,
 }
+
+// Cap inline preview payloads so IPC/memory stays sane
+const PREVIEW_CAP: u64 = 25 * 1024 * 1024;
 
 const MEDIA_EXTS: &[&str] = &[
   "jpg", "jpeg", "png", "webp", "gif", "bmp", "tiff", "avif",
@@ -79,6 +85,14 @@ enum Opts {
     height: Option<u32>,  // max height, 1..=20000
     fps: Option<u32>,     // 1..=240
     audio: String,        // 64k | 96k | 128k | none
+  },
+  #[serde(rename = "video_gif")]
+  VideoGif {
+    fps: u32,             // 5..=30
+    width: Option<u32>,   // max width, 1..=20000
+    start: f64,           // trim start, seconds
+    duration: f64,        // clip length, 0.1..=60 s
+    quality: u32,         // 40..=100 -> palette color count
   },
 }
 
@@ -166,6 +180,33 @@ fn build_args(opts: &Opts, out_ext: &str, strip: bool) -> Vec<String> {
         _ => { a.push("-c:a".into()); a.push(if vp9 { "libopus" } else { "aac" }.into()); a.push("-b:a".into()); a.push("128k".into()); }
       }
     }
+    Opts::VideoGif { fps, width, start, duration, quality } => {
+      // sanitize NaN/Inf before they reach ffmpeg args
+      let start = if start.is_finite() { start.max(0.0) } else { 0.0 };
+      let duration = if duration.is_finite() { duration.clamp(0.1, 60.0) } else { 5.0 };
+      // trim (output-side seek = frame-accurate for short clips)
+      if start > 0.0 {
+        a.push("-ss".into());
+        a.push(format!("{:.3}", start));
+      }
+      a.push("-t".into());
+      a.push(format!("{:.3}", duration));
+
+      let f = clamp(*fps, 5, 30);
+      let q = clamp(*quality, 40, 100);
+      let colors = 64 + ((q - 40) * 192 / 60); // 40->64, 100->256
+      let mut filters = vec![format!("fps={f}")];
+      if let Some(w) = dim(*width) {
+        filters.push(format!("scale='min({w},iw)':-2:flags=lanczos"));
+      }
+      let chain = filters.join(",");
+      a.push("-filter_complex".into());
+      a.push(format!(
+        "[0:v]{chain},split[a][b];[a]palettegen=max_colors={colors}:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle"
+      ));
+      a.push("-loop".into());
+      a.push("0".into()); // loop forever
+    }
   }
   if strip {
     a.push("-map_metadata".into());
@@ -210,11 +251,100 @@ async fn ffmpeg_compress(req: CompressReq) -> Result<CompressResult, String> {
     .skip(stderr.chars().count().saturating_sub(2000))
     .collect();
 
+  let ok = out.status.success();
+  let out_size = std::fs::metadata(&req.output).map(|m| m.len()).unwrap_or(0);
+
+  // Inline preview for small GIFs only — bounded to the file we just produced
+  let preview_b64 = if ok && out_ext == "gif" && out_size > 0 && out_size <= PREVIEW_CAP {
+    std::fs::read(&req.output).ok().map(|bytes| {
+      use base64::Engine;
+      base64::engine::general_purpose::STANDARD.encode(bytes)
+    })
+  } else {
+    None
+  };
+
   Ok(CompressResult {
-    ok: out.status.success(),
+    ok,
     log,
     in_size: std::fs::metadata(&req.input).map(|m| m.len()).unwrap_or(0),
-    out_size: std::fs::metadata(&req.output).map(|m| m.len()).unwrap_or(0),
+    out_size,
+    preview_b64,
+  })
+}
+
+// ── Native HTTP client (CORS-free) ─────────────────────────────────────────
+// The browser REST Client is capped by CORS. On desktop we send the request
+// natively via reqwest, so any endpoint / header works. Fully user-driven,
+// like curl/Postman — structured input, no shell.
+#[derive(Deserialize)]
+struct HttpReq {
+  method: String,
+  url: String,
+  headers: Vec<(String, String)>,
+  body: Option<String>,
+}
+
+#[derive(Serialize)]
+struct HttpRes {
+  status: u16,
+  status_text: String,
+  headers: Vec<(String, String)>,
+  body: String,
+  time_ms: u64,
+  size: u64,
+}
+
+// Reject responses larger than this to avoid OOM on hostile/huge endpoints
+const MAX_RESPONSE: usize = 50 * 1024 * 1024;
+
+#[tauri::command]
+async fn http_request(req: HttpReq) -> Result<HttpRes, String> {
+  // Only http(s) — reqwest rejects other schemes, but fail early and clearly
+  if !(req.url.starts_with("http://") || req.url.starts_with("https://")) {
+    return Err("only http and https URLs are allowed".into());
+  }
+  let method = reqwest::Method::from_bytes(req.method.as_bytes())
+    .map_err(|_| "invalid HTTP method".to_string())?;
+  let client = reqwest::Client::builder()
+    .user_agent("DevToolbox")
+    .timeout(std::time::Duration::from_secs(60))
+    .build()
+    .map_err(|e| e.to_string())?;
+  let mut rb = client.request(method, &req.url);
+  for (k, v) in &req.headers {
+    rb = rb.header(k, v);
+  }
+  if let Some(b) = req.body {
+    rb = rb.body(b);
+  }
+  let t0 = std::time::Instant::now();
+  let mut resp = rb.send().await.map_err(|e| e.to_string())?;
+  let status = resp.status();
+  let status_text = status.canonical_reason().unwrap_or("").to_string();
+  let headers: Vec<(String, String)> = resp
+    .headers()
+    .iter()
+    .map(|(k, v)| (k.to_string(), v.to_str().unwrap_or("").to_string()))
+    .collect();
+
+  // Stream the body with a hard cap instead of buffering it all unbounded
+  let mut buf: Vec<u8> = Vec::new();
+  while let Some(chunk) = resp.chunk().await.map_err(|e| e.to_string())? {
+    if buf.len() + chunk.len() > MAX_RESPONSE {
+      buf.extend_from_slice(&chunk[..MAX_RESPONSE - buf.len()]);
+      break;
+    }
+    buf.extend_from_slice(&chunk);
+  }
+
+  Ok(HttpRes {
+    status: status.as_u16(),
+    status_text,
+    headers,
+    size: buf.len() as u64,
+    body: String::from_utf8_lossy(&buf).to_string(),
+    time_ms: t0.elapsed().as_millis() as u64,
   })
 }
 
@@ -222,7 +352,7 @@ async fn ffmpeg_compress(req: CompressReq) -> Result<CompressResult, String> {
 pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_dialog::init())
-    .invoke_handler(tauri::generate_handler![ffmpeg_check, ffmpeg_compress])
+    .invoke_handler(tauri::generate_handler![ffmpeg_check, ffmpeg_compress, http_request])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
@@ -261,6 +391,18 @@ mod tests {
     for a in &args {
       assert!(!a.contains("passwd") && !a.contains("rm ") && !a.contains("curl"));
     }
+  }
+
+  #[test]
+  fn video_gif_trim_and_palette() {
+    let opts = Opts::VideoGif { fps: 60, width: Some(480), start: 3.5, duration: 999.0, quality: 80 };
+    let args = build_args(&opts, "gif", false);
+    let joined = args.join(" ");
+    assert!(joined.contains("-ss 3.500"));
+    assert!(joined.contains("-t 60.000"));   // duration clamped to 60
+    assert!(joined.contains("fps=30"));       // fps clamped to 30
+    assert!(joined.contains("palettegen"));
+    assert!(joined.contains("scale='min(480,iw)'"));
   }
 
   #[test]

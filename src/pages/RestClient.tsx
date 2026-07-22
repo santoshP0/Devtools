@@ -10,6 +10,9 @@ const METHOD_COLORS: Record<string, string> = { GET:'var(--cat-gen)', POST:'var(
 
 function kvRow(id: number): KV { return { id, key: '', val: '', enabled: true } }
 
+// Desktop app sends requests natively (no CORS); browser uses fetch (CORS-bound)
+const NATIVE = '__TAURI_INTERNALS__' in window
+
 export default function RestClientPage() {
   const [method, setMethod] = useState('GET')
   const [url, setUrl] = useState(SAMPLE_URLS[0])
@@ -43,18 +46,33 @@ export default function RestClientPage() {
       const hdrs: Record<string, string> = {}
       headers.filter(h => h.enabled && h.key).forEach(h => { hdrs[h.key] = h.val })
       if (bodyMode === 'json') hdrs['Content-Type'] = 'application/json'
+      const hasBody = bodyMode !== 'none' && !['GET','HEAD'].includes(method)
+      const finalUrl = buildUrl()
 
-      const opts: RequestInit = { method, headers: hdrs }
-      if (bodyMode !== 'none' && !['GET','HEAD'].includes(method)) opts.body = body
-
-      const res = await fetch(buildUrl(), opts)
-      const elapsed = Date.now() - t0
-      const text = await res.text()
-      const resHdrs: Record<string, string> = {}
-      res.headers.forEach((v, k) => { resHdrs[k] = v })
-      let formatted = text
-      try { formatted = JSON.stringify(JSON.parse(text), null, 2) } catch {}
-      setResponse({ status: res.status, statusText: res.statusText, time: elapsed, size: new Blob([text]).size, headers: resHdrs, body: formatted })
+      if (NATIVE) {
+        const { invoke } = await import('@tauri-apps/api/core')
+        const r = await invoke('http_request', { req: {
+          method, url: finalUrl,
+          headers: Object.entries(hdrs),
+          body: hasBody ? body : null,
+        }}) as { status: number; status_text: string; headers: [string,string][]; body: string; time_ms: number; size: number }
+        const resHdrs: Record<string, string> = {}
+        r.headers.forEach(([k, v]) => { resHdrs[k] = v })
+        let formatted = r.body
+        try { formatted = JSON.stringify(JSON.parse(r.body), null, 2) } catch {}
+        setResponse({ status: r.status, statusText: r.status_text, time: r.time_ms, size: r.size, headers: resHdrs, body: formatted })
+      } else {
+        const opts: RequestInit = { method, headers: hdrs }
+        if (hasBody) opts.body = body
+        const res = await fetch(finalUrl, opts)
+        const elapsed = Date.now() - t0
+        const text = await res.text()
+        const resHdrs: Record<string, string> = {}
+        res.headers.forEach((v, k) => { resHdrs[k] = v })
+        let formatted = text
+        try { formatted = JSON.stringify(JSON.parse(text), null, 2) } catch {}
+        setResponse({ status: res.status, statusText: res.statusText, time: elapsed, size: new Blob([text]).size, headers: resHdrs, body: formatted })
+      }
     } catch(e: unknown) { setError(e instanceof Error ? e.message : String(e)) }
     setLoading(false)
   }
@@ -76,7 +94,7 @@ export default function RestClientPage() {
   )
 
   return (
-    <ToolLayout title="REST Client" description="Send HTTP requests and inspect responses right in your browser">
+    <ToolLayout title="REST Client" description={NATIVE ? 'Send HTTP requests natively — no CORS limits, any endpoint or header' : 'Send HTTP requests and inspect responses right in your browser'}>
       <div className="one-col">
         {/* URL bar */}
         <div style={{ display:'flex', gap:8 }}>
