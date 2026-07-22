@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { ToastProvider } from './components/Toast'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
+import AdSlot, { AD_SLOTS } from './components/AdSlot'
 import CommandPalette from './components/CommandPalette'
 import Home from './pages/Home'
 const JsonFormatter = lazy(() => import('./pages/JsonFormatter'))
@@ -88,6 +89,9 @@ export default function App() {
       }}>
         <CommandPalette />
         <Navbar />
+        {/* Side rails only appear when the viewport has real margin to spare */}
+        <AdSlot slot={AD_SLOTS.railLeft} className="ad-rail ad-rail-left" />
+        <AdSlot slot={AD_SLOTS.railRight} className="ad-rail ad-rail-right" />
         <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
           <Routes>
             <Route path="/" element={

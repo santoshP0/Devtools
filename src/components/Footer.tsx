@@ -14,7 +14,7 @@ export default function Footer() {
     }}>
       <span style={{ fontWeight: 600, color: 'var(--text-dim)' }}>DevToolbox</span>
       <span>All processing happens in your browser — your data never leaves your device.</span>
-      <span>Free forever · No ads · No tracking</span>
+      <span>Free forever · Your files stay local</span>
     </footer>
   )
 }

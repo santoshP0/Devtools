@@ -1151,3 +1151,21 @@ button:disabled, .btn:disabled {
     color: #abb2bf;
   }
 }
+
+/* ── Ad rails ──────────────────────────────────────────────────────────
+   Fixed in the empty page margins so they never reflow or crowd content.
+   Hidden entirely until the viewport is wide enough to spare the space. */
+.ad-rail {
+  display: none;
+  position: fixed;
+  top: 90px;
+  width: 160px;
+  height: 600px;
+  z-index: 10;
+}
+.ad-rail-left  { left: 12px; }
+.ad-rail-right { right: 12px; }
+
+@media (min-width: 1500px) {
+  .ad-rail { display: block; }
+}

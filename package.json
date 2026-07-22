@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "node scripts/gen-sitemap.mjs && tsc && vite build",
+    "sitemap": "node scripts/gen-sitemap.mjs",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx",
     "tauri": "tauri"

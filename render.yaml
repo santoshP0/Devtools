@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: devtoolbox
+    runtime: static
+    buildCommand: npm ci && npm run build
+    staticPublishPath: ./dist
+    # SPA fallback — without this every deep link (/base64, /regex-tester…)
+    # returns 404 on Render, so crawlers and AdSense see nothing.
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
