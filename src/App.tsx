@@ -1,10 +1,33 @@
-import { useState, lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { useState, lazy, Suspense, ReactNode } from 'react'
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
+import { AnimatePresence, motion } from 'motion/react'
 import { ToastProvider } from './components/Toast'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
-import AdSlot, { AD_SLOTS } from './components/AdSlot'
 import CommandPalette from './components/CommandPalette'
+import ToolSwitcher from './components/ToolSwitcher'
+
+// Smooth transition on every route change — one wrapper covers all pages.
+// AnimatePresence keeps the exiting page's last render mounted while it fades,
+// so the old page animates out and the new one in. Opacity+scale only (no
+// translate) so tall, viewport-height tool pages never flash a scrollbar.
+function AnimatedRoutes({ children }: { children: ReactNode }) {
+  const location = useLocation()
+  return (
+    <AnimatePresence mode="wait" initial={false}>
+      <motion.div
+        key={location.pathname}
+        initial={{ opacity: 0, scale: 0.99 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.99 }}
+        transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+        style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
+      >
+        {children}
+      </motion.div>
+    </AnimatePresence>
+  )
+}
 import Home from './pages/Home'
 const JsonFormatter = lazy(() => import('./pages/JsonFormatter'))
 import JsonXml from './pages/JsonXml'
@@ -88,11 +111,10 @@ export default function App() {
         display: 'flex', flexDirection: 'column',
       }}>
         <CommandPalette />
+        <ToolSwitcher />
         <Navbar />
-        {/* Side rails only appear when the viewport has real margin to spare */}
-        <AdSlot slot={AD_SLOTS.railLeft} className="ad-rail ad-rail-left" />
-        <AdSlot slot={AD_SLOTS.railRight} className="ad-rail ad-rail-right" />
         <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+          <AnimatedRoutes>
           <Routes>
             <Route path="/" element={
               <Home
@@ -169,6 +191,7 @@ export default function App() {
             <Route path="/json-path"             element={<JsonPathTester />} />
             <Route path="/text-binary"           element={<TextBinaryHex />} />
           </Routes>
+          </AnimatedRoutes>
         </main>
         <Footer />
       </div>

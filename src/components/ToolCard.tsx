@@ -1,8 +1,11 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { motion } from 'motion/react'
 import { Tool } from '../lib/tools'
 import { useFavorites } from '../lib/storage'
 import ToolIcon from './ToolIcon'
+
+const MotionLink = motion.create(Link)
 
 const CAT_STYLES: Record<string, { bg: string; text: string }> = {
   API:       { bg: 'var(--card-api-bg)',       text: 'var(--card-api-text)' },
@@ -31,10 +34,13 @@ export default function ToolCard({ tool, index }: ToolCardProps) {
   const displayIndex = `#${String(index + 1).padStart(2, '0')}`
 
   return (
-    <Link
+    <MotionLink
       to={`/${tool.slug}`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      whileHover={{ y: -3, x: -3 }}
+      whileTap={{ scale: 0.97 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -43,11 +49,9 @@ export default function ToolCard({ tool, index }: ToolCardProps) {
         borderRadius: 4,
         background: catStyle.bg,
         border: '2px solid var(--sketch-text)',
-        boxShadow: hovered 
-          ? '6px 6px 0px var(--sketch-text)' 
+        boxShadow: hovered
+          ? '6px 6px 0px var(--sketch-text)'
           : '4px 4px 0px var(--sketch-text)',
-        transform: hovered ? 'translate(-2px, -2px)' : 'translate(0, 0)',
-        transition: 'all 0.15s ease-out',
         cursor: 'pointer',
         textDecoration: 'none',
         position: 'relative',
@@ -163,6 +167,6 @@ export default function ToolCard({ tool, index }: ToolCardProps) {
           </div>
         </div>
       </div>
-    </Link>
+    </MotionLink>
   )
 }

@@ -1,15 +1,17 @@
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { AnimatePresence, motion } from 'motion/react'
 import { tools } from '../lib/tools'
 import { syncWindowTheme } from '../lib/windowTheme'
+import OsIcon, { Os } from './OsIcon'
 
 const REPO_URL = 'https://github.com/santoshP0/Devtools'
 
-function assetLabel(name: string): string | null {
-  if (name.endsWith('.dmg')) return '🍎 macOS'
-  if (name.endsWith('.exe')) return '🪟 Windows'
-  if (name.endsWith('.AppImage')) return '🐧 Linux (AppImage)'
-  if (name.endsWith('.deb')) return '🐧 Linux (deb)'
+function assetInfo(name: string): { os: Os; label: string } | null {
+  if (name.endsWith('.dmg')) return { os: 'mac', label: 'macOS' }
+  if (name.endsWith('.exe')) return { os: 'windows', label: 'Windows' }
+  if (name.endsWith('.AppImage')) return { os: 'linux', label: 'Linux (AppImage)' }
+  if (name.endsWith('.deb')) return { os: 'linux', label: 'Linux (deb)' }
   return null
 }
 
@@ -24,21 +26,22 @@ export default function Navbar() {
     document.documentElement.dataset.theme === 'dark'
   )
   const [dlOpen, setDlOpen] = useState(false)
-  const [assets, setAssets] = useState<{ label: string; url: string }[] | null>(null)
+  const [assets, setAssets] = useState<{ os: Os; label: string; url: string }[] | null>(null)
 
-  const toggleDownload = () => {
-    setDlOpen(o => !o)
+  const loadAssets = () => {
     if (assets) return
     fetch('https://api.github.com/repos/santoshP0/Devtools/releases/latest')
       .then(r => r.json())
       .then(j => setAssets(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ((j.assets ?? []) as any[])
-          .map(a => ({ label: assetLabel(a.name), url: a.browser_download_url as string }))
-          .filter((a): a is { label: string; url: string } => a.label !== null)
+          .map(a => { const info = assetInfo(a.name); return info && { ...info, url: a.browser_download_url as string } })
+          .filter((a): a is { os: Os; label: string; url: string } => Boolean(a))
       ))
       .catch(() => setAssets([]))
   }
+  const openDownload = () => { setDlOpen(true); loadAssets() }
+  const toggleDownload = () => { setDlOpen(o => !o); loadAssets() }
 
   const toggleTheme = () => {
     const next = dark ? 'light' : 'dark'
@@ -136,9 +139,12 @@ export default function Navbar() {
           github ↗
         </a>
 
-        {/* Download desktop app */}
+        {/* Download desktop app — opens on hover */}
         {!inApp && (
-          <div style={{ position: 'relative' }}>
+          <div style={{ position: 'relative' }}
+            onMouseEnter={openDownload}
+            onMouseLeave={() => setDlOpen(false)}
+          >
             <button
               onClick={toggleDownload}
               title="Download the desktop app — includes exclusive tools like the FFmpeg Media Compressor"
@@ -166,10 +172,11 @@ export default function Navbar() {
               <span className="hidden sm:inline">get app</span>
             </button>
             {dlOpen && (
-              <>
-                <div onClick={() => setDlOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 60 }} />
+              // Outer wrapper touches the button (top:100%) with transparent
+              // paddingTop as a hover bridge — so crossing the visual gap to the
+              // menu stays inside the hover area and doesn't close it.
+              <div style={{ position: 'absolute', right: 0, top: '100%', paddingTop: 8, zIndex: 61 }}>
                 <div style={{
-                  position: 'absolute', right: 0, top: 'calc(100% + 8px)', zIndex: 61,
                   background: 'var(--surface)', border: '2px solid var(--sketch-text)',
                   borderRadius: 6, boxShadow: '3px 3px 0px var(--sketch-text)',
                   minWidth: 210, padding: 6,
@@ -180,10 +187,11 @@ export default function Navbar() {
                   )}
                   {assets?.map(a => (
                     <a key={a.url} href={a.url}
-                      style={{ padding: '8px 10px', fontSize: 13, color: 'var(--sketch-text)', textDecoration: 'none', borderRadius: 4, fontWeight: 700 }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', fontSize: 13, color: 'var(--sketch-text)', textDecoration: 'none', borderRadius: 4, fontWeight: 700 }}
                       onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
                       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                     >
+                      <OsIcon os={a.os} />
                       {a.label}
                     </a>
                   ))}
@@ -193,7 +201,7 @@ export default function Navbar() {
                     all downloads →
                   </a>
                 </div>
-              </>
+              </div>
             )}
           </div>
         )}
@@ -222,7 +230,20 @@ export default function Navbar() {
             e.currentTarget.style.boxShadow = '2px 2px 0px var(--sketch-text)'
           }}
         >
-          <span style={{ fontSize: 14, lineHeight: 1 }}>{dark ? '☀️' : '🌙'}</span>
+          <span style={{ position: 'relative', width: 14, height: 14, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.span
+                key={dark ? 'sun' : 'moon'}
+                initial={{ rotate: -90, opacity: 0, scale: 0.4 }}
+                animate={{ rotate: 0, opacity: 1, scale: 1 }}
+                exit={{ rotate: 90, opacity: 0, scale: 0.4 }}
+                transition={{ duration: 0.2, ease: 'easeOut' }}
+                style={{ fontSize: 14, lineHeight: 1, position: 'absolute' }}
+              >
+                {dark ? '☀️' : '🌙'}
+              </motion.span>
+            </AnimatePresence>
+          </span>
           <span className="hidden sm:inline">{dark ? 'light' : 'dark'}</span>
         </button>
       </div>
