@@ -69,23 +69,29 @@ export default function ToolSwitcher() {
 
   return (
     <>
-      <button
+      {/* Edge-anchored tab, flush to the right edge and vertically centered.
+          A <div> (not <button>) so the app's global `button { …!important }`
+          rules can't override the position or add a hover jump. */}
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setOpen(true)}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpen(true) } }}
         title="Quick switch tools"
         style={{
-          position: 'fixed', right: 20, bottom: 20, zIndex: 45,
-          display: 'flex', alignItems: 'center', gap: 7,
-          padding: '9px 14px', borderRadius: 6,
+          position: 'fixed', right: 0, top: '50%', transform: 'translateY(-50%)', zIndex: 45,
+          display: 'flex', alignItems: 'center', gap: 4,
+          padding: '12px 10px 12px 12px',
+          borderRadius: '10px 0 0 10px',
           background: 'var(--surface)', color: 'var(--sketch-text)',
-          border: '2px solid var(--sketch-text)',
-          boxShadow: '3px 3px 0px var(--sketch-text)',
-          cursor: 'pointer', fontWeight: 700, fontSize: 13,
-          fontFamily: "'Architects Daughter', var(--font-sans)",
+          border: '2px solid var(--sketch-text)', borderRight: 'none',
+          boxShadow: '-2px 2px 0px var(--sketch-text)',
+          cursor: 'pointer',
         }}
       >
-        <ToolIcon name="LayoutGrid" size={16} />
-        <span>tools</span>
-      </button>
+        <span style={{ fontSize: 13, lineHeight: 1, opacity: 0.6 }}>‹</span>
+        <ToolIcon name="LayoutGrid" size={18} />
+      </div>
 
       <AnimatePresence>
         {open && (
@@ -120,7 +126,7 @@ export default function ToolSwitcher() {
 
               {/* Body scrolls; the list itself is not a scroll container, so the
                   proximity math (offsetTop vs pointer) stays aligned. */}
-              <div ref={bodyRef} onPointerMove={onBodyMove} onPointerLeave={onBodyLeave}
+              <div ref={bodyRef} className="no-scrollbar" onPointerMove={onBodyMove} onPointerLeave={onBodyLeave}
                 style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 24px 24px' }}>
                 <LineSidebar
                   items={tools.map(t => t.name)}

@@ -78,7 +78,7 @@ export default function Home({ search, setSearch, activeCat, setActiveCat }: Pro
         backgroundImage: 'radial-gradient(var(--sketch-dot) 1.2px, transparent 1.2px)',
         backgroundSize: '20px 20px',
         color: 'var(--sketch-text)',
-        padding: '60px 24px 80px',
+        padding: '40px 24px 80px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -86,22 +86,6 @@ export default function Home({ search, setSearch, activeCat, setActiveCat }: Pro
       }}
     >
       <div style={{ width: '100%', maxWidth: 1200 }}>
-        
-        {/* Header Titles */}
-        <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <span style={{ fontSize: 16, opacity: 0.6, letterSpacing: '0.05em' }}>
-            — the whole collection —
-          </span>
-          <h1 style={{ 
-            fontSize: 'clamp(36px, 6vw, 56px)', 
-            fontWeight: 700, 
-            margin: '8px 0 0 0', 
-            letterSpacing: '-0.02em',
-            lineHeight: 1.1 
-          }}>
-            everything on the bench
-          </h1>
-        </div>
 
         {/* Search Bar */}
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 28 }}>

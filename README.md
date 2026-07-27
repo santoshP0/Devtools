@@ -1,63 +1,73 @@
 # DevToolbox 🧰
 
-> **Elite Developer Utilities — Offline First**
->
-> A fast, privacy-focused collection of **66 developer tools** that run entirely in your browser. No sign-up, no data uploads, no internet required after the first load.
+> A fast, privacy-first collection of **63 developer tools that run entirely in your browser** — plus a **desktop app** with 2 exclusive FFmpeg-powered tools. No sign-up, no uploads, no tracking. Everything is processed on your own machine.
+
+**[⬇ Download the desktop app](https://github.com/santoshP0/Devtools/releases/latest)** · macOS · Windows · Linux
 
 ---
 
-## ✨ Features
+## ✨ Highlights
 
-- ⚡ **Instant** — Vite-powered SPA with sub-second navigation
-- 🔒 **Private** — Everything runs client-side; your data never leaves your machine
-- 📦 **Offline-first** — PWA with full service-worker caching (installable on desktop & mobile)
-- 🌗 **Dark / Light mode** — Persisted theme toggle
-- 🔍 **Command Palette** — `⌘K` / `Ctrl+K` fuzzy search across all tools
-- 🗂️ **Category filters** — Browse by Data, Text, Security, Design, Media, and more
-- 📱 **Responsive** — Works across all screen sizes
+- ⚡ **Instant** — Vite-powered SPA, sub-second navigation, lazy-loaded editors
+- 🔒 **Private** — 100% client-side; your data never leaves your device
+- 📦 **Offline-first** — Installable PWA with full service-worker caching
+- 🌗 **Dark / Light** — Persisted theme, synced to the desktop titlebar
+- 🔍 **Command Palette** — `⌘K` / `Ctrl+K` fuzzy search across every tool
+- 🎚️ **Quick switcher** — Hover the edge tab to scrub through all tools
+- 🖥️ **Desktop app** — Native window with FFmpeg-grade media tools and a CORS-free REST client
 
+---
 
+## 🖥️ Web vs. Desktop — what's different?
 
-## 🚀 Getting Started
+Everything on the website also works in the desktop app. The desktop app adds native capabilities the browser sandbox can't provide:
+
+| | Web (browser) | Desktop app |
+|---|:---:|:---:|
+| 63 core tools | ✅ | ✅ |
+| Offline / PWA install | ✅ | ✅ (native window) |
+| **Media Compressor** — FFmpeg-grade image & video compression | — | ✅ **exclusive** |
+| **Video → GIF** — trim a clip, export an optimized GIF | — | ✅ **exclusive** |
+| **REST Client** — send requests to *any* endpoint | CORS-limited | ✅ **no CORS** (native networking) |
+| **Image Converter** — HEIC/HEIF (iPhone) input | ✅ | ✅ |
+
+The two FFmpeg-powered tools (**Media Compressor**, **Video → GIF**) require [FFmpeg](https://ffmpeg.org/) on your `PATH` — e.g. `brew install ffmpeg` on macOS. They are hidden from the website and only appear inside the desktop app.
+
+> All desktop media processing is done locally through a hardened Rust bridge: options are strictly bounded and every FFmpeg argument is constructed in Rust, so there is no command-injection surface.
+
+---
+
+## 🚀 Getting started
 
 ### Prerequisites
+- [Node.js](https://nodejs.org) ≥ 18
+- For the desktop app: [Rust](https://rustup.rs/) toolchain (Tauri v2)
 
-- [Node.js](https://nodejs.org) ≥ 18 or [Bun](https://bun.sh) ≥ 1.0
-
-### Installation
+### Web app
 
 ```bash
-# Clone the repository
-git clone <your-repo-url>
-cd Devtools
-
-# Install dependencies (using Bun)
-bun install
-
-# Or with npm
 npm install
+npm run dev        # http://localhost:5173
+npm run build      # production build → dist/
 ```
 
-### Development
+### Desktop app (Tauri)
 
 ```bash
-# Start the dev server (http://localhost:5173)
-bun run dev
-
-# Or with npm
-npm run dev
+npm run tauri dev      # run the native app in dev
+npm run tauri build    # build installers for the current OS
 ```
 
-
+Installers for all platforms are also published automatically on every tagged release — see **[Releases](https://github.com/santoshP0/Devtools/releases)**.
 
 ---
 
-## 🧩 Tools Reference
+## 🧩 Tools reference
 
-### 📊 Data
+### 📊 Data (12)
 | Tool | Description |
 |---|---|
-| JSON Formatter | Format, validate, and minify JSON |
+| JSON Formatter | Format, validate, and minify JSON (Monaco, precise error locations) |
 | Base64 | Encode / decode Base64 strings and files |
 | JWT Decoder | Decode and inspect JWT tokens |
 | URL Encoder | Encode and decode URL components |
@@ -67,50 +77,22 @@ npm run dev
 | CSV Viewer | Open large CSV files with virtual scrolling & sortable columns |
 | SQL Formatter | Beautify and indent SQL queries instantly |
 | JSON ↔ XML | Convert between JSON and XML formats |
+| TOML ↔ JSON | Convert between TOML config files and JSON |
+| JSON Path Tester | Query JSON data using JSONPath expressions |
 
-### 📝 Text
+### 📝 Text (8)
 | Tool | Description |
 |---|---|
 | Regex Tester | Test regular expressions with live match highlighting |
-| Diff Checker | Compare two texts and highlight differences |
+| Diff Checker | Compare two texts side-by-side (Monaco diff, word wrap) |
 | Markdown Preview | Live Markdown editor with rendered preview & Mermaid diagrams |
-| Text Case | Convert text between camelCase, snake_case, PascalCase, and more |
+| Text Case | Convert between camelCase, snake_case, PascalCase, and more |
 | HTML Entities | Encode and decode HTML entities |
 | Line Sorter | Sort, deduplicate, and shuffle lines of text |
 | Word Counter | Count words, characters, and reading time |
 | Slugify | Convert text to URL-friendly slugs |
 
-### 🔐 Security
-| Tool | Description |
-|---|---|
-| Hash Generator | Generate SHA-1, SHA-256, SHA-512 cryptographic hashes |
-| Password Generator | Generate strong, secure random passwords |
-| JWT Generator | Sign and generate JWT tokens (HS256, RS256, etc.) |
-
-### 🎨 Design
-| Tool | Description |
-|---|---|
-| Color Converter | Convert between HEX, RGB, HSL, and OKLCH |
-| Gradient Builder | Visual CSS gradient editor with live preview |
-| Color Contrast | WCAG AA/AAA contrast ratio checker |
-| Color Palette | Generate complementary, triadic, and analogous palettes |
-| Box Shadow Builder | Visual multi-layer CSS box-shadow generator |
-| Glassmorphism Builder | Design modern glassmorphism UI elements |
-| CSS Unit Converter | Convert px, em, rem, vw, vh, pt — all synced live |
-| Color Blind Simulator | Simulate images under different color vision deficiencies |
-| Dark/Light Converter | Convert images between dark and light mode |
-
-### 🖼️ Media
-| Tool | Description |
-|---|---|
-| Image Compressor | Compress images in-browser, no upload needed |
-| Image Converter | Convert between PNG, JPEG, and WebP |
-| EXIF Viewer | Extract camera, GPS, and timestamp metadata from JPEGs |
-| BlurHash Generator | Generate and decode BlurHash placeholder strings |
-| Image → Base64 | Convert images to Base64 data URIs |
-| Base64 → Image | Decode Base64 strings back to images |
-
-### 🔧 Utils
+### 🔧 Utils (10)
 | Tool | Description |
 |---|---|
 | Unix Timestamp | Convert between Unix timestamps and human-readable dates |
@@ -120,60 +102,91 @@ npm run dev
 | Number Base | Convert between decimal, hex, binary, and octal |
 | HTTP Status Codes | Searchable reference for all HTTP 1xx–5xx status codes |
 | Semver Checker | Parse npm semantic version ranges and check compatibility |
+| Timezone Converter | Compare the current time across multiple timezones |
+| Pomodoro Timer | Timed work / break intervals to stay focused |
+| Text ↔ Binary/Hex | Encode text to binary, hex, octal, or decimal bytes |
 
-### 🖥️ Frontend
+### 🎨 Design (9)
 | Tool | Description |
 |---|---|
-| SVG Preview | Preview SVG files, remove bloat, and export optimised code |
+| Color Converter | Convert between HEX, RGB, HSL, and OKLCH |
+| Gradient Builder | Visual CSS gradient editor with live preview |
+| Color Contrast | WCAG AA/AAA contrast ratio checker |
+| Color Palette | Generate complementary, triadic, and analogous palettes |
+| Box Shadow Builder | Visual multi-layer CSS box-shadow generator |
+| Glassmorphism | Design modern glassmorphism UI elements |
+| CSS Unit Converter | Convert px, em, rem, vw, vh, pt — all synced live |
+| Color Blind Simulator | Simulate images under different color-vision deficiencies |
+| Dark/Light Converter | Convert images between dark and light mode |
+
+### 🖼️ Media (8 · 2 desktop-exclusive)
+| Tool | Description |
+|---|---|
+| Image Compressor | Compress images in-browser, no upload needed |
+| Image Converter | Convert PNG / JPEG / WebP — and decode **HEIC/HEIF** from iPhone |
+| EXIF Viewer | Extract camera, GPS, and timestamp metadata from JPEGs |
+| BlurHash Generator | Generate and decode BlurHash placeholder strings |
+| Image → Base64 | Convert images to Base64 data URIs |
+| Base64 → Image | Decode Base64 strings back to images |
+| **Media Compressor** 🖥️ | FFmpeg-grade image & video compression — **desktop only** |
+| **Video → GIF** 🖥️ | Trim a video clip and export an optimized GIF — **desktop only** |
+
+### 🔐 Security (3)
+| Tool | Description |
+|---|---|
+| Hash Generator | Generate SHA-1, SHA-256, SHA-512 cryptographic hashes |
+| Password Generator | Generate strong, secure random passwords (Web Crypto) |
+| JWT Generator | Sign and generate JWT tokens (HS256, RS256, etc.) |
+
+### 🖥️ Frontend (7)
+| Tool | Description |
+|---|---|
+| SVG Preview | Preview SVG files, remove bloat, and export optimized code |
 | Responsive Tester | Preview any URL at common device breakpoints |
 | Flexbox Playground | Visually explore CSS flexbox properties |
 | Grid Playground | Build CSS Grid layouts visually |
 | Favicon Generator | Create favicons from text or emoji in all required sizes |
 | Keyframe Builder | Visually build CSS `@keyframes` animations |
+| HTML Preview | Live HTML + CSS + JS editor with sandboxed preview |
 
-### ⚙️ Backend
+### 🎲 Generator (4)
+| Tool | Description |
+|---|---|
+| QR & Barcode Generator | Generate QR codes, PDF417, Data Matrix, and 1D barcodes |
+| UUID Generator | Generate random UUID v4 strings |
+| Meta Tag Generator | Generate SEO, Open Graph, and Twitter Card meta tags |
+| Lorem Ipsum | Generate placeholder lorem ipsum text |
+
+### ⚙️ Backend (3)
 | Tool | Description |
 |---|---|
 | Log Prettifier | Colorize and parse JSON logs and stack traces |
 | NoSQL Viewer | Explore JSON documents like a NoSQL database viewer |
 | Cron Parser | Parse cron expressions and preview next run times |
 
-### 🔌 API
+### 🔌 API (1)
 | Tool | Description |
 |---|---|
-| REST Client | Advanced REST client — send requests, manage collections |
-
-### 🎲 Generator
-| Tool | Description |
-|---|---|
-| QR & Barcode Generator | Generate QR codes, PDF417, Data Matrix, and 1D barcodes |
-| UUID Generator | Generate random UUID v4 strings |
-| Mock Data Generator | Generate fake names, emails, addresses, and more |
-| Meta Tag Generator | Generate SEO, Open Graph, and Twitter Card meta tags |
-| Lorem Ipsum | Generate placeholder lorem ipsum text |
+| REST Client | Send requests, inspect responses — **CORS-free in the desktop app** |
 
 ---
 
+## 🛠️ Tech stack
 
-## 📱 PWA / Offline Support
+- **React 18** + **TypeScript** + **Vite 5** + **React Router 6**
+- **Monaco Editor** for the code/diff tools, **Motion** for animations
+- **Tauri v2** (Rust) for the desktop app; native FFmpeg + `reqwest` bridges
+- **vite-plugin-pwa** for offline / installable PWA
 
-DevToolbox is a fully installable Progressive Web App. After the first visit:
+## 📱 PWA / Offline
 
-- All assets are cached by the service worker
-- The app works **completely offline**
-- Updates are applied automatically in the background
-
-To install: click the browser's **Install App** / **Add to Home Screen** prompt.
-
----
+DevToolbox is a fully installable Progressive Web App. After the first visit all assets are cached, the app works completely offline, and updates apply automatically in the background. Install via your browser's **Install App** / **Add to Home Screen** prompt.
 
 ## 🔒 Privacy
 
-- **Zero telemetry** — no analytics, no tracking
-- **No backend** — all processing happens in your browser
-- **No data transmission** — your code, passwords, images, and keys never leave your device
-
----
+- **No backend** — all processing happens on your device
+- **No data transmission** — your code, passwords, images, and keys never leave your machine
+- The only outbound requests are ones **you** make in the REST Client, or fetching the latest release list for the download button
 
 ## 📄 License
 

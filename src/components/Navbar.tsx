@@ -117,28 +117,6 @@ export default function Navbar() {
         fontFamily: "'Architects Daughter', var(--font-sans)",
         fontWeight: 600,
       }}>
-        <span style={{
-          width: 7, height: 7, borderRadius: '50%',
-          background: 'var(--card-gen-text)',
-          display: 'inline-block',
-          border: '1px solid var(--sketch-text)',
-        }} />
-        <span className="hidden sm:inline" style={{ opacity: 0.7 }}>local toolbox · 100% private</span>
-
-        {/* GitHub link */}
-        <a
-          href={REPO_URL} target="_blank" rel="noreferrer"
-          title="View source on GitHub"
-          style={{
-            color: 'var(--sketch-text)', textDecoration: 'none', fontWeight: 700,
-            fontSize: 13, opacity: 0.8, transition: 'opacity 0.15s',
-          }}
-          onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
-          onMouseLeave={e => (e.currentTarget.style.opacity = '0.8')}
-        >
-          github ↗
-        </a>
-
         {/* Download desktop app — opens on hover */}
         {!inApp && (
           <div style={{ position: 'relative' }}
