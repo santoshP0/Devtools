@@ -2,16 +2,49 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::process::Command;
 
+// Resolve the ffmpeg binary. A GUI app launched from Finder/Dock does NOT
+// inherit the shell PATH, so a bare "ffmpeg" fails even when it's installed
+// (e.g. Homebrew's /opt/homebrew/bin). Check the usual install locations first,
+// then fall back to a plain PATH lookup (which works when run from a terminal).
+fn ffmpeg_program() -> String {
+  #[cfg(not(windows))]
+  const CANDIDATES: &[&str] = &[
+    "/opt/homebrew/bin/ffmpeg", // Apple Silicon Homebrew
+    "/usr/local/bin/ffmpeg",    // Intel Homebrew
+    "/opt/local/bin/ffmpeg",    // MacPorts
+    "/usr/bin/ffmpeg",
+    "/bin/ffmpeg",
+    "/snap/bin/ffmpeg",         // Linux snap
+  ];
+  #[cfg(windows)]
+  const CANDIDATES: &[&str] = &[
+    r"C:\ffmpeg\bin\ffmpeg.exe",
+    r"C:\Program Files\ffmpeg\bin\ffmpeg.exe",
+  ];
+  for c in CANDIDATES {
+    if Path::new(c).is_file() {
+      return (*c).to_string();
+    }
+  }
+  "ffmpeg".to_string()
+}
+
 // Hide the console window that would flash on Windows for each ffmpeg spawn
 fn ffmpeg_cmd() -> Command {
-  let cmd = Command::new("ffmpeg");
+  let mut cmd = Command::new(ffmpeg_program());
+  // Also widen PATH so a bare "ffmpeg" fallback can still be found in a GUI
+  // launch where the inherited PATH is minimal.
+  #[cfg(not(windows))]
+  {
+    let extra = "/opt/homebrew/bin:/usr/local/bin:/opt/local/bin";
+    let path = std::env::var("PATH").map(|p| format!("{extra}:{p}")).unwrap_or_else(|_| extra.to_string());
+    cmd.env("PATH", path);
+  }
   #[cfg(windows)]
-  let cmd = {
+  {
     use std::os::windows::process::CommandExt;
-    let mut c = cmd;
-    c.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
-    c
-  };
+    cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+  }
   cmd
 }
 
