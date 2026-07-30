@@ -26,6 +26,7 @@ export default function Navbar() {
     document.documentElement.dataset.theme === 'dark'
   )
   const [dlOpen, setDlOpen] = useState(false)
+  const [macHelp, setMacHelp] = useState(false)
   const [assets, setAssets] = useState<{ os: Os; label: string; url: string }[] | null>(null)
 
   const loadAssets = () => {
@@ -121,7 +122,7 @@ export default function Navbar() {
         {!inApp && (
           <div style={{ position: 'relative' }}
             onMouseEnter={openDownload}
-            onMouseLeave={() => setDlOpen(false)}
+            onMouseLeave={() => { setDlOpen(false); setMacHelp(false) }}
           >
             <button
               onClick={toggleDownload}
@@ -173,6 +174,40 @@ export default function Navbar() {
                       {a.label}
                     </a>
                   ))}
+                  {assets?.some(a => a.os === 'mac') && (
+                    <div style={{ borderTop: '1px dashed var(--sketch-text)', marginTop: 4, paddingTop: 4 }}>
+                      <button
+                        onClick={() => setMacHelp(o => !o)}
+                        style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
+                          padding: '6px 10px', fontSize: 12, color: 'var(--sketch-text)',
+                          background: 'transparent', border: 'none', cursor: 'pointer',
+                          fontFamily: "'Architects Daughter', var(--font-sans)", fontWeight: 700, opacity: 0.85,
+                        }}
+                      >
+                        <span>🍎 macOS says it can't open it?</span>
+                        <span style={{ fontSize: 10 }}>{macHelp ? '▲' : '▼'}</span>
+                      </button>
+                      {macHelp && (
+                        <div style={{ padding: '4px 10px 8px', fontSize: 12, color: 'var(--sketch-text)', opacity: 0.9, lineHeight: 1.5 }}>
+                          <p style={{ margin: '0 0 6px', opacity: 0.75 }}>
+                            The app isn't signed with Apple yet, so macOS blocks it once. To allow it:
+                          </p>
+                          <ol style={{ margin: 0, paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                            <li>Drag <b>DevToolbox</b> into <b>Applications</b> and double-click it.</li>
+                            <li>When it says <i>"Apple could not verify…"</i>, click <b>Done</b>.</li>
+                            <li>Open <b>System Settings → Privacy &amp; Security</b>.</li>
+                            <li>Scroll down and click <b>Open Anyway</b> next to DevToolbox.</li>
+                            <li>Click <b>Open Anyway</b> again and enter your Mac password.</li>
+                          </ol>
+                          <p style={{ margin: '6px 0 0', opacity: 0.6 }}>
+                            Prefer Terminal? Run:<br />
+                            <code style={{ fontSize: 11 }}>xattr -dr com.apple.quarantine /Applications/DevToolbox.app</code>
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <a href={`${REPO_URL}/releases/latest`} target="_blank" rel="noreferrer"
                     style={{ padding: '8px 10px', fontSize: 12, color: 'var(--sketch-text)', textDecoration: 'none', opacity: 0.7, borderTop: '1px dashed var(--sketch-text)', marginTop: 4 }}
                   >

@@ -46,6 +46,17 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'DevToolbox ${{ github.ref_name }}'
-          releaseBody: 'Download for your OS below: .dmg (macOS), .msi/.exe (Windows), .AppImage/.deb (Linux).'
+          releaseBody: |
+            Download for your OS below: **.dmg** (macOS), **.msi/.exe** (Windows), **.AppImage/.deb** (Linux).
+
+            ### 🍎 macOS: "Apple could not verify DevToolbox"
+            The app isn't notarized by Apple yet, so macOS blocks it the first time. To allow it:
+            1. Drag **DevToolbox** into **Applications** and double-click it.
+            2. On the "could not verify" dialog, click **Done**.
+            3. Open **System Settings → Privacy & Security**.
+            4. Scroll down and click **Open Anyway** next to DevToolbox.
+            5. Click **Open Anyway** again and enter your Mac password.
+
+            Prefer Terminal? Run: `xattr -dr com.apple.quarantine /Applications/DevToolbox.app`
           releaseDraft: false
           args: ${{ matrix.args }}
