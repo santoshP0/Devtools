@@ -17,6 +17,8 @@ jobs:
             args: --target aarch64-apple-darwin
           - platform: macos-latest          # Intel
             args: --target x86_64-apple-darwin
+          - platform: macos-latest          # Universal (fallback for "not sure")
+            args: --target universal-apple-darwin
           - platform: ubuntu-22.04
             args: ''
           - platform: windows-latest
@@ -64,6 +66,17 @@ jobs:
           mv tmp-ff/ffmpeg src-tauri/binaries/ffmpeg-x86_64-apple-darwin
           chmod +x src-tauri/binaries/ffmpeg-x86_64-apple-darwin
 
+      - name: Bundle ffmpeg (macOS Universal, GPL)
+        if: contains(matrix.args, 'universal-apple-darwin')
+        run: |
+          mkdir -p src-tauri/binaries tmp-ff/arm tmp-ff/x64
+          curl -L -o tmp-ff/arm.zip https://ffmpeg.martin-riedl.de/redirect/latest/macos/arm64/release/ffmpeg.zip
+          curl -L -o tmp-ff/x64.zip https://ffmpeg.martin-riedl.de/redirect/latest/macos/amd64/release/ffmpeg.zip
+          unzip -o -j tmp-ff/arm.zip ffmpeg -d tmp-ff/arm
+          unzip -o -j tmp-ff/x64.zip ffmpeg -d tmp-ff/x64
+          lipo -create tmp-ff/arm/ffmpeg tmp-ff/x64/ffmpeg -output src-tauri/binaries/ffmpeg-universal-apple-darwin
+          chmod +x src-tauri/binaries/ffmpeg-universal-apple-darwin
+
       - name: Bundle ffmpeg (Linux, GPL)
         if: matrix.platform == 'ubuntu-22.04'
         run: |
@@ -102,3 +115,45 @@ jobs:
             Prefer Terminal? Run: `xattr -dr com.apple.quarantine /Applications/DevToolbox.app`
           releaseDraft: false
           args: ${{ matrix.args }}
+
+  # Compose the final release notes from commit messages (one line per change,
+  # only what changed since the previous tag) so notes are accurate and never
+  # stale. Runs after all builds so it wins over the fallback body above.
+  notes:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compose release notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          PREV=$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)
+          if [ -n "$PREV" ]; then RANGE="${PREV}..${TAG}"; else RANGE="${TAG}"; fi
+          {
+            echo "## What's changed"
+            git log --no-merges --pretty='- %s' "$RANGE" | grep -viE '^- (bump|merge|wip|revert)' || echo "- Maintenance and improvements"
+            echo ""
+            echo "## Install"
+            echo "- **macOS** — .dmg: Apple Silicon, Intel, or Universal"
+            echo "- **Windows** — .msi / .exe"
+            echo "- **Linux** — .AppImage / .deb"
+            echo ""
+            echo "FFmpeg is bundled into the desktop app — video and media tools work with no setup."
+            echo ""
+            echo "### 🍎 macOS: \"Apple could not verify DevToolbox\""
+            echo "The app isn't notarized yet, so macOS blocks it the first time:"
+            echo "1. Drag **DevToolbox** into **Applications** and open it."
+            echo "2. Click **Done** on the warning."
+            echo "3. Open **System Settings → Privacy & Security** and click **Open Anyway**."
+            echo "4. Confirm **Open Anyway** and enter your Mac password."
+            echo ""
+            echo "Prefer Terminal? \`xattr -dr com.apple.quarantine /Applications/DevToolbox.app\`"
+          } > notes.md
+          gh release edit "$TAG" --notes-file notes.md
