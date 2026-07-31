@@ -13,8 +13,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: macos-latest
-            args: --target universal-apple-darwin
+          - platform: macos-latest          # Apple Silicon
+            args: --target aarch64-apple-darwin
+          - platform: macos-latest          # Intel
+            args: --target x86_64-apple-darwin
           - platform: ubuntu-22.04
             args: ''
           - platform: windows-latest
@@ -44,16 +46,23 @@ jobs:
       # Named per Rust target triple (Tauri strips the suffix at bundle time).
       # Redistributable GPL builds: macOS = martin-riedl.de, Win/Linux = BtbN.
       # See src-tauri/binaries/README.md for licensing.
-      - name: Bundle ffmpeg (macOS universal, GPL)
-        if: matrix.platform == 'macos-latest'
+      - name: Bundle ffmpeg (macOS Apple Silicon, GPL)
+        if: contains(matrix.args, 'aarch64-apple-darwin')
         run: |
-          mkdir -p src-tauri/binaries tmp-ff/arm tmp-ff/x64
+          mkdir -p src-tauri/binaries tmp-ff
           curl -L -o tmp-ff/arm.zip https://ffmpeg.martin-riedl.de/redirect/latest/macos/arm64/release/ffmpeg.zip
+          unzip -o -j tmp-ff/arm.zip ffmpeg -d tmp-ff
+          mv tmp-ff/ffmpeg src-tauri/binaries/ffmpeg-aarch64-apple-darwin
+          chmod +x src-tauri/binaries/ffmpeg-aarch64-apple-darwin
+
+      - name: Bundle ffmpeg (macOS Intel, GPL)
+        if: contains(matrix.args, 'x86_64-apple-darwin')
+        run: |
+          mkdir -p src-tauri/binaries tmp-ff
           curl -L -o tmp-ff/x64.zip https://ffmpeg.martin-riedl.de/redirect/latest/macos/amd64/release/ffmpeg.zip
-          unzip -o -j tmp-ff/arm.zip ffmpeg -d tmp-ff/arm
-          unzip -o -j tmp-ff/x64.zip ffmpeg -d tmp-ff/x64
-          lipo -create tmp-ff/arm/ffmpeg tmp-ff/x64/ffmpeg -output src-tauri/binaries/ffmpeg-universal-apple-darwin
-          chmod +x src-tauri/binaries/ffmpeg-universal-apple-darwin
+          unzip -o -j tmp-ff/x64.zip ffmpeg -d tmp-ff
+          mv tmp-ff/ffmpeg src-tauri/binaries/ffmpeg-x86_64-apple-darwin
+          chmod +x src-tauri/binaries/ffmpeg-x86_64-apple-darwin
 
       - name: Bundle ffmpeg (Linux, GPL)
         if: matrix.platform == 'ubuntu-22.04'

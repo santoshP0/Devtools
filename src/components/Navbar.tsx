@@ -8,7 +8,12 @@ import OsIcon, { Os } from './OsIcon'
 const REPO_URL = 'https://github.com/santoshP0/Devtools'
 
 function assetInfo(name: string): { os: Os; label: string } | null {
-  if (name.endsWith('.dmg')) return { os: 'mac', label: 'macOS' }
+  if (name.endsWith('.dmg')) {
+    // per-arch mac builds — label by the chip so users pick the right one
+    if (name.includes('aarch64') || name.includes('arm64')) return { os: 'mac', label: 'macOS (Apple chip)' }
+    if (name.includes('x64') || name.includes('x86_64') || name.includes('intel')) return { os: 'mac', label: 'macOS (Intel)' }
+    return { os: 'mac', label: 'macOS' } // fallback (e.g. a universal build)
+  }
   if (name.endsWith('.exe')) return { os: 'windows', label: 'Windows' }
   if (name.endsWith('.AppImage')) return { os: 'linux', label: 'Linux (AppImage)' }
   if (name.endsWith('.deb')) return { os: 'linux', label: 'Linux (deb)' }
