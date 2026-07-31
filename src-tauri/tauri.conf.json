@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "DevToolbox",
-  "version": "1.2.6",
+  "version": "1.2.7",
   "identifier": "com.santoshp0.devtoolbox",
   "build": {
     "frontendDist": "../dist",
@@ -18,7 +18,9 @@
         "minWidth": 640,
         "minHeight": 480,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true
       }
     ],
     "security": {

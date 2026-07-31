@@ -118,6 +118,9 @@ export default function Navbar() {
       height: 54,
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       padding: '0 24px',
+      // desktop macOS uses an overlay titlebar (nav IS the top bar, follows the
+      // theme) — pad left so the traffic-light buttons don't cover the logo
+      paddingLeft: inApp && userOs === 'mac' ? 84 : 24,
       background: 'var(--sketch-bg)',
       borderBottom: '2px solid var(--sketch-text)',
     }}>
