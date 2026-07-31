@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "DevToolbox",
-  "version": "1.2.7",
+  "version": "1.2.8",
   "identifier": "com.santoshp0.devtoolbox",
   "build": {
     "frontendDist": "../dist",
@@ -38,7 +38,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "createUpdaterArtifacts": true,
+    "createUpdaterArtifacts": false,
     "externalBin": ["binaries/ffmpeg"],
     "macOS": {
       "signingIdentity": "-"
