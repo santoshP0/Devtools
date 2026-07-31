@@ -2,11 +2,23 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::process::Command;
 
-// Resolve the ffmpeg binary. A GUI app launched from Finder/Dock does NOT
-// inherit the shell PATH, so a bare "ffmpeg" fails even when it's installed
-// (e.g. Homebrew's /opt/homebrew/bin). Check the usual install locations first,
-// then fall back to a plain PATH lookup (which works when run from a terminal).
+// Resolve the ffmpeg binary. We ship ffmpeg as a Tauri sidecar (externalBin),
+// so it lives right next to the app executable — check there first so the user
+// never has to install anything. Then fall back to common system locations
+// (a GUI app launched from Finder/Dock does NOT inherit the shell PATH, so a
+// bare "ffmpeg" fails even when installed), and finally a plain PATH lookup.
 fn ffmpeg_program() -> String {
+  // 1. bundled sidecar shipped with the app
+  if let Ok(exe) = std::env::current_exe() {
+    if let Some(dir) = exe.parent() {
+      let bundled = dir.join(if cfg!(windows) { "ffmpeg.exe" } else { "ffmpeg" });
+      if bundled.is_file() {
+        return bundled.to_string_lossy().into_owned();
+      }
+    }
+  }
+
+  // 2. common system install locations
   #[cfg(not(windows))]
   const CANDIDATES: &[&str] = &[
     "/opt/homebrew/bin/ffmpeg", // Apple Silicon Homebrew

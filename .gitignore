@@ -7,3 +7,6 @@ dist
 .vite
 .claude
 .code-reviewgraph
+
+# bundled ffmpeg sidecars (fetched via scripts/fetch-ffmpeg.mjs / CI)
+src-tauri/binaries/ffmpeg-*
