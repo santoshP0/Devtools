@@ -285,10 +285,7 @@ export default function Navbar() {
                   ✕
                 </button>
               </div>
-              <p style={{ margin: '0 0 18px', fontSize: 13.5, opacity: 0.7, lineHeight: 1.55 }}>
-                DevToolbox for desktop — ffmpeg is bundled in, nothing to install.
-                {userOs === 'mac' && ' Pick your chip, or Universal if unsure (Apple menu → About This Mac).'}
-              </p>
+              <div style={{ marginBottom: 16 }} />
 
               {assets === null && <span style={{ fontSize: 13, opacity: 0.7 }}>loading downloads…</span>}
 
