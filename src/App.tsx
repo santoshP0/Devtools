@@ -6,6 +6,7 @@ import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import CommandPalette from './components/CommandPalette'
 import ToolSwitcher from './components/ToolSwitcher'
+import UpdateBanner from './components/UpdateBanner'
 
 // Smooth transition on every route change — one wrapper covers all pages.
 // AnimatePresence keeps the exiting page's last render mounted while it fades,
@@ -29,6 +30,7 @@ function AnimatedRoutes({ children }: { children: ReactNode }) {
   )
 }
 import Home from './pages/Home'
+import About from './pages/About'
 const JsonFormatter = lazy(() => import('./pages/JsonFormatter'))
 import JsonXml from './pages/JsonXml'
 import Base64 from './pages/Base64'
@@ -112,6 +114,7 @@ export default function App() {
       }}>
         <CommandPalette />
         <ToolSwitcher />
+        <UpdateBanner />
         <Navbar />
         <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
           <AnimatedRoutes>
@@ -124,6 +127,7 @@ export default function App() {
                 setActiveCat={setHomeActiveCat}
               />
             } />
+            <Route path="/about" element={<About />} />
             <Route path="/json-formatter"      element={<Suspense fallback={null}><JsonFormatter /></Suspense>} />
             <Route path="/json-xml"            element={<JsonXml />} />
             <Route path="/base64"              element={<Base64 />} />

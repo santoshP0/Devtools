@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom'
+
 const REPO_URL = 'https://github.com/santoshP0/Devtools'
 
 function GitHubIcon({ size = 17 }: { size?: number }) {
@@ -29,6 +31,12 @@ export default function Footer() {
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
         <span style={{ opacity: 0.75 }}>your files never leave your device</span>
+        <Link to="/about" style={{ color: 'var(--text-dim)', textDecoration: 'none', fontWeight: 600, opacity: 0.85 }}
+          onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+          onMouseLeave={e => (e.currentTarget.style.opacity = '0.85')}
+        >
+          About
+        </Link>
         <a
           href={REPO_URL} target="_blank" rel="noreferrer"
           title="View source on GitHub"

@@ -395,8 +395,17 @@ async fn http_request(req: HttpReq) -> Result<HttpRes, String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-  tauri::Builder::default()
+  let mut builder = tauri::Builder::default()
     .plugin(tauri_plugin_dialog::init())
+    .plugin(tauri_plugin_process::init());
+
+  // in-app auto-update (desktop only)
+  #[cfg(desktop)]
+  {
+    builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+  }
+
+  builder
     .invoke_handler(tauri::generate_handler![ffmpeg_check, ffmpeg_compress, http_request])
     .setup(|app| {
       if cfg!(debug_assertions) {
