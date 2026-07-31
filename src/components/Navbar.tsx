@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { tools } from '../lib/tools'
@@ -7,18 +7,52 @@ import OsIcon, { Os } from './OsIcon'
 
 const REPO_URL = 'https://github.com/santoshP0/Devtools'
 
+// shared sketch-button styles for the download popup
+const cardStyle: CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 12,
+  padding: '12px 14px', borderRadius: 6,
+  background: 'var(--surface)', border: '2px solid var(--sketch-text)',
+  boxShadow: '3px 3px 0px var(--sketch-text)',
+  color: 'var(--sketch-text)', textDecoration: 'none',
+  transition: 'all 0.1s ease-out',
+}
+const rowStyle: CSSProperties = {
+  display: 'flex', alignItems: 'center', gap: 10,
+  padding: '9px 12px', borderRadius: 5,
+  color: 'var(--sketch-text)', textDecoration: 'none',
+  transition: 'background 0.1s ease-out',
+}
+const lift = (e: { currentTarget: HTMLElement }) => { e.currentTarget.style.transform = 'translate(-2px,-2px)'; e.currentTarget.style.boxShadow = '5px 5px 0px var(--sketch-text)' }
+const drop = (e: { currentTarget: HTMLElement }) => { e.currentTarget.style.transform = 'translate(0,0)'; e.currentTarget.style.boxShadow = '3px 3px 0px var(--sketch-text)' }
+const rowIn = (e: { currentTarget: HTMLElement }) => { e.currentTarget.style.background = 'var(--surface2)' }
+const rowOut = (e: { currentTarget: HTMLElement }) => { e.currentTarget.style.background = 'transparent' }
+
 function assetInfo(name: string): { os: Os; label: string } | null {
   if (name.endsWith('.dmg')) {
     // per-arch mac builds — label by the chip so users pick the right one
+    if (name.includes('universal')) return { os: 'mac', label: 'macOS (Universal)' }
     if (name.includes('aarch64') || name.includes('arm64')) return { os: 'mac', label: 'macOS (Apple chip)' }
     if (name.includes('x64') || name.includes('x86_64') || name.includes('intel')) return { os: 'mac', label: 'macOS (Intel)' }
-    return { os: 'mac', label: 'macOS' } // fallback (e.g. a universal build)
+    return { os: 'mac', label: 'macOS' } // fallback
   }
   if (name.endsWith('.exe')) return { os: 'windows', label: 'Windows' }
   if (name.endsWith('.AppImage')) return { os: 'linux', label: 'Linux (AppImage)' }
   if (name.endsWith('.deb')) return { os: 'linux', label: 'Linux (deb)' }
   return null
 }
+
+// Best-effort OS guess from the browser so we can lead with the right download.
+// Note: browsers can't tell Apple Silicon from Intel (both report "Intel Mac"),
+// so Mac users still choose the chip themselves.
+function detectOs(): Os | null {
+  const ua = `${navigator.userAgent} ${navigator.platform ?? ''}`.toLowerCase()
+  if (/iphone|ipad|android/.test(ua)) return null // mobile can't run the desktop app
+  if (/mac/.test(ua)) return 'mac'
+  if (/win/.test(ua)) return 'windows'
+  if (/linux|x11|cros/.test(ua)) return 'linux'
+  return null
+}
+
 
 export default function Navbar() {
   const { pathname } = useLocation()
@@ -30,9 +64,28 @@ export default function Navbar() {
   const [dark, setDark] = useState(() =>
     document.documentElement.dataset.theme === 'dark'
   )
-  const [dlOpen, setDlOpen] = useState(false)
-  const [macHelp, setMacHelp] = useState(false)
+  const [showOther, setShowOther] = useState(false)
+  const [chipModal, setChipModal] = useState(false)
   const [assets, setAssets] = useState<{ os: Os; label: string; url: string }[] | null>(null)
+  const userOs = detectOs()
+
+  // mac chip options for the popup (only those present in the release show up)
+  const macApple = assets?.find(a => a.label.includes('Apple'))
+  const macIntel = assets?.find(a => a.label.includes('Intel'))
+  const macUniversal = assets?.find(a => a.label.includes('Universal'))
+    ?? assets?.find(a => a.os === 'mac' && a.label === 'macOS')
+  const macOptions = [
+    macApple && { url: macApple.url, title: 'Apple chip', sub: 'M1 · M2 · M3 · M4 — Macs from 2020+' },
+    macIntel && { url: macIntel.url, title: 'Intel', sub: 'Macs made before 2020' },
+    macUniversal && { url: macUniversal.url, title: 'Universal', sub: 'Runs on any Mac · larger download' },
+  ].filter(Boolean) as { url: string; title: string; sub: string }[]
+
+  // primary = the visitor's own OS; others go behind a toggle
+  const primaryAssets = userOs && userOs !== 'mac' ? (assets ?? []).filter(a => a.os === userOs) : []
+  const hasPrimary = userOs === 'mac' ? macOptions.length > 0 : primaryAssets.length > 0
+  const otherAssets = (assets ?? []).filter(a =>
+    userOs === 'mac' ? a.os !== 'mac' : !primaryAssets.includes(a),
+  )
 
   const loadAssets = () => {
     if (assets) return
@@ -46,8 +99,8 @@ export default function Navbar() {
       ))
       .catch(() => setAssets([]))
   }
-  const openDownload = () => { setDlOpen(true); loadAssets() }
-  const toggleDownload = () => { setDlOpen(o => !o); loadAssets() }
+  const openModal = () => { setChipModal(true); setShowOther(false); loadAssets() }
+  const closeModal = () => { setChipModal(false); setShowOther(false) }
 
   const toggleTheme = () => {
     const next = dark ? 'light' : 'dark'
@@ -123,105 +176,28 @@ export default function Navbar() {
         fontFamily: "'Architects Daughter', var(--font-sans)",
         fontWeight: 600,
       }}>
-        {/* Download desktop app — opens on hover */}
+        {/* Download desktop app — click opens the download popup */}
         {!inApp && (
-          <div style={{ position: 'relative' }}
-            onMouseEnter={openDownload}
-            onMouseLeave={() => { setDlOpen(false); setMacHelp(false) }}
+          <button
+            onClick={openModal}
+            title="Download the desktop app — bundled ffmpeg, no setup"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '4px 10px', borderRadius: 4,
+              background: 'var(--surface)',
+              border: '2px solid var(--sketch-text)',
+              boxShadow: '2px 2px 0px var(--sketch-text)',
+              cursor: 'pointer', fontSize: 13, color: 'var(--sketch-text)',
+              fontFamily: "'Architects Daughter', var(--font-sans)",
+              fontWeight: 700,
+              transition: 'all 0.1s ease-out',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translate(-1px, -1px)'; e.currentTarget.style.boxShadow = '3px 3px 0px var(--sketch-text)' }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'translate(0, 0)'; e.currentTarget.style.boxShadow = '2px 2px 0px var(--sketch-text)' }}
           >
-            <button
-              onClick={toggleDownload}
-              title="Download the desktop app — includes exclusive tools like the FFmpeg Media Compressor"
-              style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                padding: '4px 10px', borderRadius: 4,
-                background: 'var(--surface)',
-                border: '2px solid var(--sketch-text)',
-                boxShadow: '2px 2px 0px var(--sketch-text)',
-                cursor: 'pointer', fontSize: 13, color: 'var(--sketch-text)',
-                fontFamily: "'Architects Daughter', var(--font-sans)",
-                fontWeight: 700,
-                transition: 'all 0.1s ease-out',
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.transform = 'translate(-1px, -1px)'
-                e.currentTarget.style.boxShadow = '3px 3px 0px var(--sketch-text)'
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.transform = 'translate(0, 0)'
-                e.currentTarget.style.boxShadow = '2px 2px 0px var(--sketch-text)'
-              }}
-            >
-              <span style={{ fontSize: 14, lineHeight: 1 }}>⬇</span>
-              <span className="hidden sm:inline">get app</span>
-            </button>
-            {dlOpen && (
-              // Outer wrapper touches the button (top:100%) with transparent
-              // paddingTop as a hover bridge — so crossing the visual gap to the
-              // menu stays inside the hover area and doesn't close it.
-              <div style={{ position: 'absolute', right: 0, top: '100%', paddingTop: 8, zIndex: 61 }}>
-                <div style={{
-                  background: 'var(--surface)', border: '2px solid var(--sketch-text)',
-                  borderRadius: 6, boxShadow: '3px 3px 0px var(--sketch-text)',
-                  minWidth: 210, padding: 6,
-                  display: 'flex', flexDirection: 'column',
-                }}>
-                  {assets === null && (
-                    <span style={{ padding: '8px 10px', fontSize: 12, opacity: 0.7 }}>loading…</span>
-                  )}
-                  {assets?.map(a => (
-                    <a key={a.url} href={a.url}
-                      style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', fontSize: 13, color: 'var(--sketch-text)', textDecoration: 'none', borderRadius: 4, fontWeight: 700 }}
-                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
-                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                    >
-                      <OsIcon os={a.os} />
-                      {a.label}
-                    </a>
-                  ))}
-                  {assets?.some(a => a.os === 'mac') && (
-                    <div style={{ borderTop: '1px dashed var(--sketch-text)', marginTop: 4, paddingTop: 4 }}>
-                      <button
-                        onClick={() => setMacHelp(o => !o)}
-                        style={{
-                          display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%',
-                          padding: '6px 10px', fontSize: 12, color: 'var(--sketch-text)',
-                          background: 'transparent', border: 'none', cursor: 'pointer',
-                          fontFamily: "'Architects Daughter', var(--font-sans)", fontWeight: 700, opacity: 0.85,
-                        }}
-                      >
-                        <span>🍎 macOS says it can't open it?</span>
-                        <span style={{ fontSize: 10 }}>{macHelp ? '▲' : '▼'}</span>
-                      </button>
-                      {macHelp && (
-                        <div style={{ padding: '4px 10px 8px', fontSize: 12, color: 'var(--sketch-text)', opacity: 0.9, lineHeight: 1.5 }}>
-                          <p style={{ margin: '0 0 6px', opacity: 0.75 }}>
-                            The app isn't signed with Apple yet, so macOS blocks it once. To allow it:
-                          </p>
-                          <ol style={{ margin: 0, paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 3 }}>
-                            <li>Drag <b>DevToolbox</b> into <b>Applications</b> and double-click it.</li>
-                            <li>When it says <i>"Apple could not verify…"</i>, click <b>Done</b>.</li>
-                            <li>Open <b>System Settings → Privacy &amp; Security</b>.</li>
-                            <li>Scroll down and click <b>Open Anyway</b> next to DevToolbox.</li>
-                            <li>Click <b>Open Anyway</b> again and enter your Mac password.</li>
-                          </ol>
-                          <p style={{ margin: '6px 0 0', opacity: 0.6 }}>
-                            Prefer Terminal? Run:<br />
-                            <code style={{ fontSize: 11 }}>xattr -dr com.apple.quarantine /Applications/DevToolbox.app</code>
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  <a href={`${REPO_URL}/releases/latest`} target="_blank" rel="noreferrer"
-                    style={{ padding: '8px 10px', fontSize: 12, color: 'var(--sketch-text)', textDecoration: 'none', opacity: 0.7, borderTop: '1px dashed var(--sketch-text)', marginTop: 4 }}
-                  >
-                    all downloads →
-                  </a>
-                </div>
-              </div>
-            )}
-          </div>
+            <span style={{ fontSize: 14, lineHeight: 1 }}>⬇</span>
+            <span className="hidden sm:inline">get app</span>
+          </button>
         )}
 
         {/* Theme toggle */}
@@ -265,6 +241,120 @@ export default function Navbar() {
           <span className="hidden sm:inline">{dark ? 'light' : 'dark'}</span>
         </button>
       </div>
+
+      {/* Download popup — OS-aware: Mac chip picker + other platforms */}
+      <AnimatePresence>
+        {chipModal && (
+          <motion.div
+            key="dl-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            onClick={closeModal}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 100,
+              background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(2px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+            }}
+          >
+            <motion.div
+              key="dl-card"
+              initial={{ scale: 0.9, y: 14, opacity: 0, rotate: -1.5 }}
+              animate={{ scale: 1, y: 0, opacity: 1, rotate: 0 }}
+              exit={{ scale: 0.9, y: 14, opacity: 0, rotate: -1.5 }}
+              transition={{ type: 'spring', stiffness: 320, damping: 24 }}
+              onClick={e => e.stopPropagation()}
+              style={{
+                background: 'var(--surface)', border: '2px solid var(--sketch-text)',
+                boxShadow: '6px 6px 0px var(--sketch-text)', borderRadius: 10,
+                padding: 26, maxWidth: 440, width: '100%',
+                color: 'var(--sketch-text)', fontFamily: "'Architects Daughter', var(--font-sans)",
+              }}
+            >
+              {/* header */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <img src={dark ? '/AppIconDarkTheme.png' : '/AppIconLightTheme.png'} alt="" style={{ width: 30, height: 30 }} />
+                  <h3 style={{ margin: 0, fontSize: 21, fontWeight: 700 }}>
+                    {userOs === 'mac' ? 'which mac chip?' : 'download the app'}
+                  </h3>
+                </div>
+                <button onClick={closeModal} aria-label="Close"
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 20, lineHeight: 1, color: 'var(--sketch-text)', opacity: 0.55, padding: 4 }}>
+                  ✕
+                </button>
+              </div>
+              <p style={{ margin: '0 0 18px', fontSize: 13.5, opacity: 0.7, lineHeight: 1.55 }}>
+                DevToolbox for desktop — ffmpeg is bundled in, nothing to install.
+                {userOs === 'mac' && ' Pick your chip, or Universal if unsure (Apple menu → About This Mac).'}
+              </p>
+
+              {assets === null && <span style={{ fontSize: 13, opacity: 0.7 }}>loading downloads…</span>}
+
+              {/* primary picks for the visitor's OS */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {userOs === 'mac'
+                  ? macOptions.map(o => (
+                      <a key={o.title} href={o.url} onClick={closeModal} style={cardStyle} onMouseEnter={lift} onMouseLeave={drop}>
+                        <OsIcon os="mac" />
+                        <span style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                          <span style={{ fontSize: 16, fontWeight: 700 }}>{o.title}</span>
+                          <span style={{ fontSize: 11.5, opacity: 0.65 }}>{o.sub}</span>
+                        </span>
+                        <span style={{ fontSize: 16 }}>⬇</span>
+                      </a>
+                    ))
+                  : primaryAssets.map(a => (
+                      <a key={a.url} href={a.url} onClick={closeModal} style={cardStyle} onMouseEnter={lift} onMouseLeave={drop}>
+                        <OsIcon os={a.os} />
+                        <span style={{ fontSize: 16, fontWeight: 700, flex: 1 }}>{a.label}</span>
+                        <span style={{ fontSize: 16 }}>⬇</span>
+                      </a>
+                    ))}
+
+                {/* unknown OS (e.g. mobile) — show everything as primary cards */}
+                {!hasPrimary && userOs !== 'mac' && otherAssets.map(a => (
+                  <a key={a.url} href={a.url} onClick={closeModal} style={cardStyle} onMouseEnter={lift} onMouseLeave={drop}>
+                    <OsIcon os={a.os} />
+                    <span style={{ fontSize: 16, fontWeight: 700, flex: 1 }}>{a.label}</span>
+                    <span style={{ fontSize: 16 }}>⬇</span>
+                  </a>
+                ))}
+
+                {assets && !hasPrimary && otherAssets.length === 0 && (
+                  <span style={{ fontSize: 13, opacity: 0.7 }}>No downloads published yet — check back shortly.</span>
+                )}
+              </div>
+
+              {/* other platforms, tucked behind a toggle when we have a primary */}
+              {hasPrimary && otherAssets.length > 0 && (
+                <div style={{ marginTop: 14, borderTop: '1px dashed var(--sketch-text)', paddingTop: 10 }}>
+                  <button onClick={() => setShowOther(o => !o)}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', background: 'transparent', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 700, opacity: 0.75, color: 'var(--sketch-text)', fontFamily: "'Architects Daughter', var(--font-sans)", padding: 2 }}>
+                    <span>other platforms</span>
+                    <span style={{ fontSize: 11 }}>{showOther ? '▲' : '▼'}</span>
+                  </button>
+                  {showOther && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>
+                      {otherAssets.map(a => (
+                        <a key={a.url} href={a.url} onClick={closeModal} style={rowStyle} onMouseEnter={rowIn} onMouseLeave={rowOut}>
+                          <OsIcon os={a.os} /><span style={{ fontWeight: 700, fontSize: 13.5 }}>{a.label}</span>
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <a href={`${REPO_URL}/releases/latest`} target="_blank" rel="noreferrer"
+                style={{ display: 'inline-block', marginTop: 16, fontSize: 12.5, opacity: 0.55, color: 'var(--sketch-text)', textDecoration: 'none' }}>
+                all downloads →
+              </a>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </nav>
   )
 }
