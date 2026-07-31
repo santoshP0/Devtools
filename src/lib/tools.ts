@@ -86,11 +86,11 @@ const ALL_TOOLS: Tool[] = [
   { name: 'Lorem Ipsum',       slug: 'lorem-ipsum',       icon: 'Pilcrow',         description: 'Generate placeholder lorem ipsum text',                     category: 'Generator', keywords: ['placeholder', 'dummy', 'text', 'filler', 'lipsum'] },
 
   // ── New Tools ──
-  { name: 'Timezone Converter', slug: 'timezone-converter', icon: 'Globe2',     description: 'Compare current time across multiple timezones simultaneously', category: 'Utils',    keywords: ['time', 'tz', 'world clock', 'utc', 'gmt', 'dst'] },
+  { name: 'Timezone Converter', slug: 'timezone-converter', icon: 'Globe',     description: 'Compare current time across multiple timezones simultaneously', category: 'Utils',    keywords: ['time', 'tz', 'world clock', 'utc', 'gmt', 'dst'] },
   { name: 'Pomodoro Timer',     slug: 'pomodoro',           icon: 'Timer',      description: 'Stay focused with timed work and break intervals',              category: 'Utils',    keywords: ['focus', 'timer', 'productivity', 'break', '25 minutes', 'technique'] },
-  { name: 'HTML Preview',       slug: 'html-preview',       icon: 'Code2',      description: 'Live HTML + CSS + JS editor with sandboxed preview',           category: 'Frontend', keywords: ['html', 'css', 'javascript', 'playground', 'codepen', 'sandbox', 'live'] },
+  { name: 'HTML Preview',       slug: 'html-preview',       icon: 'CodeXml',      description: 'Live HTML + CSS + JS editor with sandboxed preview',           category: 'Frontend', keywords: ['html', 'css', 'javascript', 'playground', 'codepen', 'sandbox', 'live'] },
   { name: 'TOML ↔ JSON',        slug: 'toml-json',          icon: 'FileCode',   description: 'Convert between TOML config files and JSON',                   category: 'Data',     keywords: ['toml', 'cargo', 'rust', 'config', 'ini', 'pyproject'] },
-  { name: 'JSON Path Tester',   slug: 'json-path',          icon: 'Filter',     description: 'Query JSON data using JSONPath expressions',                   category: 'Data',     keywords: ['jsonpath', 'query', 'jq', 'filter', 'xpath', 'select'] },
+  { name: 'JSON Path Tester',   slug: 'json-path',          icon: 'ListFilter',     description: 'Query JSON data using JSONPath expressions',                   category: 'Data',     keywords: ['jsonpath', 'query', 'jq', 'filter', 'xpath', 'select'] },
   { name: 'Text ↔ Binary/Hex',  slug: 'text-binary',        icon: 'Binary',     description: 'Encode text to binary, hex, octal or decimal byte values',    category: 'Utils',    keywords: ['binary', 'hex', 'octal', 'decimal', 'encode', 'decode', 'bytes', 'ascii'] },
 
   // ── Backend ──

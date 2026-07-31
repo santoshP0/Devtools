@@ -1,21 +1,23 @@
 import { useRef, useEffect, useMemo, useState } from 'react'
 import ToolCard from '../components/ToolCard'
+import ToolIcon from '../components/ToolIcon'
 import { tools, categories } from '../lib/tools'
 
 const ALL_CATS = categories
 
-const CAT_EMOJIS: Record<string, string> = {
-  All:       '📦',
-  API:       '⚡',
-  Data:      '📊',
-  Security:  '🔐',
-  Generator: '▦',
-  Text:      '📝',
-  Design:    '🎨',
-  Media:     '🔍',
-  Utils:     '⚙️',
-  Frontend:  '📱',
-  Backend:   '🎛️',
+// lucide line icons — match the app's line-icon theme (inherit currentColor)
+const CAT_ICONS: Record<string, string> = {
+  All:       'LayoutGrid',
+  API:       'Zap',
+  Data:      'Database',
+  Security:  'ShieldCheck',
+  Generator: 'WandSparkles',
+  Text:      'Type',
+  Design:    'Palette',
+  Media:     'Image',
+  Utils:     'Wrench',
+  Frontend:  'AppWindow',
+  Backend:   'Server',
 }
 
 const CAT_STYLE: Record<string, { color: string; bg: string }> = {
@@ -190,7 +192,7 @@ export default function Home({ search, setSearch, activeCat, setActiveCat }: Pro
                   }
                 }}
               >
-                <span>{CAT_EMOJIS[cat]}</span>
+                <ToolIcon name={CAT_ICONS[cat]} size={16} />
                 <span>{cat}</span>
                 <span style={{ 
                   fontSize: 11,
