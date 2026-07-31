@@ -56,6 +56,7 @@ jobs:
           unzip -o -j tmp-ff/arm.zip ffmpeg -d tmp-ff
           mv tmp-ff/ffmpeg src-tauri/binaries/ffmpeg-aarch64-apple-darwin
           chmod +x src-tauri/binaries/ffmpeg-aarch64-apple-darwin
+          codesign --force -s - src-tauri/binaries/ffmpeg-aarch64-apple-darwin
 
       - name: Bundle ffmpeg (macOS Intel, GPL)
         if: contains(matrix.args, 'x86_64-apple-darwin')
@@ -65,6 +66,7 @@ jobs:
           unzip -o -j tmp-ff/x64.zip ffmpeg -d tmp-ff
           mv tmp-ff/ffmpeg src-tauri/binaries/ffmpeg-x86_64-apple-darwin
           chmod +x src-tauri/binaries/ffmpeg-x86_64-apple-darwin
+          codesign --force -s - src-tauri/binaries/ffmpeg-x86_64-apple-darwin
 
       - name: Bundle ffmpeg (macOS Universal, GPL)
         if: contains(matrix.args, 'universal-apple-darwin')
@@ -76,6 +78,7 @@ jobs:
           unzip -o -j tmp-ff/x64.zip ffmpeg -d tmp-ff/x64
           lipo -create tmp-ff/arm/ffmpeg tmp-ff/x64/ffmpeg -output src-tauri/binaries/ffmpeg-universal-apple-darwin
           chmod +x src-tauri/binaries/ffmpeg-universal-apple-darwin
+          codesign --force -s - src-tauri/binaries/ffmpeg-universal-apple-darwin
 
       - name: Bundle ffmpeg (Linux, GPL)
         if: matrix.platform == 'ubuntu-22.04'
