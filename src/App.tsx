@@ -12,6 +12,14 @@ import UpdateBanner from './components/UpdateBanner'
 // AnimatePresence keeps the exiting page's last render mounted while it fades,
 // so the old page animates out and the new one in. Opacity+scale only (no
 // translate) so tall, viewport-height tool pages never flash a scrollbar.
+// Full-screen tools (the video editor) fill the viewport and scroll internally —
+// the page footer would push the layout past 100dvh and add a whole-page scroll.
+const NO_FOOTER = new Set(['/video-editor'])
+function AppFooter() {
+  const { pathname } = useLocation()
+  return NO_FOOTER.has(pathname) ? null : <Footer />
+}
+
 function AnimatedRoutes({ children }: { children: ReactNode }) {
   const location = useLocation()
   return (
@@ -41,6 +49,7 @@ import PasswordGenerator from './pages/PasswordGenerator'
 import ImageCompressor from './pages/ImageCompressor'
 import MediaCompressor from './pages/MediaCompressor'
 import VideoToGif from './pages/VideoToGif'
+const VideoEditor = lazy(() => import('./pages/VideoEditor'))
 import QrGenerator from './pages/QrGenerator'
 import UuidGenerator from './pages/UuidGenerator'
 import WordCounter from './pages/WordCounter'
@@ -138,6 +147,7 @@ export default function App() {
             <Route path="/image-compressor"    element={<ImageCompressor />} />
             <Route path="/media-compressor"    element={<MediaCompressor />} />
             <Route path="/video-to-gif"        element={<VideoToGif />} />
+            <Route path="/video-editor"        element={<Suspense fallback={null}><VideoEditor /></Suspense>} />
             <Route path="/qr-generator"        element={<QrGenerator />} />
             <Route path="/uuid-generator"      element={<UuidGenerator />} />
             <Route path="/word-counter"        element={<WordCounter />} />
@@ -197,7 +207,7 @@ export default function App() {
           </Routes>
           </AnimatedRoutes>
         </main>
-        <Footer />
+        <AppFooter />
       </div>
     </BrowserRouter>
     </ToastProvider>

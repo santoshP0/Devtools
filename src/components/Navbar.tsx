@@ -113,7 +113,10 @@ export default function Navbar() {
   }
 
   return (
-    <nav style={{
+    // desktop: the nav doubles as the macOS titlebar — mark it a drag region so
+    // the window drags and double-click zooms like any native app (children with
+    // their own handlers stay clickable; only the bare nav triggers it)
+    <nav data-tauri-drag-region style={{
       position: 'fixed', top: 0, left: 0, right: 0, zIndex: 50,
       height: 54,
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
