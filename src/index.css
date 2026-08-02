@@ -805,10 +805,15 @@ button, .btn, input[type="button"], input[type="submit"] {
   background: var(--surface);
   color: var(--sketch-text);
 }
-button:hover, .btn:hover {
+button:hover:not(.btn-primary), .btn:hover:not(.btn-primary) {
   transform: translate(-1px, -1px) !important;
   box-shadow: 3px 3px 0px var(--sketch-text) !important;
   background: var(--surface2);
+}
+/* primary buttons keep their dark fill on hover (light icon would vanish on surface2) */
+button.btn-primary:hover {
+  transform: translate(-1px, -1px) !important;
+  box-shadow: 3px 3px 0px var(--sketch-text) !important;
 }
 button:active, .btn:active {
   transform: translate(1px, 1px) !important;
@@ -1185,3 +1190,6 @@ button:disabled, .btn:disabled {
   white-space: nowrap; pointer-events: none; z-index: 3000;
   box-shadow: 0 2px 8px rgba(0,0,0,0.25);
 }
+
+/* keep text fields selectable even though the editor disables selection */
+.editor-tips input, .editor-tips textarea { user-select: text; -webkit-user-select: text; }

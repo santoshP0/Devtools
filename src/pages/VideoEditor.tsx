@@ -2,10 +2,12 @@ import { useEffect, useRef, useState, useCallback } from 'react'
 import ToolLayout from '../components/ToolLayout'
 import { invoke, isTauri, convertFileSrc } from '@tauri-apps/api/core'
 import { open, save } from '@tauri-apps/plugin-dialog'
+import { useToast } from '../components/Toast'
 import {
   Scissors, Copy, Trash2, SkipBack, SkipForward, Play, Pause, ChevronLeft, ChevronRight,
   Undo2, Redo2, ZoomIn, ZoomOut, Maximize2,
   Type, Square, Droplets, Upload, ChevronUp, ChevronDown, Circle, Minus, ArrowRight,
+  AudioLines,
 } from 'lucide-react'
 
 const RELEASES_URL = 'https://github.com/santoshP0/Devtools/releases/latest'
@@ -17,7 +19,7 @@ const MIN_PPS = 24
 const MAX_PPS = 400
 const ROW_H = 40   // timeline track row: 34 block + 6 margin
 
-type Kind = 'video' | 'image' | 'text' | 'box' | 'blur' | 'circle' | 'line' | 'arrow'
+type Kind = 'video' | 'image' | 'text' | 'box' | 'blur' | 'circle' | 'line' | 'arrow' | 'audio'
 const SHAPES: Kind[] = ['circle', 'line', 'arrow']
 
 type Item = {
@@ -41,6 +43,7 @@ type Item = {
   strength?: number
   volume?: number
   mute?: boolean
+  srcId?: string        // audio layer -> the clip it was detached from
 }
 
 const uid = () => Math.random().toString(36).slice(2, 9)
@@ -53,8 +56,8 @@ const normalizeTracks = (arr: Item[]): Item[] => {
 }
 const fmtTime = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}.${String(Math.floor((s % 1) * 100)).padStart(2, '0')}`
 
-const KIND_COLOR: Record<Kind, string> = { video: '#3b82f6', image: '#a855f7', text: '#22c55e', box: '#f97316', blur: '#06b6d4', circle: '#ec4899', line: '#eab308', arrow: '#14b8a6' }
-const KIND_LABEL: Record<Kind, string> = { video: 'Clip', image: 'Image', text: 'Text', box: 'Box', blur: 'Blur', circle: 'Circle', line: 'Line', arrow: 'Arrow' }
+const KIND_COLOR: Record<Kind, string> = { video: '#3b82f6', image: '#a855f7', text: '#22c55e', box: '#f97316', blur: '#06b6d4', circle: '#ec4899', line: '#eab308', arrow: '#14b8a6', audio: '#8b5cf6' }
+const KIND_LABEL: Record<Kind, string> = { video: 'Clip', image: 'Image', text: 'Text', box: 'Box', blur: 'Blur', circle: 'Circle', line: 'Line', arrow: 'Arrow', audio: 'Audio' }
 
 // shape as SVG (stretched to the layer box) — same markup previews and, once
 // rasterized, becomes the export overlay so preview matches output.
@@ -163,7 +166,10 @@ function Editor() {
   const [dragOver, setDragOver] = useState(false)
   const [media, setMedia] = useState<MediaAsset[]>([])
   const [scrubbing, setScrubbing] = useState(false)
-  const [draggingId, setDraggingId] = useState<string | null>(null)
+  const [mediaW, setMediaW] = useState(158)
+  const [propsW, setPropsW] = useState(236)
+  const [timelineH, setTimelineH] = useState(210)
+  const toast = useToast()
 
   const duration = Math.max(1, ...items.map(i => i.tEnd))
   const trackCount = Math.max(1, ...items.map(i => i.track + 1))
@@ -176,9 +182,11 @@ function Editor() {
   const stageRef = useRef<HTMLDivElement>(null)
   const previewBoxRef = useRef<HTMLDivElement>(null)
   const tracksAreaRef = useRef<HTMLDivElement>(null)
+  const newLaneRef = useRef<HTMLDivElement>(null)   // "drops into a new lane" bar
+  const mediaPanelRef = useRef<HTMLDivElement>(null)
   const tlRef = useRef<HTMLDivElement>(null)
   const phRef = useRef<HTMLDivElement>(null)
-  const videoEls = useRef<Map<string, HTMLVideoElement>>(new Map())
+  const videoEls = useRef<Map<string, HTMLMediaElement>>(new Map())  // video + detached-audio elements
   const clipRef = useRef<Item | null>(null)   // copy/paste buffer
   const itemsRef = useRef(items); itemsRef.current = items
   const durRef = useRef(duration); durRef.current = duration
@@ -207,9 +215,14 @@ function Editor() {
           const paths = p.paths || []
           const vids = paths.filter(x => VIDEO_EXTS.includes(ext(x)))
           const imgs = paths.filter(x => IMG_EXTS.includes(ext(x)))
-          // if dropped onto the timeline, place at that lane + time
           const dpr = window.devicePixelRatio || 1
           const cx = (p.position?.x ?? 0) / dpr, cy = (p.position?.y ?? 0) / dpr
+          // dropped onto the MEDIA panel → import into the bin only
+          const mp = mediaPanelRef.current?.getBoundingClientRect()
+          if (mp && cy >= mp.top && cy <= mp.bottom && cx >= mp.left && cx <= mp.right) {
+            importToBin([...vids, ...imgs]); return
+          }
+          // dropped onto the timeline → place at that lane + time
           const area = tracksAreaRef.current?.getBoundingClientRect()
           let place: { track: number; at: number } | undefined
           if (area && cy >= area.top && cy <= area.bottom && cx >= area.left && cx <= area.right) {
@@ -250,8 +263,9 @@ function Editor() {
   // ── playback ──
   const syncVideos = useCallback((t: number, isPlaying: boolean) => {
     for (const it of itemsRef.current) {
-      if (it.kind !== 'video') continue
+      if (it.kind !== 'video' && it.kind !== 'audio') continue
       const el = videoEls.current.get(it.id)
+      if (el instanceof HTMLAudioElement) el.volume = clampN(it.volume ?? 1, 0, 1)
       if (!el) continue
       const active = t >= it.tStart && t < it.tEnd
       if (!active) { if (!el.paused) el.pause(); continue }
@@ -397,6 +411,18 @@ function Editor() {
   }
   // add a bin asset back onto the timeline
   const addFromMedia = (a: MediaAsset) => { if (a.kind === 'video') addVideoPaths([a.src]); else addImagePaths([a.src]) }
+  // import into the media bin only (dropped onto the MEDIA panel, not the timeline)
+  const importToBin = async (paths: string[]) => {
+    const entries: MediaAsset[] = []
+    for (const p of paths) {
+      const ex = p.split('.').pop()?.toLowerCase() || ''
+      const isVid = VIDEO_EXTS.includes(ex), isImg = IMG_EXTS.includes(ex)
+      if (!isVid && !isImg) continue
+      const url = convertFileSrc(p)
+      entries.push({ id: uid(), kind: isVid ? 'video' : 'image', name: p.split(/[/\\]/).pop() || 'media', src: p, url, thumb: isVid ? await grabThumb(url) : url })
+    }
+    addMedia(entries)
+  }
 
   const removeSel = () => { if (selId) { snapshot(); setItems(xs => normalizeTracks(xs.filter(i => i.id !== selId))); setSelId(null) } }
   const duplicateSel = () => {
@@ -423,6 +449,23 @@ function Editor() {
     const right: Item = { ...sel, id: uid(), tStart: t, inPoint: sel.inPoint + (t - sel.tStart) }
     setItems(xs => xs.flatMap(i => i.id === sel.id ? [left, right] : [i])); setSelId(right.id)
   }
+  // pull a clip's audio onto its own layer: mute the video, add an audio layer
+  // that keeps the same source + timing and carries the volume (own lane, movable)
+  const detachAudio = (v: Item) => {
+    // one audio layer per clip — bail if it's already been detached
+    if (v.kind !== 'video' || items.length >= MAX_LAYERS) return
+    if (items.some(i => i.kind === 'audio' && i.srcId === v.id)) return
+    snapshot()
+    const a: Item = {
+      id: uid(), kind: 'audio', name: v.name, track: topTrack(), srcId: v.id,
+      src: v.src, url: v.url, inPoint: v.inPoint, clipDur: v.clipDur,
+      tStart: v.tStart, tEnd: v.tEnd, x: 0, y: 0, w: 1, h: 1, opacity: 1,
+      volume: v.volume ?? 1, mute: false,
+    }
+    setItems(xs => normalizeTracks([...xs.map(i => i.id === v.id ? { ...i, mute: true } : i), a]))
+    setSelId(a.id)
+  }
+
   // move a layer up/down past its neighbour, then re-pack (no gaps)
   const moveLayer = (id: string, dir: 1 | -1) => {
     if (!items.some(x => x.id === id)) return
@@ -467,40 +510,71 @@ function Editor() {
   }
 
   // ── timeline block: move (horizontal time + vertical track) / trim edges ──
+  // Fully imperative while dragging — mutate the block's own left/width/transform
+  // and paint the drop lane directly on the row DOM. State is committed once, on
+  // release, so there's no per-move React re-render of the whole timeline (that
+  // full re-render, filmstrips and all, was the jitter).
   const startBlockDrag = (e: React.PointerEvent, it: Item, mode: 'move' | 'l' | 'r') => {
     e.stopPropagation(); setSelId(it.id); snapshot(); if (playing) setPlaying(false)
     document.body.style.cursor = mode === 'move' ? 'grabbing' : 'ew-resize'
-    if (mode === 'move') setDraggingId(it.id)
+    const blockEl = (e.currentTarget as HTMLElement).closest('[data-block]') as HTMLElement
+    const rowEl = blockEl.parentElement as HTMLElement   // lift the row so the block floats over other lanes
+    if (mode === 'move') rowEl.style.zIndex = '5'
+    const areaEl = tracksAreaRef.current!
+    const areaTop = areaEl.getBoundingClientRect().top + 6
     const sx = e.clientX, o = { tStart: it.tStart, tEnd: it.tEnd, inPoint: it.inPoint }
-    const areaTop = tracksAreaRef.current!.getBoundingClientRect().top + 6
+    const pps0 = ppsRef.current, lanes0 = laneCountRef.current
     const edges = itemsRef.current.filter(i => i.id !== it.id).flatMap(i => [i.tStart, i.tEnd])
     const snap = (v: number) => { for (const e2 of edges) if (Math.abs(v - e2) < SNAP) return e2; return v }
-    const move = (ev: PointerEvent) => {
-      const d = (ev.clientX - sx) / ppsRef.current
-      setItems(xs => normalizeTracks(xs.map(i => {
-        if (i.id !== it.id) return i
-        if (mode === 'move') {
-          const len = o.tEnd - o.tStart
-          let ns = Math.max(0, o.tStart + d); ns = snap(ns)
-          if (Math.abs(snap(ns + len) - (ns + len)) < SNAP) ns = snap(ns + len) - len
-          // snap to the nearest lane so an item lands ON a lane (shares it) —
-          // allow one past the top to make a new lane; normalizeTracks re-packs
-          // so leaving a lane empty never leaves a gap
-          const laneFloat = (laneCountRef.current - 1) - (ev.clientY - areaTop) / ROW_H
-          const nt = clampN(Math.round(laneFloat), 0, laneCountRef.current)
-          return { ...i, tStart: ns, tEnd: ns + len, track: nt }
-        }
-        if (mode === 'l') {
-          let ns = clampN(o.tStart + d, 0, o.tEnd - 0.1); ns = snap(ns)
-          const nin = i.kind === 'video' ? Math.max(0, o.inPoint + (ns - o.tStart)) : o.inPoint
-          return { ...i, tStart: ns, inPoint: nin }
-        }
-        let ne = Math.max(o.tStart + 0.1, o.tEnd + d)
-        if (i.kind === 'video') ne = Math.min(ne, o.tStart + (i.clipDur - o.inPoint))
-        return { ...i, tEnd: snap(ne) }
-      })))
+    let final = { tStart: o.tStart, tEnd: o.tEnd, inPoint: o.inPoint, track: it.track }
+    let litLane = -2
+    const lightLane = (t: number) => {   // t out of [0,lanes0) → new lane, light nothing
+      if (t === litLane) return
+      litLane = t
+      areaEl.querySelectorAll<HTMLElement>('[data-lane]').forEach(row => {
+        const on = Number(row.dataset.lane) === t
+        row.style.background = on ? 'color-mix(in srgb, var(--accent) 22%, transparent)' : 'var(--surface2)'
+        row.style.outline = on ? '2px dashed var(--accent)' : 'none'
+      })
     }
-    const up = () => { document.body.style.cursor = ''; setDraggingId(null); window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up) }
+    const move = (ev: PointerEvent) => {
+      const d = (ev.clientX - sx) / pps0
+      if (mode === 'move') {
+        const len = o.tEnd - o.tStart
+        let ns = Math.max(0, o.tStart + d); ns = snap(ns)
+        if (Math.abs(snap(ns + len) - (ns + len)) < SNAP) ns = snap(ns + len) - len
+        // nearest lane; one past the top (new lane above) or -1 (new lane below)
+        const laneFloat = (lanes0 - 1) - (ev.clientY - areaTop) / ROW_H
+        const nt = clampN(Math.round(laneFloat), -1, lanes0)
+        blockEl.style.left = `${ns * pps0}px`
+        blockEl.style.transform = `translateY(${(it.track - nt) * ROW_H}px)`
+        const newLane = nt < 0 || nt >= lanes0
+        lightLane(newLane ? -2 : nt)
+        if (newLaneRef.current) {   // show the "new lane" bar above/below the rows
+          newLaneRef.current.style.display = newLane ? 'block' : 'none'
+          if (newLane) newLaneRef.current.style.top = `${nt < 0 ? lanes0 * ROW_H + 3 : -ROW_H + 3}px`
+        }
+        final = { tStart: ns, tEnd: ns + len, inPoint: o.inPoint, track: nt }
+      } else if (mode === 'l') {
+        let ns = clampN(o.tStart + d, 0, o.tEnd - 0.1); ns = snap(ns)
+        const nin = it.kind === 'video' ? Math.max(0, o.inPoint + (ns - o.tStart)) : o.inPoint
+        blockEl.style.left = `${ns * pps0}px`
+        blockEl.style.width = `${Math.max(8, (o.tEnd - ns) * pps0)}px`
+        final = { tStart: ns, tEnd: o.tEnd, inPoint: nin, track: it.track }
+      } else {
+        let ne = Math.max(o.tStart + 0.1, o.tEnd + d)
+        if (it.kind === 'video') ne = Math.min(ne, o.tStart + (it.clipDur - o.inPoint))
+        ne = snap(ne)
+        blockEl.style.width = `${Math.max(8, (ne - o.tStart) * pps0)}px`
+        final = { tStart: o.tStart, tEnd: ne, inPoint: o.inPoint, track: it.track }
+      }
+    }
+    const up = () => {
+      document.body.style.cursor = ''; blockEl.style.transform = ''; rowEl.style.zIndex = ''
+      if (newLaneRef.current) newLaneRef.current.style.display = 'none'
+      window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up)
+      setItems(xs => normalizeTracks(xs.map(i => i.id === it.id ? { ...i, ...final } : i)))
+    }
     window.addEventListener('pointermove', move); window.addEventListener('pointerup', up)
   }
 
@@ -521,6 +595,16 @@ function Editor() {
     if (area) scrub(area.left, e.clientX, false)
   }
 
+  // drag a pane divider — absolute from the value captured at pointer-down
+  const startPaneDrag = (e: React.PointerEvent, start: number, set: (n: number) => void, axis: 'x' | 'y', sign: number, min: number, max: number) => {
+    e.preventDefault()
+    const s0 = axis === 'x' ? e.clientX : e.clientY
+    document.body.style.cursor = axis === 'x' ? 'col-resize' : 'row-resize'
+    const mv = (ev: PointerEvent) => { const c = axis === 'x' ? ev.clientX : ev.clientY; set(clampN(start + (c - s0) * sign, min, max)) }
+    const up = () => { document.body.style.cursor = ''; window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up) }
+    window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up)
+  }
+
   const zoom = (f: number) => setPps(p => clampN(p * f, MIN_PPS, MAX_PPS))
   const zoomFit = () => { const w = tlRef.current?.clientWidth; if (w) setPps(clampN((w - 24) / duration, MIN_PPS, MAX_PPS)) }
 
@@ -538,6 +622,7 @@ function Editor() {
         else if (i.kind === 'text') specItems.push({ kind: 'text', text: i.text || '', t_start: i.tStart, t_end: i.tEnd, x: i.x, y: i.y, size: i.size || 32, color: i.color || '#ffffff', opacity: i.opacity })
         else if (i.kind === 'box') specItems.push({ kind: 'box', t_start: i.tStart, t_end: i.tEnd, x: i.x, y: i.y, w: i.w, h: i.h, color: i.color || '#ff3b30', opacity: i.opacity })
         else if (i.kind === 'blur') specItems.push({ kind: 'blur', t_start: i.tStart, t_end: i.tEnd, x: i.x, y: i.y, w: i.w, h: i.h, strength: i.strength || 12 })
+        else if (i.kind === 'audio') specItems.push({ kind: 'audio', src: i.src, in_point: i.inPoint, t_start: i.tStart, t_end: i.tEnd, volume: i.volume ?? 1 })
         else {
           const png = await svgToPng(shapeSvg(i.kind, i.color || '#ff3b30'), Math.round(i.w * proj.w), Math.round(i.h * proj.h))
           specItems.push({ kind: 'shape', png, t_start: i.tStart, t_end: i.tEnd, x: i.x, y: i.y, w: i.w, h: i.h, opacity: i.opacity })
@@ -545,7 +630,8 @@ function Editor() {
       }
       const spec = { width: proj.w, height: proj.h, fps: proj.fps, duration, bg: '#000000', output: out, items: specItems }
       const r = await invoke<{ ok: boolean; log: string }>('ffmpeg_render', { spec })
-      setResult({ ok: r.ok, log: r.log, path: out })
+      if (r.ok) { setResult(null); toast.show(`Exported to ${out.split(/[/\\]/).pop()}`) }
+      else setResult({ ok: false, log: r.log, path: out })
     } catch (err) {
       setResult({ ok: false, log: String(err), path: out })
     } finally { setBusy(false) }
@@ -571,7 +657,7 @@ function Editor() {
 
   return (
     <ToolLayout fullWidth hideDescription title="Video Editor" description="Trim, split and join clips, stack layers, add boxes, text and blur — then export. Offline, bundled FFmpeg.">
-      <div className="editor-tips" style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minHeight: 0, position: 'relative' }}>
+      <div className="editor-tips" style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minHeight: 0, position: 'relative', userSelect: 'none', WebkitUserSelect: 'none' }}>
 
         {dragOver && (
           <div style={{ position: 'absolute', inset: 0, zIndex: 2000, borderRadius: 12, border: '2px dashed var(--accent)', background: 'color-mix(in srgb, var(--accent) 12%, transparent)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, fontWeight: 700, color: 'var(--accent)', pointerEvents: 'none' }}>
@@ -590,17 +676,16 @@ function Editor() {
         </div>
 
         {/* middle: media bin (left) + preview (center) + properties (right) */}
-        <div style={{ display: 'flex', gap: 10, flex: 1, minHeight: 0 }}>
+        <div style={{ display: 'flex', gap: 4, flex: 1, minHeight: 0 }}>
 
           {/* media bin */}
-          <div className="panel" style={{ width: 158, flexShrink: 0, padding: 12, display: 'flex', flexDirection: 'column', gap: 10, minHeight: 0 }}>
+          <div ref={mediaPanelRef} className="panel" style={{ width: mediaW, flexShrink: 0, padding: 12, display: 'flex', flexDirection: 'column', gap: 10, minHeight: 0 }}>
             <div style={sectionLabel}>Media</div>
-            <button onClick={importMedia} disabled={items.length >= MAX_LAYERS} aria-label="Import video or images" style={importZone}>
-              <Upload size={20} />
-              <span style={{ fontWeight: 700, fontSize: 12.5 }}>Import media</span>
-              <span style={{ fontSize: 10.5, opacity: 0.7, lineHeight: 1.4, textAlign: 'center' }}>click, or drop anywhere</span>
+            <button onClick={importMedia} disabled={items.length >= MAX_LAYERS} aria-label="Import video or images (or drop anywhere)" style={importZone}>
+              <Upload size={15} />
+              <span style={{ fontWeight: 700, fontSize: 12 }}>Import</span>
             </button>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, overflowY: 'auto', minHeight: 0 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, overflowY: 'auto', overflowX: 'hidden', minHeight: 0, flex: 1 }}>
               {media.map(a => (
                 <button key={a.id} onClick={() => addFromMedia(a)} disabled={items.length >= MAX_LAYERS} aria-label={`Add ${a.name}`} style={mediaCard}>
                   <div style={{ width: '100%', aspectRatio: '16 / 9', borderRadius: 4, background: a.thumb ? `#000 url(${a.thumb}) center/cover` : '#222' }} />
@@ -611,6 +696,8 @@ function Editor() {
             </div>
           </div>
 
+          <div onPointerDown={e => startPaneDrag(e, mediaW, setMediaW, 'x', 1, 120, 380)} style={gripX}><div style={gripBarX} /></div>
+
           {/* preview + transport */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
             <div ref={previewBoxRef} style={{ flex: 1, minHeight: 0, background: '#0b0b0d', borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', padding: 12 }}>
@@ -620,6 +707,9 @@ function Editor() {
                 style={{ position: 'relative', width: fitW, height: fitH, background: '#000', boxShadow: '0 0 0 1px rgba(255,255,255,0.08)', userSelect: 'none' }}
               >
                 {items.map(it => {
+                  // detached audio has no visual — mount a muted-by-default <audio>
+                  // that syncVideos drives (kept in the same el map as videos)
+                  if (it.kind === 'audio') return <audio key={it.id} ref={el => { if (el) videoEls.current.set(it.id, el); else videoEls.current.delete(it.id) }} src={it.url} style={{ display: 'none' }} />
                   const on = time >= it.tStart && time < it.tEnd
                   const selected = selId === it.id
                   const style: React.CSSProperties = { position: 'absolute', left: `${it.x * 100}%`, top: `${it.y * 100}%`, width: `${it.w * 100}%`, height: `${it.h * 100}%`, display: on ? 'block' : 'none', cursor: 'move', boxSizing: 'border-box', zIndex: selected ? 999 : it.track, opacity: it.kind === 'blur' ? 1 : it.opacity }
@@ -650,8 +740,10 @@ function Editor() {
             </div>
           </div>
 
+          <div onPointerDown={e => startPaneDrag(e, propsW, setPropsW, 'x', -1, 180, 480)} style={gripX}><div style={gripBarX} /></div>
+
           {/* properties (right) */}
-          <div className="panel" style={{ width: 236, flexShrink: 0, padding: 14, overflowY: 'auto' }}>
+          <div className="panel" style={{ width: propsW, flexShrink: 0, padding: 14, overflowY: 'auto' }}>
             {!sel ? (
               <div style={{ color: 'var(--text-muted)', fontSize: 12.5, lineHeight: 1.7 }}>
                 <div style={sectionLabel}>Properties</div>
@@ -659,11 +751,11 @@ function Editor() {
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13 }}>
-                <div style={{ fontWeight: 700, color: KIND_COLOR[sel.kind], display: 'flex', alignItems: 'center', gap: 6 }}>
-                  <span style={{ width: 9, height: 9, borderRadius: 2, background: KIND_COLOR[sel.kind] }} />
-                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{KIND_LABEL[sel.kind]}{sel.name && sel.kind !== 'text' ? ` · ${sel.name}` : ''}</span>
-                  <button style={{ ...iconBtn, width: 26, height: 26, marginLeft: 'auto' }} aria-label="Bring forward" onClick={() => moveLayer(sel.id, 1)}><ChevronUp size={15} /></button>
-                  <button style={{ ...iconBtn, width: 26, height: 26 }} aria-label="Send back" onClick={() => moveLayer(sel.id, -1)}><ChevronDown size={15} /></button>
+                <div style={{ fontWeight: 700, color: KIND_COLOR[sel.kind], display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                  <span style={{ width: 9, height: 9, borderRadius: 2, background: KIND_COLOR[sel.kind], flexShrink: 0 }} />
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{KIND_LABEL[sel.kind]}{sel.name && sel.kind !== 'text' ? ` · ${sel.name}` : ''}</span>
+                  <button style={{ ...iconBtn, width: 26, height: 26, flexShrink: 0 }} aria-label="Bring forward" onClick={() => moveLayer(sel.id, 1)}><ChevronUp size={15} /></button>
+                  <button style={{ ...iconBtn, width: 26, height: 26, flexShrink: 0 }} aria-label="Send back" onClick={() => moveLayer(sel.id, -1)}><ChevronDown size={15} /></button>
                 </div>
 
                 {sel.kind === 'text' && (
@@ -686,19 +778,26 @@ function Editor() {
                     <input type="range" min={1} max={50} value={sel.strength} onPointerDown={snapshot} onChange={e => patch(sel.id, { strength: Number(e.target.value) })} style={rangeStyle} />
                   </label>
                 )}
-                {sel.kind !== 'blur' && (
+                {sel.kind !== 'blur' && sel.kind !== 'audio' && (
                   <label style={fieldLabel}>Opacity: {Math.round(sel.opacity * 100)}%
                     <input type="range" min={0} max={100} value={Math.round(sel.opacity * 100)} onPointerDown={snapshot} onChange={e => patch(sel.id, { opacity: Number(e.target.value) / 100 })} style={rangeStyle} />
                   </label>
                 )}
+                {(sel.kind === 'video' || sel.kind === 'audio') && (
+                  <label style={fieldLabel}>Volume: {Math.round((sel.volume ?? 1) * 100)}%
+                    <input type="range" min={0} max={200} value={Math.round((sel.volume ?? 1) * 100)} onPointerDown={snapshot} onChange={e => patch(sel.id, { volume: Number(e.target.value) / 100 })} style={rangeStyle} />
+                  </label>
+                )}
                 {sel.kind === 'video' && (
                   <>
-                    <label style={fieldLabel}>Volume: {Math.round((sel.volume ?? 1) * 100)}%
-                      <input type="range" min={0} max={200} value={Math.round((sel.volume ?? 1) * 100)} onPointerDown={snapshot} onChange={e => patch(sel.id, { volume: Number(e.target.value) / 100 })} style={rangeStyle} />
-                    </label>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <input type="checkbox" checked={!sel.mute} onChange={e => { snapshot(); patch(sel.id, { mute: !e.target.checked }) }} /> Keep audio
                     </label>
+                    {(() => { const done = items.some(i => i.kind === 'audio' && i.srcId === sel.id); return (
+                    <button onClick={() => detachAudio(sel)} disabled={done || items.length >= MAX_LAYERS} style={{ ...iconBtn, width: 'auto', padding: '0 12px', gap: 6 }}>
+                      <AudioLines size={15} /> {done ? 'Audio detached' : 'Detach audio'}
+                    </button>
+                    ) })()}
                   </>
                 )}
 
@@ -715,9 +814,11 @@ function Editor() {
           </div>
         </div>
 
+        <div onPointerDown={e => startPaneDrag(e, timelineH, setTimelineH, 'y', -1, 120, 460)} style={gripY}><div style={gripBarY} /></div>
+
         {/* timeline */}
-        <div className="panel" style={{ padding: 0, flexShrink: 0, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderBottom: '1px solid var(--border)' }}>
+        <div className="panel" style={{ padding: 0, flexShrink: 0, height: timelineH, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
             {/* left: edit + add-element tools */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0, overflowX: 'auto' }}>
               <button style={iconBtn} aria-label="Split at playhead" onClick={splitAtPlayhead} disabled={!sel || sel.kind !== 'video'}><Scissors size={16} /></button>
@@ -746,24 +847,26 @@ function Editor() {
               <button style={iconBtn} aria-label="Fit" onClick={zoomFit}><Maximize2 size={16} /></button>
             </div>
           </div>
-          <div ref={tlRef} style={{ overflow: 'auto', maxHeight: 220 }}>
-            <div style={{ position: 'relative', width: tlWidth, minWidth: '100%' }}>
-              <div onPointerDown={startScrub} style={{ height: 22, borderBottom: '1px solid var(--border)', position: 'relative', cursor: 'pointer', background: 'var(--surface2)' }}>
+          <div ref={tlRef} style={{ overflow: 'auto', flex: 1, minHeight: 0 }}>
+            <div style={{ position: 'relative', width: tlWidth, minWidth: '100%', minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
+              <div onPointerDown={startScrub} style={{ height: 22, flexShrink: 0, borderBottom: '1px solid var(--border)', position: 'relative', cursor: 'pointer', background: 'var(--surface2)' }}>
                 {Array.from({ length: Math.floor(duration / tickStep) + 1 }).map((_, n) => {
                   const s = n * tickStep
                   return <div key={n} style={{ position: 'absolute', left: s * pps, top: 0, height: '100%', borderLeft: '1px solid var(--border)', paddingLeft: 4, fontSize: 10, color: 'var(--text-muted)', lineHeight: '22px' }}>{s}s</div>
                 })}
               </div>
+              {/* center the track rows vertically — empty space above/below when the pane is tall */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 0 }}>
               <div ref={tracksAreaRef} style={{ position: 'relative', padding: '6px 0' }}>
-                {(() => { const dragItem = draggingId ? items.find(i => i.id === draggingId) : null; return Array.from({ length: laneCount }).map((_, ri) => {
+                <div ref={newLaneRef} style={{ display: 'none', position: 'absolute', left: 0, right: 0, height: 34, borderRadius: 6, background: 'color-mix(in srgb, var(--accent) 22%, transparent)', outline: '2px dashed var(--accent)', outlineOffset: -1, pointerEvents: 'none', zIndex: 4 }} />
+                {Array.from({ length: laneCount }).map((_, ri) => {
                   const t = laneCount - 1 - ri   // top row = highest track
-                  const dropHere = !!dragItem && dragItem.track === t
                   return (
-                    <div key={t} style={{ height: 34, position: 'relative', margin: '3px 0', borderRadius: 6, background: dropHere ? 'color-mix(in srgb, var(--accent) 22%, transparent)' : 'var(--surface2)', outline: dropHere ? '2px dashed var(--accent)' : 'none', outlineOffset: -1 }}>
+                    <div key={t} data-lane={t} style={{ height: 34, position: 'relative', margin: '3px 0', borderRadius: 6, background: 'var(--surface2)', outline: 'none', outlineOffset: -1 }}>
                       {items.filter(i => i.track === t).map(it => {
                         const selected = selId === it.id
                         return (
-                          <div key={it.id} onPointerDown={e => startBlockDrag(e, it, 'move')} style={{
+                          <div key={it.id} data-block={it.id} onPointerDown={e => startBlockDrag(e, it, 'move')} style={{
                             position: 'absolute', left: it.tStart * pps, width: Math.max(8, (it.tEnd - it.tStart) * pps), top: 0, height: '100%',
                             borderRadius: 6, overflow: 'hidden', cursor: 'grab', boxSizing: 'border-box',
                             background: it.strip ? `#000 url(${it.strip}) left center / auto 100% repeat-x`
@@ -773,7 +876,7 @@ function Editor() {
                             opacity: selId && !selected ? 0.55 : 1,
                             zIndex: selected ? 3 : 1,
                           }}>
-                            <span style={{ position: 'absolute', left: 8, top: 4, fontSize: 10.5, fontWeight: 600, color: '#fff', textShadow: '0 1px 2px rgba(0,0,0,0.8)', pointerEvents: 'none', whiteSpace: 'nowrap' }}>{KIND_LABEL[it.kind]}</span>
+                            <span style={{ position: 'absolute', left: 8, top: 4, fontSize: 10.5, fontWeight: 600, color: '#fff', textShadow: '0 1px 2px rgba(0,0,0,0.8)', pointerEvents: 'none', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4 }}>{it.kind === 'audio' && <AudioLines size={11} />}{KIND_LABEL[it.kind]}</span>
                             <div onPointerDown={e => startBlockDrag(e, it, 'l')} style={{ position: 'absolute', left: 0, top: 0, width: 8, height: '100%', cursor: 'ew-resize' }} />
                             <div onPointerDown={e => startBlockDrag(e, it, 'r')} style={{ position: 'absolute', right: 0, top: 0, width: 8, height: '100%', cursor: 'ew-resize' }} />
                           </div>
@@ -781,7 +884,8 @@ function Editor() {
                       })}
                     </div>
                   )
-                }) })()}
+                })}
+              </div>
               </div>
               {/* playhead — left owned imperatively; children hang off it */}
               <div ref={phRef} style={{ position: 'absolute', top: 0, bottom: 0, width: 0, zIndex: 6, pointerEvents: 'none' }}>
@@ -795,11 +899,10 @@ function Editor() {
           </div>
         </div>
 
-        {result && (
-          <div className="panel" style={{ padding: 14, fontSize: 13, flexShrink: 0 }}>
-            {result.ok
-              ? <span style={{ color: '#22c55e' }}>✓ Exported to <b>{result.path.split(/[/\\]/).pop()}</b></span>
-              : <div style={{ color: '#ef4444' }}><b>Export failed.</b><pre style={{ whiteSpace: 'pre-wrap', marginTop: 8, fontSize: 11, color: 'var(--text-dim)' }}>{result.log}</pre></div>}
+        {result && !result.ok && (
+          <div className="panel" style={{ padding: 14, fontSize: 13, flexShrink: 0, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+            <div style={{ color: '#ef4444', flex: 1, minWidth: 0 }}><b>Export failed.</b><pre style={{ whiteSpace: 'pre-wrap', marginTop: 8, fontSize: 11, color: 'var(--text-dim)', maxHeight: 120, overflow: 'auto' }}>{result.log}</pre></div>
+            <button style={{ ...iconBtn, width: 26, height: 26, flexShrink: 0 }} aria-label="Dismiss" onClick={() => setResult(null)}><Minus size={15} /></button>
           </div>
         )}
       </div>
@@ -813,15 +916,20 @@ const iconBtn: React.CSSProperties = {
   color: 'var(--text-dim)', cursor: 'pointer',
 }
 const importZone: React.CSSProperties = {
-  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6,
-  padding: '22px 12px', borderRadius: 10, border: '2px dashed var(--border)', background: 'var(--surface)',
+  display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+  padding: '8px 10px', borderRadius: 8, border: '2px dashed var(--border)', background: 'var(--surface)',
   color: 'var(--text-dim)', cursor: 'pointer',
+  width: '100%', minWidth: 0, maxWidth: '100%', boxSizing: 'border-box', flexShrink: 0,
 }
 const mediaCard: React.CSSProperties = {
   display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 3, padding: 5,
   borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)',
   color: 'var(--text-dim)', cursor: 'pointer', width: '100%',
 }
+const gripX: React.CSSProperties = { width: 8, flexShrink: 0, cursor: 'col-resize', display: 'flex', alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch' }
+const gripY: React.CSSProperties = { height: 8, flexShrink: 0, cursor: 'row-resize', display: 'flex', alignItems: 'center', justifyContent: 'center' }
+const gripBarX: React.CSSProperties = { width: 3, height: '26%', maxHeight: 40, borderRadius: 2, background: 'var(--border)' }
+const gripBarY: React.CSSProperties = { height: 3, width: 60, borderRadius: 2, background: 'var(--border)' }
 const sectionLabel: React.CSSProperties = { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text-muted)', marginBottom: 8 }
 const fieldLabel: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--text-dim)' }
 const rangeStyle: React.CSSProperties = { width: '100%', accentColor: 'var(--accent)' }

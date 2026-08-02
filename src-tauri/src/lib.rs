@@ -439,6 +439,9 @@ async fn http_request(req: HttpReq) -> Result<HttpRes, String> {
 enum EItem {
   #[serde(rename = "video")]
   Video { src: String, in_point: f64, t_start: f64, t_end: f64, x: f64, y: f64, w: f64, h: f64, opacity: f64, volume: f64, mute: bool },
+  // detached audio — same media file, contributes only to the audio mix
+  #[serde(rename = "audio")]
+  Audio { src: String, in_point: f64, t_start: f64, t_end: f64, volume: f64 },
   #[serde(rename = "image")]
   Image { src: String, t_start: f64, t_end: f64, x: f64, y: f64, w: f64, h: f64, opacity: f64 },
   #[serde(rename = "text")]
@@ -569,6 +572,11 @@ fn build_render(spec: &RenderSpec) -> Result<(Vec<String>, Vec<std::path::PathBu
         inputs.push("-i".into()); inputs.push(src.clone());
         in_idx.push(Some(next)); next += 1;
       }
+      EItem::Audio { src, .. } => {
+        if !media_ext_ok(src) || !Path::new(src).is_file() { return Err("an audio file is missing".into()); }
+        inputs.push("-i".into()); inputs.push(src.clone());
+        in_idx.push(Some(next)); next += 1;
+      }
       EItem::Image { src, .. } => {
         if !media_ext_ok(src) || !Path::new(src).is_file() { return Err("an image file is missing".into()); }
         inputs.push("-loop".into()); inputs.push("1".into());
@@ -613,6 +621,20 @@ fn build_render(spec: &RenderSpec) -> Result<(Vec<String>, Vec<std::path::PathBu
           ts, te));
         acc = out;
         if !mute && has_audio_stream(src) {
+          let ms = (ts * 1000.0).round() as i64;
+          let vol = if volume.is_finite() { volume.clamp(0.0, 4.0) } else { 1.0 };
+          fc.push(format!(
+            "[{k}:a]atrim=start={:.3}:duration={:.3},asetpts=PTS-STARTPTS,volume={:.3},adelay={ms}:all=1[a{i}]",
+            inp, len, vol));
+          audio.push(format!("a{i}"));
+        }
+      }
+      EItem::Audio { in_point, t_start, t_end, volume, src } => {
+        let k = in_idx[i].unwrap();
+        let (ts, te) = time_pair(*t_start, *t_end, dur);
+        let len = (te - ts).max(0.05);
+        let inp = if in_point.is_finite() { in_point.max(0.0) } else { 0.0 };
+        if has_audio_stream(src) {
           let ms = (ts * 1000.0).round() as i64;
           let vol = if volume.is_finite() { volume.clamp(0.0, 4.0) } else { 1.0 };
           fc.push(format!(
