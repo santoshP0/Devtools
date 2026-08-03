@@ -71,26 +71,26 @@
 
 /* Dark theme */
 [data-theme="dark"] {
-  /* Warm-tinted dark — high contrast, easy on eyes */
-  --sketch-bg:        #131316;
-  --sketch-dot:       #252530;
-  --sketch-text:      #e8e6e1;   /* bright warm white — crisp readable */
+  /* Warm charcoal dark — soft off-white ink, muted borders, no glare */
+  --sketch-bg:        #14130f;
+  --sketch-dot:       #262219;
+  --sketch-text:      #e0dccf;   /* soft warm off-white — readable, not harsh glare */
 
   --bg:           var(--sketch-bg);
-  --bg2:          #1a1a1f;
-  --surface:      #1e1e24;
-  --surface2:     #28282f;
-  --border:       #3e3e4a;
-  --border-hi:    #5a5a6e;
-  --accent:       #8ecadb;       /* brighter teal accent */
+  --bg2:          #1c1a15;
+  --surface:      #211e18;
+  --surface2:     #2b271f;
+  --border:       #574f43;
+  --border-hi:    #6f6656;
+  --accent:       #7fbccb;       /* calm teal accent */
   --accent-dim:   #5a8ea0;
-  --accent-bg:    #2e2c1a;
+  --accent-bg:    #2b2818;
   --purple:       #b0a2e0;
   --purple-bg:    #261e42;
   --text:         var(--sketch-text);
-  --text-dim:     #cccac3;
-  --text-muted:   #9a9890;
-  --nav-bg:       #0f0f12;
+  --text-dim:     #cbc7bc;
+  --text-muted:   #a8a498;
+  --nav-bg:       #100f0b;
 
   /* Per-category colors — vibrant but not neon */
   --cat-data:     #dbc07a;   --cat-data-bg:  #2c2210;
@@ -1193,3 +1193,84 @@ button:disabled, .btn:disabled {
 
 /* keep text fields selectable even though the editor disables selection */
 .editor-tips input, .editor-tips textarea { user-select: text; -webkit-user-select: text; }
+
+/* Dark mode: the sketch style's near-white panel borders + hard drop-shadows
+   read as harsh over the editor's black surfaces — soften to a subtle border. */
+/* Home tool cards keep their category fill but drop the near-white hard shadow
+   in dark mode (their box-shadow is set inline with --sketch-text). */
+[data-theme="dark"] .tool-tile {
+  box-shadow: 4px 4px 0 rgba(224, 220, 207, 0.32) !important;   /* soft off-white sketch shadow — visible, not glaring */
+}
+
+[data-theme="dark"] .editor-tips .panel,
+[data-theme="dark"] .editor-tips [class*="panel"] {
+  border: 1px solid var(--border) !important;
+  box-shadow: none !important;
+}
+
+/* ── Dark mode: soften the sketch chrome ──────────────────────────────────
+   The sketch aesthetic hard-codes near-white 2px borders and hard offset
+   drop-shadows (var(--sketch-text)) on buttons, fields, panels and cards.
+   Over dark surfaces those became glaring outlines and bright blocks — the
+   "too bright" complaint. Here we mute the borders to --border and turn the
+   hard shadows into a soft dark offset, keeping the sketch depth cue without
+   the glare. Text still rides the softened --sketch-text; light mode is
+   untouched (every rule below is [data-theme="dark"] scoped). */
+
+/* Buttons + form fields — border/shadow come from the unlayered global rules. */
+[data-theme="dark"] button,
+[data-theme="dark"] .btn,
+[data-theme="dark"] textarea,
+[data-theme="dark"] input[type="text"],
+[data-theme="dark"] input[type="number"],
+[data-theme="dark"] input[type="url"],
+[data-theme="dark"] input[type="email"],
+[data-theme="dark"] input[type="password"],
+[data-theme="dark"] select {
+  border-color: var(--border) !important;
+  box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Panels, cards, badges and inline errors — the big hard-shadow blocks. */
+[data-theme="dark"] .panel,
+[data-theme="dark"] .jwt-part,
+[data-theme="dark"] .palette-card,
+[data-theme="dark"] .success-badge,
+[data-theme="dark"] .error-msg,
+[data-theme="dark"] .error-msg-plain,
+[data-theme="dark"] [class*="panel"],
+[data-theme="dark"] [class*="card"] {
+  border-color: var(--border) !important;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.45) !important;
+}
+
+/* The global "retro border" enforcer lives in @layer base — for !important
+   declarations a layered rule beats an unlayered one, so mute it in-layer. */
+@layer base {
+  [data-theme="dark"] .border,
+  [data-theme="dark"] [class*="border-slate-"],
+  [data-theme="dark"] [class*="border-gray-"],
+  [data-theme="dark"] [style*="border:"],
+  [data-theme="dark"] [style*="border-width"],
+  [data-theme="dark"] .border-b,
+  [data-theme="dark"] .border-t,
+  [data-theme="dark"] .border-l,
+  [data-theme="dark"] .border-r,
+  [data-theme="dark"] [style*="border-bottom"],
+  [data-theme="dark"] [style*="border-top"],
+  [data-theme="dark"] [style*="border-left"],
+  [data-theme="dark"] [style*="border-right"] {
+    border-color: var(--border) !important;
+  }
+}
+
+/* The hard box-shadow utilities live in @layer utilities — soften in-layer. */
+@layer utilities {
+  [data-theme="dark"] .shadow,
+  [data-theme="dark"] .shadow-sm,
+  [data-theme="dark"] .shadow-md,
+  [data-theme="dark"] .shadow-lg,
+  [data-theme="dark"] .shadow-xl {
+    box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.45) !important;
+  }
+}

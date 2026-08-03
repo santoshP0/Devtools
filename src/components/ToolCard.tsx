@@ -36,6 +36,7 @@ export default function ToolCard({ tool, index }: ToolCardProps) {
   return (
     <MotionLink
       to={`/${tool.slug}`}
+      className="tool-tile"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       whileHover={{ y: -3, x: -3 }}

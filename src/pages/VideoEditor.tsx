@@ -187,6 +187,9 @@ function Editor() {
   const tlRef = useRef<HTMLDivElement>(null)
   const phRef = useRef<HTMLDivElement>(null)
   const videoEls = useRef<Map<string, HTMLMediaElement>>(new Map())  // video + detached-audio elements
+  const layerEls = useRef<Map<string, HTMLElement>>(new Map())       // stage layer wrappers (imperative show/hide during play)
+  const timeReadRef = useRef<HTMLSpanElement>(null)                  // time readout (updated imperatively during play)
+  const scrubBubbleRef = useRef<HTMLDivElement>(null)               // scrub time bubble (updated imperatively during scrub)
   const clipRef = useRef<Item | null>(null)   // copy/paste buffer
   const itemsRef = useRef(items); itemsRef.current = items
   const durRef = useRef(duration); durRef.current = duration
@@ -280,6 +283,17 @@ function Editor() {
     }
   }, [])
 
+  // paint a frame imperatively (no React state) — layer show/hide + time readout.
+  // Lets the rAF playback loop run without re-rendering the whole editor each tick.
+  const paintFrame = useCallback((t: number) => {
+    for (const it of itemsRef.current) {
+      if (it.kind === 'audio') continue
+      const el = layerEls.current.get(it.id)
+      if (el) el.style.display = (t >= it.tStart && t < it.tEnd) ? 'block' : 'none'
+    }
+    if (timeReadRef.current) timeReadRef.current.textContent = `${fmtTime(t)} / ${fmtTime(durRef.current)}`
+  }, [])
+
   const seek = useCallback((t: number) => {
     const c = clampN(t, 0, durRef.current)
     timeRef.current = c; setTime(c)
@@ -294,23 +308,25 @@ function Editor() {
 
   useEffect(() => {
     if (!playing) return
-    let last = performance.now(); let acc = 0
+    let last = performance.now()
     const tick = (now: number) => {
       const dt = (now - last) / 1000; last = now
-      let t = timeRef.current + dt
+      const t = timeRef.current + dt
       if (t >= durRef.current) {
-        timeRef.current = durRef.current; setTime(durRef.current); setPlaying(false)
-        syncVideos(durRef.current, false); return
+        timeRef.current = durRef.current
+        if (phRef.current) phRef.current.style.left = `${durRef.current * ppsRef.current}px`
+        syncVideos(durRef.current, false); paintFrame(durRef.current)
+        setTime(durRef.current); setPlaying(false); return
       }
       timeRef.current = t
       if (phRef.current) phRef.current.style.left = `${t * ppsRef.current}px`
-      syncVideos(t, true)
-      acc += dt; if (acc >= 0.066) { acc = 0; setTime(t) }
+      syncVideos(t, true); paintFrame(t)   // all imperative — no setState during play
       rafRef.current = requestAnimationFrame(tick)
     }
     rafRef.current = requestAnimationFrame(tick)
-    return () => cancelAnimationFrame(rafRef.current)
-  }, [playing, syncVideos])
+    // on pause, sync React state to where playback actually stopped
+    return () => { cancelAnimationFrame(rafRef.current); setTime(timeRef.current) }
+  }, [playing, syncVideos, paintFrame])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -579,13 +595,21 @@ function Editor() {
   }
 
   // ── scrub (ruler click-drag + playhead handle drag) ──
+  // imperative during the drag (playhead + video sync + layer paint + bubble),
+  // commit React state once on release — no per-move re-render of the timeline
   const scrub = (originLeft: number, startClientX: number, seekNow: boolean) => {
     setPlaying(false); setScrubbing(true)
     document.body.style.cursor = 'ew-resize'
-    const to = (cx: number) => seek((cx - originLeft) / ppsRef.current)
+    const to = (cx: number) => {
+      const c = clampN((cx - originLeft) / ppsRef.current, 0, durRef.current)
+      timeRef.current = c
+      if (phRef.current) phRef.current.style.left = `${c * ppsRef.current}px`
+      syncVideos(c, false); paintFrame(c)
+      if (scrubBubbleRef.current) scrubBubbleRef.current.textContent = fmtTime(c)
+    }
     if (seekNow) to(startClientX)
     const mv = (ev: PointerEvent) => to(ev.clientX)
-    const up = () => { setScrubbing(false); document.body.style.cursor = ''; window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up) }
+    const up = () => { setScrubbing(false); setTime(timeRef.current); document.body.style.cursor = ''; window.removeEventListener('pointermove', mv); window.removeEventListener('pointerup', up) }
     window.addEventListener('pointermove', mv); window.addEventListener('pointerup', up)
   }
   const startScrub = (e: React.PointerEvent) => scrub(e.currentTarget.getBoundingClientRect().left, e.clientX, true)
@@ -721,7 +745,7 @@ function Editor() {
                       ))}
                     </>
                   )
-                  const common = { 'data-layer': it.id, onPointerDown: (e: React.PointerEvent) => startLayerDrag(e, it) }
+                  const common = { 'data-layer': it.id, ref: (el: HTMLDivElement | null) => { if (el) layerEls.current.set(it.id, el); else layerEls.current.delete(it.id) }, onPointerDown: (e: React.PointerEvent) => startLayerDrag(e, it) }
                   if (it.kind === 'video') return <div key={it.id} {...common} style={style}><video ref={el => { if (el) videoEls.current.set(it.id, el); else videoEls.current.delete(it.id) }} src={it.url} muted playsInline style={{ width: '100%', height: '100%', objectFit: 'fill', pointerEvents: 'none' }} />{chrome}</div>
                   if (it.kind === 'image') return <div key={it.id} {...common} style={style}><img src={it.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'fill', pointerEvents: 'none' }} />{chrome}</div>
                   if (SHAPES.includes(it.kind)) return <div key={it.id} {...common} style={style}><div style={{ width: '100%', height: '100%', pointerEvents: 'none' }} dangerouslySetInnerHTML={{ __html: shapeSvg(it.kind, it.color || '#ff3b30') }} />{chrome}</div>
@@ -838,7 +862,7 @@ function Editor() {
               <button className="btn-primary" onClick={() => setPlaying(p => !p)} aria-label={playing ? 'Pause (space)' : 'Play (space)'} style={{ width: 40, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>{playing ? <Pause size={17} /> : <Play size={17} />}</button>
               <button style={iconBtn} aria-label="Next frame (→)" onClick={() => stepFrame(1)}><ChevronRight size={18} /></button>
               <button style={iconBtn} aria-label="End" onClick={() => seek(duration)}><SkipForward size={16} /></button>
-              <span style={{ fontSize: 12.5, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums', minWidth: 120, textAlign: 'center' }}>{fmtTime(time)} / {fmtTime(duration)}</span>
+              <span ref={timeReadRef} style={{ fontSize: 12.5, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums', minWidth: 120, textAlign: 'center' }}>{fmtTime(time)} / {fmtTime(duration)}</span>
             </div>
             {/* right: zoom */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1, justifyContent: 'flex-end' }}>
@@ -892,7 +916,7 @@ function Editor() {
                 <div style={{ position: 'absolute', top: 0, bottom: 0, left: -1, width: 2, background: 'var(--accent)' }} />
                 <div onPointerDown={startPlayheadDrag} aria-label="Scrub" style={{ position: 'absolute', top: 0, left: -7, width: 14, height: 12, background: 'var(--accent)', cursor: 'ew-resize', pointerEvents: 'auto', clipPath: 'polygon(0 0, 100% 0, 100% 60%, 50% 100%, 0 60%)' }} />
                 {scrubbing && (
-                  <div style={{ position: 'absolute', top: -19, left: 0, transform: 'translateX(-50%)', background: 'var(--accent)', color: '#fff', fontSize: 10, fontWeight: 700, padding: '1px 5px', borderRadius: 4, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{fmtTime(time)}</div>
+                  <div ref={scrubBubbleRef} style={{ position: 'absolute', top: -19, left: 0, transform: 'translateX(-50%)', background: 'var(--accent)', color: '#fff', fontSize: 10, fontWeight: 700, padding: '1px 5px', borderRadius: 4, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{fmtTime(time)}</div>
                 )}
               </div>
             </div>
