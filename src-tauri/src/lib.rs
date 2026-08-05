@@ -776,6 +776,204 @@ async fn ffmpeg_render(spec: RenderSpec) -> Result<CompressResult, String> {
   })
 }
 
+// ── Log parsing (desktop) ───────────────────────────────────────────────────
+// Native port of the JS log parser so huge (100 MB+) production logs are read
+// and parsed off the UI thread instead of freezing the webview. Output matches
+// the in-app parser field-for-field (serde_json preserve_order keeps JSON key
+// order; camelCase rename keeps the LogLine shape the React list expects).
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct LogLine {
+  raw: String,
+  level: String,
+  display_level: String,
+  time: String,
+  source: String,
+  msg: String,
+  #[serde(skip_serializing_if = "Option::is_none")]
+  log_prefix: Option<String>,
+  is_json: bool,
+  is_stack: bool,
+}
+
+fn log_canonicalize(l: &str) -> String {
+  match l { "WARNING" => "WARN", "FATAL" | "CRITICAL" => "ERROR", "VERBOSE" => "TRACE", "LOG" => "INFO", o => o }.to_string()
+}
+fn log_is_known_level(l: &str) -> bool {
+  matches!(l, "ERROR" | "FATAL" | "CRITICAL" | "WARN" | "WARNING" | "INFO" | "LOG" | "DEBUG" | "VERBOSE" | "TRACE")
+}
+fn log_detect_level(text: &str) -> String {
+  let up = text.to_uppercase();
+  for l in ["CRITICAL", "FATAL", "ERROR", "WARNING", "WARN", "INFO", "VERBOSE", "DEBUG", "TRACE", "LOG"] {
+    if up.contains(l) { return l.to_string(); }
+  }
+  String::new()
+}
+fn log_line_depth(line: &str) -> i32 {
+  let (mut d, mut in_str, mut esc) = (0i32, false, false);
+  for ch in line.chars() {
+    if esc { esc = false; continue; }
+    if ch == '\\' { esc = true; continue; }
+    if ch == '"' { in_str = !in_str; continue; }
+    if in_str { continue; }
+    if ch == '{' || ch == '[' { d += 1; } else if ch == '}' || ch == ']' { d -= 1; }
+  }
+  d
+}
+// group balanced multi-line brace/bracket blocks into one chunk (mirrors chunkRawInput)
+fn log_chunk_raw(raw: &str) -> Vec<String> {
+  let mut chunks: Vec<String> = Vec::new();
+  let mut depth = 0i32;
+  let mut buffer: Vec<&str> = Vec::new();
+  for line in raw.split('\n') {
+    let t = line.trim();
+    if t.is_empty() { continue; }
+    if depth == 0 {
+      let d = log_line_depth(t);
+      if d > 0 { buffer = vec![line]; depth = d; }
+      else { chunks.push(line.to_string()); }
+    } else {
+      buffer.push(line);
+      depth += log_line_depth(line);
+      if depth <= 0 { depth = 0; chunks.push(buffer.join("\n")); buffer.clear(); }
+    }
+  }
+  if !buffer.is_empty() { chunks.push(buffer.join("\n")); }
+  chunks
+}
+// serde_json value → string field (first present, non-null key)
+fn log_get(v: &serde_json::Value, keys: &[&str]) -> String {
+  for k in keys {
+    if let Some(x) = v.get(*k) {
+      if x.is_null() { continue; }
+      return match x.as_str() { Some(s) => s.to_string(), None => x.to_string() };
+    }
+  }
+  String::new()
+}
+
+// compile the format regexes once (regex crate has no lookaround, so the bare
+// level token consumes its trailing space instead of the JS lookahead — the
+// following `\s*` swallows the rest identically).
+fn log_res() -> &'static [regex::Regex; 8] {
+  static RES: std::sync::OnceLock<[regex::Regex; 8]> = std::sync::OnceLock::new();
+  RES.get_or_init(|| [
+    regex::Regex::new(r"^\s+(at\s|\.\.\.|[\w$]+Error:|Caused by:)").unwrap(),                                        // 0 stack
+    regex::Regex::new(r"^(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}(?:[.,]\d+)?(?:Z|[+-]\d{2}:?\d{2})?)\s+").unwrap(), // 1 iso
+    regex::Regex::new(r"^(?:\[([A-Za-z]+)\]|([A-Za-z]+)\s)\s*").unwrap(),                                            // 2 level
+    regex::Regex::new(r"^\[([^\]]+)\]\s+").unwrap(),                                                                 // 3 source
+    regex::Regex::new(r"[{\[]\s*$").unwrap(),                                                                        // 4 ends-open
+    regex::Regex::new(r"^(\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}\.\d+)\s+\d+\s+\d+\s+([A-Za-z])\s+([^:]+):\s+(.*)$").unwrap(), // 5 logcat
+    regex::Regex::new(r"^([A-Z]+):([^:]+):(.+)$").unwrap(),                                                          // 6 python
+    regex::Regex::new(r"^\[([^\]]+)\]\s+(?:\[([^\]]+)\]\s+)?(.*)$").unwrap(),                                        // 7 bracket
+  ])
+}
+
+fn log_parse_line(chunk: &str) -> LogLine {
+  let res = log_res();
+  let trimmed = chunk.trim();
+  let mk = |level: &str, display: &str, time: &str, source: &str, msg: &str, is_json: bool, is_stack: bool, log_prefix: Option<String>| LogLine {
+    raw: chunk.to_string(), level: level.to_string(), display_level: display.to_string(),
+    time: time.to_string(), source: source.to_string(), msg: msg.to_string(), log_prefix, is_json, is_stack,
+  };
+
+  // 1. JSON block
+  if trimmed.starts_with('{') || trimmed.starts_with('[') {
+    if let Ok(obj) = serde_json::from_str::<serde_json::Value>(trimmed) {
+      let raw_level = log_get(&obj, &["level", "severity", "lvl"]).to_uppercase();
+      let display = if raw_level.is_empty() { "JSON".to_string() } else { raw_level.clone() };
+      let mut level = log_canonicalize(&raw_level);
+      if level.is_empty() { level = "INFO".to_string(); }
+      let msg = serde_json::to_string_pretty(&obj).unwrap_or_else(|_| trimmed.to_string());
+      let time = log_get(&obj, &["time", "timestamp", "@timestamp"]);
+      let source = log_get(&obj, &["service", "name", "logger", "component"]);
+      return mk(&level, &display, &time, &source, &msg, true, false, None);
+    }
+  }
+  // 2. Stack trace
+  if res[0].is_match(chunk) { return mk("TRACE", "TRACE", "", "", trimmed, false, true, None); }
+  // 3. ISO timestamp prefix
+  if let Some(cap) = res[1].captures(trimmed) {
+    let full = cap.get(0).unwrap().as_str();
+    let ts = cap.get(1).unwrap().as_str();
+    let rest = &trimmed[full.len()..];
+    let (raw_level, after_level) = if let Some(lc) = res[2].captures(rest) {
+      let lv = lc.get(1).or_else(|| lc.get(2)).map(|m| m.as_str().to_uppercase()).unwrap_or_default();
+      (lv, &rest[lc.get(0).unwrap().as_str().len()..])
+    } else { (String::new(), rest) };
+    let detected = if !raw_level.is_empty() && log_is_known_level(&raw_level) { raw_level } else { log_detect_level(rest) };
+    let mut level = log_canonicalize(&detected);
+    if level.is_empty() { level = "INFO".to_string(); }
+    let (source, msg_str) = if let Some(sc) = res[3].captures(after_level) {
+      (sc.get(1).unwrap().as_str().to_string(), after_level[sc.get(0).unwrap().as_str().len()..].to_string())
+    } else { (String::new(), after_level.to_string()) };
+    let display = if detected.is_empty() { level.clone() } else { detected.clone() };
+    // inline JSON (log line ends with { or [ and more lines follow)
+    let first_line = msg_str.split('\n').next().unwrap_or("");
+    if res[4].is_match(first_line) && chunk.contains('\n') {
+      if let Some(open_idx) = first_line.find(|c| c == '{' || c == '[') {
+        let log_prefix = first_line[..open_idx].trim().to_string();
+        let rest_lines: Vec<&str> = chunk.split('\n').skip(1).collect();
+        let body = format!("{}\n{}", &first_line[open_idx..], rest_lines.join("\n"));
+        if let Ok(obj) = serde_json::from_str::<serde_json::Value>(&body) {
+          let msg = serde_json::to_string_pretty(&obj).unwrap_or(body);
+          return mk(&level, &display, ts, &source, &msg, true, false, Some(log_prefix));
+        }
+      }
+    }
+    return mk(&level, &display, ts, &source, &msg_str, false, false, None);
+  }
+  // 4. Logcat
+  if let Some(c) = res[5].captures(trimmed) {
+    let lvl = c.get(2).unwrap().as_str().to_uppercase();
+    let level = match lvl.as_str() { "V" => "TRACE", "D" => "DEBUG", "I" => "INFO", "W" => "WARN", "E" | "F" => "ERROR", _ => "INFO" };
+    return mk(level, &lvl, c.get(1).unwrap().as_str(), c.get(3).unwrap().as_str().trim(), c.get(4).unwrap().as_str(), false, false, None);
+  }
+  // 5. Python style LEVEL:logger:msg
+  if let Some(c) = res[6].captures(trimmed) {
+    let lv = c.get(1).unwrap().as_str();
+    if log_is_known_level(lv) {
+      return mk(&log_canonicalize(lv), lv, "", c.get(2).unwrap().as_str().trim(), c.get(3).unwrap().as_str().trim(), false, false, None);
+    }
+  }
+  // 6. Bracket style
+  if let Some(c) = res[7].captures(trimmed) {
+    let a = c.get(1).unwrap().as_str().to_uppercase();
+    let b = c.get(2).map(|m| m.as_str().to_uppercase());
+    let rest = c.get(3).map(|m| m.as_str()).unwrap_or("");
+    if log_is_known_level(&a) {
+      let msg = match &b { Some(bb) => format!("[{}] {}", bb, rest), None => rest.to_string() };
+      return mk(&log_canonicalize(&a), &a, "", "", &msg, false, false, None);
+    }
+    if let Some(bb) = &b {
+      if log_is_known_level(bb) {
+        return mk(&log_canonicalize(bb), bb, c.get(1).unwrap().as_str(), "", rest, false, false, None);
+      }
+    }
+  }
+  // 7. Keyword scan
+  let kw = log_detect_level(trimmed);
+  if !kw.is_empty() { return mk(&log_canonicalize(&kw), &kw, "", "", trimmed, false, false, None); }
+  // 8. Plain
+  mk("TRACE", "\u{b7}\u{b7}\u{b7}", "", "", chunk, false, false, None)
+}
+
+// Read + parse a log file natively (desktop). Returns the parsed lines so a
+// 130 MB log never has to be loaded into a textarea or parsed on the UI thread.
+#[tauri::command]
+fn parse_log_file(path: String) -> Result<Vec<LogLine>, String> {
+  let raw = std::fs::read_to_string(&path).map_err(|e| format!("could not read file: {e}"))?;
+  Ok(log_chunk_raw(&raw).iter().map(|c| log_parse_line(c)).collect())
+}
+
+// Close the splash window and reveal the main window once the UI has mounted.
+#[tauri::command]
+fn close_splashscreen(app: tauri::AppHandle) {
+  use tauri::Manager;
+  if let Some(s) = app.get_webview_window("splashscreen") { let _ = s.close(); }
+  if let Some(m) = app.get_webview_window("main") { let _ = m.show(); let _ = m.set_focus(); }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   let mut builder = tauri::Builder::default()
@@ -789,7 +987,7 @@ pub fn run() {
   }
 
   builder
-    .invoke_handler(tauri::generate_handler![ffmpeg_check, ffmpeg_compress, ffmpeg_render, ffmpeg_filmstrip, http_request])
+    .invoke_handler(tauri::generate_handler![ffmpeg_check, ffmpeg_compress, ffmpeg_render, ffmpeg_filmstrip, http_request, close_splashscreen, parse_log_file])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
@@ -798,6 +996,17 @@ pub fn run() {
             .build(),
         )?;
       }
+      // Fallback: reveal main even if the frontend never signals ready, so a
+      // JS error can never leave the app stuck on the splash screen.
+      let handle = app.handle().clone();
+      std::thread::spawn(move || {
+        use tauri::Manager;
+        std::thread::sleep(std::time::Duration::from_secs(4));
+        if let Some(m) = handle.get_webview_window("main") {
+          if !m.is_visible().unwrap_or(true) { let _ = m.show(); }
+        }
+        if let Some(s) = handle.get_webview_window("splashscreen") { let _ = s.close(); }
+      });
       Ok(())
     })
     .run(tauri::generate_context!())
@@ -840,6 +1049,33 @@ mod tests {
     assert!(joined.contains("fps=30"));       // fps clamped to 30
     assert!(joined.contains("palettegen"));
     assert!(joined.contains("scale='min(480,iw)'"));
+  }
+
+  #[test]
+  fn log_parser_matches_formats() {
+    // JSON line → pretty msg, level canonicalized, key order preserved
+    let j = log_parse_line(r#"{"level":"warn","service":"api","msg":"slow","time":"t1"}"#);
+    assert_eq!(j.level, "WARN"); assert!(j.is_json); assert_eq!(j.source, "api"); assert_eq!(j.time, "t1");
+    assert!(j.msg.contains("\"level\": \"warn\"") && j.msg.contains('\n'));
+
+    // ISO timestamp + bracket level + source
+    let iso = log_parse_line("2024-01-15T10:23:44Z [ERROR] [db] connection lost");
+    assert_eq!(iso.level, "ERROR"); assert_eq!(iso.time, "2024-01-15T10:23:44Z"); assert_eq!(iso.source, "db");
+    assert_eq!(iso.msg, "connection lost");
+
+    // Logcat single-char level maps
+    let lc = log_parse_line("01-15 10:23:44.123  1234  1234 E MyTag: boom");
+    assert_eq!(lc.level, "ERROR"); assert_eq!(lc.source, "MyTag"); assert_eq!(lc.msg, "boom");
+
+    // canonicalization + keyword scan + plain fallback
+    assert_eq!(log_parse_line("[FATAL] disk full").level, "ERROR");
+    assert_eq!(log_parse_line("just some DEBUG chatter").level, "DEBUG");
+    assert_eq!(log_parse_line("plain text no level").level, "TRACE");
+
+    // multi-line JSON block gets chunked into one entry
+    let chunks = log_chunk_raw("line one\n{\n  \"a\": 1\n}\nline two");
+    assert_eq!(chunks.len(), 3);
+    assert!(chunks[1].contains('\n') && chunks[1].contains("\"a\""));
   }
 
   #[test]

@@ -12,6 +12,7 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "DevToolbox",
         "width": 1280,
         "height": 800,
@@ -20,7 +21,19 @@
         "resizable": true,
         "fullscreen": false,
         "titleBarStyle": "Overlay",
-        "hiddenTitle": true
+        "hiddenTitle": true,
+        "visible": false
+      },
+      {
+        "label": "splashscreen",
+        "url": "splash.html",
+        "width": 480,
+        "height": 320,
+        "decorations": false,
+        "resizable": false,
+        "center": true,
+        "alwaysOnTop": true,
+        "shadow": true
       }
     ],
     "security": {

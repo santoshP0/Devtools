@@ -1,4 +1,5 @@
-import { useState, lazy, Suspense, ReactNode } from 'react'
+import { useState, useEffect, lazy, Suspense, ReactNode } from 'react'
+import { invoke, isTauri } from '@tauri-apps/api/core'
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { ToastProvider } from './components/Toast'
@@ -112,6 +113,14 @@ export default function App() {
   // Persisted home state — survives navigation to tool pages and back
   const [homeSearch, setHomeSearch] = useState('')
   const [homeActiveCat, setHomeActiveCat] = useState('All')
+
+  // Desktop: dismiss the splash window once React has mounted (min ~900ms so it
+  // doesn't flash). The Rust side also has a 4s fallback in case this never runs.
+  useEffect(() => {
+    if (!isTauri()) return
+    const t = setTimeout(() => { invoke('close_splashscreen').catch(() => {}) }, 900)
+    return () => clearTimeout(t)
+  }, [])
 
   return (
     <ToastProvider>

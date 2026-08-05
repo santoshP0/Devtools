@@ -1,5 +1,7 @@
 import { useState, useMemo, useRef, useCallback, useEffect, MouseEvent as RMouseEvent } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import { invoke, isTauri } from '@tauri-apps/api/core'
+import { open as openDialog } from '@tauri-apps/plugin-dialog'
 
 // ── Persistence ───────────────────────────────────────────────────────────────
 const STORAGE_KEY = 'devtools:log-prettifier:input'
@@ -348,11 +350,20 @@ export default function LogPrettifierPage() {
   const [filter, setFilter] = useState<string[]>([])
   const [search, setSearch] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  // Desktop: a big file is parsed natively in Rust and lands here, bypassing the
+  // textarea + localStorage + main-thread parse entirely. null → use typed input.
+  const [fileLines, setFileLines] = useState<LogLine[] | null>(null)
+  const [fileName, setFileName] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
+  // don't persist while a big file is loaded (input stays empty then anyway)
   useEffect(() => { const id = setTimeout(() => saveToDisk(input), 300); return () => clearTimeout(id) }, [input])
 
-  const lines = useMemo(() => { if (!input) return []; return chunkRawInput(input).map(parseLine) }, [input])
+  const parsedInput = useMemo(() => { if (!input) return []; return chunkRawInput(input).map(parseLine) }, [input])
+  const lines = fileLines ?? parsedInput
+
+  // typing takes over from a loaded file
+  const editInput = useCallback((v: string) => { setFileLines(null); setFileName(''); setInput(v) }, [])
 
   const filtered = useMemo(() => lines.filter(l => {
     const levelOk = filter.length === 0 || filter.includes(l.level)
@@ -371,16 +382,30 @@ export default function LogPrettifierPage() {
   const readFile = (file: File) => {
     setIsLoading(true)
     const r = new FileReader()
-    r.onload = ev => { setInput((ev.target?.result as string) ?? ''); setIsLoading(false) }
+    r.onload = ev => { editInput((ev.target?.result as string) ?? ''); setIsLoading(false) }
     r.readAsText(file)
+  }
+
+  // Desktop → parse natively in Rust (handles 100 MB+ without choking the UI).
+  // Web → fall back to the file input + FileReader.
+  const openFile = async () => {
+    if (!isTauri()) { fileRef.current?.click(); return }
+    const path = await openDialog({ multiple: false, filters: [{ name: 'Logs', extensions: ['log', 'txt', 'json', 'ndjson', 'out'] }] })
+    if (!path || Array.isArray(path)) return
+    setIsLoading(true)
+    try {
+      const parsed = await invoke<LogLine[]>('parse_log_file', { path })
+      setInput(''); saveToDisk(''); setFileLines(parsed); setFileName(path.split(/[/\\]/).pop() || '')
+    } catch (e) { alert('Failed to read file: ' + e) }
+    finally { setIsLoading(false) }
   }
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; if (f) readFile(f); e.target.value = '' }
   const handleDrop = (e: React.DragEvent) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) readFile(f) }
-  const clear = () => { setInput(''); setFilter([]); setSearch(''); saveToDisk('') }
+  const clear = () => { setInput(''); setFileLines(null); setFileName(''); setFilter([]); setSearch(''); saveToDisk('') }
 
   return (
-    <ToolLayout title="Log Viewer" description="Parse and colorize app logs, JSON logs, Logcat, stack traces — paste or drop a file (10 MB+ supported)">
+    <ToolLayout title="Log Viewer" description="Parse and colorize app logs, JSON logs, Logcat, stack traces — paste, or open big files (100 MB+ parsed natively on desktop)">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1, minHeight: 0 }}>
 
         {/* Toolbar */}
@@ -399,17 +424,19 @@ export default function LogPrettifierPage() {
               </button>
             ))}
           </div>
-          <button onClick={() => fileRef.current?.click()} className="btn btn-ghost btn-sm" style={{ marginLeft: 'auto' }}>📂 Open File</button>
+          <button onClick={openFile} className="btn btn-ghost btn-sm" style={{ marginLeft: 'auto' }}>📂 Open File</button>
           <input ref={fileRef} type="file" accept=".log,.txt,.json,text/*" style={{ display: 'none' }} onChange={handleFile} />
-          {input && <button onClick={clear} className="btn btn-ghost btn-sm" style={{ color: 'var(--cat-sec)' }}>✕ Clear</button>}
+          {(input || fileLines) && <button onClick={clear} className="btn btn-ghost btn-sm" style={{ color: 'var(--cat-sec)' }}>✕ Clear</button>}
           <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
             {filtered.length} / {lines.length} lines
-            {lines.length > 0 && <span style={{ opacity: 0.6, marginLeft: 6 }}>({(input.length / 1024).toFixed(0)} KB)</span>}
+            {fileLines
+              ? fileName && <span style={{ opacity: 0.6, marginLeft: 6 }}>({fileName})</span>
+              : lines.length > 0 && <span style={{ opacity: 0.6, marginLeft: 6 }}>({(input.length / 1024).toFixed(0)} KB)</span>}
           </span>
         </div>
 
         {/* Resizable input */}
-        <ResizableTextarea value={input} onChange={setInput} onDrop={handleDrop} />
+        <ResizableTextarea value={input} onChange={editInput} onDrop={handleDrop} />
 
         {/* Loading */}
         {isLoading && <div style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)', fontSize: 14 }}>⏳ Parsing file…</div>}
