@@ -46,7 +46,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDJGNzYwNjE5OTQ5MzQ2M0IKUldRN1JwT1VHUVoyTDRBQjhTMEpoRFhvSURVVG4yOWxQSXFCbzNyZ3luZEQ2b0x6enpwV0pJSU4K",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDY4RUZCNjc2MkQ0NTE0MzgKUldRNEZFVXRkcmJ2YUNJRWhUbDJ3c1h4Ukdra1VUQktNaGhuR0Z2aWRFem5hZFBKRmpncTNqNnUK",
       "endpoints": [
         "https://github.com/santoshP0/Devtools/releases/latest/download/latest.json"
       ]
