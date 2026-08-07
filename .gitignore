@@ -10,3 +10,8 @@ dist
 
 # bundled ffmpeg sidecars (fetched via scripts/fetch-ffmpeg.mjs / CI)
 src-tauri/binaries/ffmpeg-*
+
+# bundled screen-mirror binaries (fetched via scripts/fetch-scrcpy.mjs / CI)
+src-tauri/binaries/adb-*
+src-tauri/binaries/scrcpy-server.jar
+src-tauri/binaries/*.dll

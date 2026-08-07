@@ -28,12 +28,15 @@ Everything on the website also works in the desktop app. The desktop app adds na
 | Offline / PWA install | ✅ | ✅ (native window) |
 | **Media Compressor** — FFmpeg-grade image & video compression | — | ✅ **exclusive** |
 | **Video → GIF** — trim a clip, export an optimized GIF | — | ✅ **exclusive** |
+| **Screen Mirror** — mirror & control an Android device over USB | — | ✅ **exclusive** |
 | **REST Client** — send requests to *any* endpoint | CORS-limited | ✅ **no CORS** (native networking) |
 | **Image Converter** — HEIC/HEIF (iPhone) input | ✅ | ✅ |
 
 The two FFmpeg-powered tools (**Media Compressor**, **Video → GIF**) require [FFmpeg](https://ffmpeg.org/) on your `PATH` — e.g. `brew install ffmpeg` on macOS. They are hidden from the website and only appear inside the desktop app.
 
 > All desktop media processing is done locally through a hardened Rust bridge: options are strictly bounded and every FFmpeg argument is constructed in Rust, so there is no command-injection surface.
+
+**Screen Mirror** uses [scrcpy](https://github.com/Genymobile/scrcpy)'s device server and Android `adb` (both Apache-2.0), bundled with the desktop app. The phone hardware-encodes its screen to H.264 and streams it over USB; the app remuxes and plays it, and sends touch/keyboard input back — all driven from Rust with the same bounded-argument discipline (the target device must be an authorized, connected `adb` device). Enable **USB debugging** on the phone and connect it over USB.
 
 ---
 
@@ -130,6 +133,7 @@ Installers for all platforms are also published automatically on every tagged re
 | Base64 → Image | Decode Base64 strings back to images |
 | **Media Compressor** 🖥️ | FFmpeg-grade image & video compression — **desktop only** |
 | **Video → GIF** 🖥️ | Trim a video clip and export an optimized GIF — **desktop only** |
+| **Screen Mirror** 🖥️ | Mirror and control an Android device over USB — **desktop only** |
 
 ### 🔐 Security (3)
 | Tool | Description |

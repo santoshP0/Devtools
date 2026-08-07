@@ -22,3 +22,19 @@ We deliberately avoid `ffmpeg-static` (eugeneware): those macOS builds are
 These are **GPL** builds of FFmpeg. Shipping them means the desktop app distribution
 must comply with the GPL: keep FFmpeg's license/notice available to users and make the
 corresponding source available. FFmpeg source: <https://www.ffmpeg.org/download.html>.
+
+# Screen Mirror binaries (adb + scrcpy server)
+
+The Screen Mirror tool needs two more artifacts, also **not committed** and fetched at
+build time via `node scripts/fetch-scrcpy.mjs`:
+
+- **`adb-<target-triple>`** — Android Debug Bridge from Google platform-tools, bundled as
+  a Tauri sidecar (`bundle.externalBin`). On Windows the accompanying `AdbWinApi.dll` /
+  `AdbWinUsbApi.dll` are copied alongside it.
+- **`scrcpy-server.jar`** — the on-device capture/control server from
+  [Genymobile/scrcpy](https://github.com/Genymobile/scrcpy), pinned to the version in
+  `scripts/fetch-scrcpy.mjs` (must match `SCRCPY_VERSION` in `src-tauri/src/mirror.rs`).
+  Bundled as a Tauri resource (`bundle.resources`).
+
+Both are **Apache-2.0** licensed — redistributable; keep their license/notice available
+to users.

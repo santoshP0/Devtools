@@ -2,12 +2,14 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::process::Command;
 
+mod mirror;
+
 // Resolve the ffmpeg binary. We ship ffmpeg as a Tauri sidecar (externalBin),
 // so it lives right next to the app executable — check there first so the user
 // never has to install anything. Then fall back to common system locations
 // (a GUI app launched from Finder/Dock does NOT inherit the shell PATH, so a
 // bare "ffmpeg" fails even when installed), and finally a plain PATH lookup.
-fn ffmpeg_program() -> String {
+pub(crate) fn ffmpeg_program() -> String {
   // 1. bundled sidecar shipped with the app
   if let Ok(exe) = std::env::current_exe() {
     if let Some(dir) = exe.parent() {
@@ -987,7 +989,7 @@ pub fn run() {
   }
 
   builder
-    .invoke_handler(tauri::generate_handler![ffmpeg_check, ffmpeg_compress, ffmpeg_render, ffmpeg_filmstrip, http_request, close_splashscreen, parse_log_file])
+    .invoke_handler(tauri::generate_handler![ffmpeg_check, ffmpeg_compress, ffmpeg_render, ffmpeg_filmstrip, http_request, close_splashscreen, parse_log_file, mirror::mirror_list_devices, mirror::mirror_start, mirror::mirror_stop, mirror::mirror_input])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
