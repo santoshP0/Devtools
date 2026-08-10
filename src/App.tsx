@@ -15,9 +15,13 @@ import UpdateBanner from './components/UpdateBanner'
 // translate) so tall, viewport-height tool pages never flash a scrollbar.
 // Full-screen tools (the video editor) fill the viewport and scroll internally —
 // the page footer would push the layout past 100dvh and add a whole-page scroll.
+// The footer is web-only chrome ("…in your browser", GitHub link). Hide it in the
+// desktop app entirely — it's dead weight there and its height added a useless
+// whole-page scroll on full-height tool pages. About lives in the navbar instead.
 const NO_FOOTER = new Set(['/video-editor'])
 function AppFooter() {
   const { pathname } = useLocation()
+  if (isTauri()) return null
   return NO_FOOTER.has(pathname) ? null : <Footer />
 }
 

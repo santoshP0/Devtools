@@ -55,8 +55,10 @@ export default function About() {
         <p style={{ margin: '4px 0 0', fontSize: 14, opacity: 0.7 }}>
           version {version || '…'}{!inDesktopApp && ' · web'}
         </p>
-        <p style={{ margin: '14px 0 0', fontSize: 14, opacity: 0.85, lineHeight: 1.55 }}>
-          Free, local-first developer tools. Everything runs on your device — your files never leave it.
+        <p style={{ margin: '14px 0 0', fontSize: 14, opacity: 0.85, lineHeight: 1.6 }}>
+          Free, local-first developer tools — 60+ utilities to format, convert, encode,
+          generate and inspect, plus a video editor and an Android screen mirror. Everything
+          runs on your device; your files never leave it. Free and open source.
         </p>
 
         {/* Update check — desktop only */}
