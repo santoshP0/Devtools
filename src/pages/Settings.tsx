@@ -2,14 +2,53 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useSettings } from '../lib/settings'
 import { appVersion, inDesktopApp } from '../lib/updater'
+import { useIsDark } from '../hooks/useIsDark'
+import { syncWindowTheme } from '../lib/windowTheme'
 
-const RELEASES_URL = 'https://github.com/santoshP0/Devtools/releases/latest'
+const REPO_URL = 'https://github.com/santoshP0/Devtools'
+const RELEASES_URL = `${REPO_URL}/releases/latest`
+
+interface Asset { os: 'mac' | 'windows' | 'linux'; label: string; url: string }
+function assetInfo(name: string): { os: Asset['os']; label: string } | null {
+  if (name.endsWith('.dmg')) {
+    if (name.includes('universal')) return { os: 'mac', label: 'macOS (Universal)' }
+    if (name.includes('aarch64') || name.includes('arm64')) return { os: 'mac', label: 'macOS (Apple chip)' }
+    if (name.includes('x64') || name.includes('x86_64') || name.includes('intel')) return { os: 'mac', label: 'macOS (Intel)' }
+    return { os: 'mac', label: 'macOS' }
+  }
+  if (name.endsWith('.exe')) return { os: 'windows', label: 'Windows' }
+  if (name.endsWith('.AppImage')) return { os: 'linux', label: 'Linux (AppImage)' }
+  if (name.endsWith('.deb')) return { os: 'linux', label: 'Linux (deb)' }
+  return null
+}
+
+// Applies a theme the same way the old nav toggle did — attribute, saved
+// preference, favicon, and (in the desktop app) the native window chrome.
+function applyTheme(next: 'light' | 'dark') {
+  document.documentElement.dataset.theme = next
+  localStorage.setItem('dt-theme', next)
+  const favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"]')
+  if (favicon) favicon.href = next === 'dark' ? '/AppIconDarkTheme.png' : '/AppIconLightTheme.png'
+  syncWindowTheme(next)
+}
 
 export default function Settings() {
   const { settings, setSetting } = useSettings()
+  const dark = useIsDark()
   const [version, setVersion] = useState('')
+  const [assets, setAssets] = useState<Asset[] | null>(null)
 
   useEffect(() => { appVersion().then(setVersion) }, [])
+  useEffect(() => {
+    if (inDesktopApp) return
+    fetch(`https://api.github.com/repos/santoshP0/Devtools/releases/latest`)
+      .then(r => r.json())
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .then(j => setAssets(((j.assets ?? []) as any[])
+        .map(a => { const i = assetInfo(a.name); return i && { ...i, url: a.browser_download_url as string } })
+        .filter((a): a is Asset => Boolean(a))))
+      .catch(() => setAssets([]))
+  }, [])
 
   return (
     <div style={{
@@ -24,47 +63,69 @@ export default function Settings() {
           Preferences are saved on this device only.
         </p>
 
-        {/* ── General — applies on web and in the desktop app ── */}
-        <Section title="General">
-          <ToggleRow
-            title="Quick-access favourites"
-            desc="Show your starred tools in a side panel on the home page and in the tool switcher drawer."
-            checked={settings.favoritesQuickAccess}
-            onChange={v => setSetting('favoritesQuickAccess', v)}
-          />
-          <Row
-            title="Theme"
-            desc="Switch between light and dark from the toggle in the top bar."
-          >
-            <span style={{ fontSize: 13, opacity: 0.6 }}>top bar →</span>
+        {/* ── Appearance ── */}
+        <Section title="Appearance">
+          <Row title="Theme" desc="Light or dark — applies everywhere instantly.">
+            <Segmented
+              value={dark ? 'dark' : 'light'}
+              onChange={v => applyTheme(v as 'light' | 'dark')}
+              options={[{ v: 'light', label: '☀ Light' }, { v: 'dark', label: '☾ Dark' }]}
+            />
           </Row>
         </Section>
 
-        {/* ── Desktop app — differentiated: real controls in the app,
-             an explainer on the web ── */}
-        <Section title="Desktop app">
-          {inDesktopApp ? (
-            <>
-              <Row title="Version" desc="The installed DevToolbox build.">
-                <span style={{ fontSize: 13, fontFamily: 'var(--font-mono)', opacity: 0.8 }}>{version || '…'}</span>
-              </Row>
-              <Row title="Updates" desc="Check for and install new versions.">
-                <Link to="/about" style={linkBtn}>Open About</Link>
-              </Row>
-              <p style={{ fontSize: 12.5, opacity: 0.6, margin: '4px 2px 0', lineHeight: 1.5 }}>
-                More desktop-only options will land here over time.
+        {/* ── General ── */}
+        <Section title="General">
+          <ToggleRow
+            title="Quick-access favourites"
+            desc="Show your starred tools at the top of the home page and in the tool switcher."
+            checked={settings.favoritesQuickAccess}
+            onChange={v => setSetting('favoritesQuickAccess', v)}
+          />
+        </Section>
+
+        {/* ── Get the app / Desktop app — differentiated ── */}
+        {inDesktopApp ? (
+          <Section title="Desktop app">
+            <Row title="Version" desc="The installed DevToolbox build.">
+              <span style={{ fontSize: 13, fontFamily: 'var(--font-mono)', opacity: 0.8 }}>{version || '…'}</span>
+            </Row>
+            <Row title="Updates" desc="Check for and install new versions.">
+              <Link to="/about" style={linkBtn}>Check</Link>
+            </Row>
+          </Section>
+        ) : (
+          <Section title="Get the app">
+            <div style={{ padding: '14px 0', borderTop: '1px dashed var(--sketch-text)' }}>
+              <p style={{ fontSize: 13.5, opacity: 0.8, lineHeight: 1.6, margin: '0 0 12px' }}>
+                The desktop app adds native tools — FFmpeg media compression, screen mirror — and works offline.
               </p>
-            </>
-          ) : (
-            <div style={{ fontSize: 13.5, opacity: 0.8, lineHeight: 1.6 }}>
-              You're on the web version. The desktop app adds native tools (FFmpeg
-              media compression, screen mirror) and its own settings — auto-updates
-              and more to come.
-              <div style={{ marginTop: 12 }}>
-                <a href={RELEASES_URL} target="_blank" rel="noreferrer" style={linkBtn}>Get the desktop app</a>
-              </div>
+              {assets === null && <span style={{ fontSize: 13, opacity: 0.6 }}>loading downloads…</span>}
+              {assets && assets.length > 0 && (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {assets.map(a => (
+                    <a key={a.url} href={a.url} style={{ ...linkBtn, background: 'var(--surface)', color: 'var(--sketch-text)' }}>⬇ {a.label}</a>
+                  ))}
+                </div>
+              )}
+              {assets && assets.length === 0 && (
+                <a href={RELEASES_URL} target="_blank" rel="noreferrer" style={linkBtn}>See all downloads →</a>
+              )}
             </div>
-          )}
+          </Section>
+        )}
+
+        {/* ── About ── */}
+        <Section title="About">
+          <Row title="DevToolbox" desc="A fast, local-first box of developer tools — everything runs in your browser, nothing is uploaded.">
+            {version && <span style={{ fontSize: 12.5, fontFamily: 'var(--font-mono)', opacity: 0.7 }}>v{version.replace(/^v/, '')}</span>}
+          </Row>
+          <Row title="Links">
+            <span style={{ display: 'flex', gap: 8 }}>
+              <a href={REPO_URL} target="_blank" rel="noreferrer" style={{ ...linkBtn, background: 'var(--surface)', color: 'var(--sketch-text)' }}>GitHub</a>
+              <Link to="/about" style={linkBtn}>Full about →</Link>
+            </span>
+          </Row>
         </Section>
       </div>
     </div>
@@ -137,6 +198,34 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
         background: checked ? 'var(--sketch-bg)' : 'var(--sketch-text)',
         transition: 'all 0.15s',
       }} />
+    </span>
+  )
+}
+
+function Segmented({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: { v: string; label: string }[] }) {
+  return (
+    <span style={{ display: 'inline-flex', border: '2px solid var(--sketch-text)', borderRadius: 8, overflow: 'hidden', boxShadow: '2px 2px 0px var(--sketch-text)' }}>
+      {options.map((o, i) => {
+        const active = value === o.v
+        return (
+          <span
+            key={o.v}
+            role="button"
+            tabIndex={0}
+            onClick={() => onChange(o.v)}
+            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onChange(o.v) } }}
+            style={{
+              padding: '7px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              fontFamily: "'Architects Daughter', var(--font-sans)",
+              borderLeft: i ? '2px solid var(--sketch-text)' : 'none',
+              background: active ? 'var(--sketch-text)' : 'var(--surface)',
+              color: active ? 'var(--sketch-bg)' : 'var(--sketch-text)',
+            }}
+          >
+            {o.label}
+          </span>
+        )
+      })}
     </span>
   )
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'motion/react'
-import { tools, categories } from '../lib/tools'
+import { tools } from '../lib/tools'
 import { useFavorites } from '../lib/storage'
 import { useSettings } from '../lib/settings'
 import ToolIcon from './ToolIcon'
@@ -14,7 +14,14 @@ const CAT_TEXT: Record<string, string> = {
   Media: 'var(--card-med-text)', Utils: 'var(--card-utl-text)', Frontend: 'var(--card-front-text)',
   Backend: 'var(--card-back-text)',
 }
+const CAT_BG: Record<string, string> = {
+  API: 'var(--card-api-bg)', Data: 'var(--card-data-bg)', Security: 'var(--card-sec-bg)',
+  Generator: 'var(--card-gen-bg)', Text: 'var(--card-txt-bg)', Design: 'var(--card-des-bg)',
+  Media: 'var(--card-med-bg)', Utils: 'var(--card-utl-bg)', Frontend: 'var(--card-front-bg)',
+  Backend: 'var(--card-back-bg)',
+}
 const catColor = (c: string) => CAT_TEXT[c] ?? 'var(--accent)'
+const catBg = (c: string) => CAT_BG[c] ?? 'var(--surface2)'
 
 // Non-blocking quick tool switcher: a floating tab opens a right-side drawer
 // with favourites up top and the rest grouped by category. Complements Cmd+K.
@@ -29,11 +36,9 @@ export default function ToolSwitcher() {
   const { settings } = useSettings()
   const favTools = useMemo(() => tools.filter(t => favorites.includes(t.slug)), [favorites])
   const showFavs = settings.favoritesQuickAccess && favTools.length > 0
-  // Real categories (drop the synthetic "All"), only those with tools.
-  const cats = useMemo(
-    () => categories.filter(c => c !== 'All' && tools.some(t => t.category === c)),
-    [],
-  )
+  // Only relevant on a tool page — we surface that tool's own category.
+  const currentTool = tools.find(t => t.slug === activeSlug)
+  const catTools = currentTool ? tools.filter(t => t.category === currentTool.category) : []
   const go = (slug: string) => { navigate(`/${slug}`); setOpen(false) }
 
   useEffect(() => {
@@ -64,8 +69,14 @@ export default function ToolSwitcher() {
         onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--surface2)' }}
         onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
       >
-        <span style={{ display: 'inline-flex', flexShrink: 0, color: active ? 'var(--sketch-bg)' : catColor(category) }}>
-          <ToolIcon name={icon} size={16} />
+        <span style={{
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          width: 34, height: 34, borderRadius: 9,
+          background: active ? 'transparent' : catBg(category),
+          border: active ? 'none' : '1.5px solid var(--sketch-text)',
+          color: active ? 'var(--sketch-bg)' : catColor(category),
+        }}>
+          <ToolIcon name={icon} size={20} strokeWidth={2} />
         </span>
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
       </div>
@@ -82,6 +93,10 @@ export default function ToolSwitcher() {
       {children}
     </div>
   )
+
+  // The switcher is a per-tool convenience — hide the tab entirely on the home
+  // page, about, settings, and anywhere that isn't a tool.
+  if (!currentTool) return null
 
   return (
     <>
@@ -155,17 +170,15 @@ export default function ToolSwitcher() {
                   </div>
                 )}
 
-                {/* The rest, grouped by category */}
-                {cats.map(cat => (
-                  <div key={cat}>
-                    <SectionLabel color={catColor(cat)}>{cat}</SectionLabel>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      {tools.filter(t => t.category === cat).map(t => (
-                        <Row key={t.slug} slug={t.slug} name={t.name} icon={t.icon} category={t.category} desc={t.description} />
-                      ))}
-                    </div>
+                {/* Just this tool's category — keeps the panel short and relevant */}
+                <div>
+                  <SectionLabel color={catColor(currentTool.category)}>{currentTool.category}</SectionLabel>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {catTools.map(t => (
+                      <Row key={t.slug} slug={t.slug} name={t.name} icon={t.icon} category={t.category} desc={t.description} />
+                    ))}
                   </div>
-                ))}
+                </div>
               </div>
 
               <p style={{

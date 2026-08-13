@@ -1190,17 +1190,6 @@ button:disabled, .btn:disabled {
 .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 .no-scrollbar::-webkit-scrollbar { width: 0; height: 0; display: none; }
 
-/* ── Home favourites rail ─────────────────────────────────────────────────
-   A sticky quick-access column of starred tools beside the grid. Collapses
-   to a full-width strip above the grid on narrow screens. */
-.home-layout { display: flex; gap: 28px; align-items: flex-start; }
-.home-main { flex: 1; min-width: 0; }
-.fav-rail { position: sticky; top: 74px; width: 236px; flex-shrink: 0; }
-@media (max-width: 900px) {
-  .home-layout { flex-direction: column; }
-  .fav-rail { position: static; width: 100%; }
-}
-
 /* ── Notes editor ─────────────────────────────────────────────────────────
    The global form rules force a 2px sketch border + hard offset shadow on
    every input/textarea, which fought the clean, native note surface. These

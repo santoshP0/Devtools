@@ -1,5 +1,4 @@
 import { useRef, useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
 import ToolCard from '../components/ToolCard'
 import ToolIcon from '../components/ToolIcon'
 import { tools, categories } from '../lib/tools'
@@ -47,11 +46,11 @@ interface Props {
 export default function Home({ search, setSearch, activeCat, setActiveCat }: Props) {
   const searchRef = useRef<HTMLInputElement>(null)
   const [searchFocused, setSearchFocused] = useState(false)
-  const { favorites, toggleFavorite } = useFavorites()
+  const { favorites } = useFavorites()
   const { settings } = useSettings()
 
   // Starred tools, in the order they appear in the toolbox (stable, not by
-  // when they were starred) so the rail doesn't reshuffle on every toggle.
+  // when they were starred) so the row doesn't reshuffle on every toggle.
   const favTools = useMemo(
     () => tools.filter(t => favorites.includes(t.slug)),
     [favorites],
@@ -82,6 +81,11 @@ export default function Home({ search, setSearch, activeCat, setActiveCat }: Pro
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [])
+
+  // Favourites lead the default view (not searching, "All"); the grid below then
+  // drops them so nothing is listed twice.
+  const showFav = settings.favoritesQuickAccess && favTools.length > 0 && search === '' && activeCat === 'All'
+  const gridTools = showFav ? filtered.filter(t => !favorites.includes(t.slug)) : filtered
 
   return (
     <div 
@@ -230,116 +234,52 @@ export default function Home({ search, setSearch, activeCat, setActiveCat }: Pro
           maxWidth: '100%',
         }} />
 
-        {/* Favourites rail + tools grid (rail is opt-out via Settings) */}
-        <div className="home-layout">
-          {settings.favoritesQuickAccess && (
-            <aside className="fav-rail">
-              <FavoritesPanel favTools={favTools} onRemove={toggleFavorite} />
-            </aside>
-          )}
-
-          <div className="home-main">
-            {/* Grid Header / Counter */}
-            <div style={{ marginBottom: 24, textAlign: 'left' }}>
-              <span style={{ fontSize: 18, opacity: 0.8 }}>
-                {search !== ''
-                  ? `search matches (${filtered.length}) ↓`
-                  : activeCat === 'All'
-                    ? `all ${filtered.length} of them ↓`
-                    : `${activeCat.toLowerCase()} tools (${filtered.length}) ↓`
-                }
-              </span>
+        {/* Favourites first */}
+        {showFav && (
+          <div style={{ marginBottom: 8 }}>
+            <div style={{ marginBottom: 20, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 20 }}>★</span>
+              <span style={{ fontSize: 18, opacity: 0.85 }}>your favourites ({favTools.length})</span>
             </div>
-
-            {/* Unified Undivided Grid of Cards */}
-            {filtered.length === 0 ? (
-              <div style={{ padding: '60px 0', textAlign: 'center', color: 'var(--sketch-text)', fontSize: 18, opacity: 0.6 }}>
-                No tools matched your search "{search}"
-              </div>
-            ) : (
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-                gap: 20,
-              }}>
-                {filtered.map((tool, i) => (
-                  <ToolCard key={tool.slug} tool={tool} index={i} />
-                ))}
-              </div>
-            )}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 20 }}>
+              {favTools.map((tool, i) => (
+                <ToolCard key={tool.slug} tool={tool} index={i} />
+              ))}
+            </div>
+            <div style={{ borderTop: '2px dashed var(--sketch-text)', opacity: 0.3, margin: '36px auto 0', maxWidth: '100%' }} />
           </div>
-        </div>
-
-      </div>
-    </div>
-  )
-}
-
-// Quick-access rail of starred tools. Star a tool on its card and it lands here
-// so the ones you actually use aren't buried in the full grid.
-function FavoritesPanel({ favTools, onRemove }: { favTools: typeof tools; onRemove: (slug: string) => void }) {
-  return (
-    <div style={{
-      background: 'var(--surface)',
-      border: '2px solid var(--sketch-text)',
-      boxShadow: '4px 4px 0px var(--sketch-text)',
-      borderRadius: 4,
-      padding: '16px 14px',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-        <span style={{ fontSize: 16 }}>★</span>
-        <span style={{ fontSize: 16, fontWeight: 700, fontFamily: "'Architects Daughter', var(--font-sans)" }}>favourites</span>
-        {favTools.length > 0 && (
-          <span style={{ marginLeft: 'auto', fontSize: 11, fontFamily: 'var(--font-mono)', opacity: 0.7, border: '1px solid var(--sketch-text)', borderRadius: 3, padding: '1px 5px' }}>
-            {favTools.length}
-          </span>
         )}
-      </div>
 
-      {favTools.length === 0 ? (
-        <p style={{ fontSize: 13, lineHeight: 1.5, opacity: 0.7, margin: 0, fontFamily: 'var(--font-sans)' }}>
-          Tap the ★ on any tool to pin it here for one-click access.
-        </p>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {favTools.map(tool => (
-            <div key={tool.slug} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <Link
-                to={`/${tool.slug}`}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 9, flex: 1, minWidth: 0,
-                  padding: '7px 8px', borderRadius: 4,
-                  color: 'var(--sketch-text)', textDecoration: 'none',
-                  fontFamily: 'var(--font-sans)', fontSize: 13.5, fontWeight: 600,
-                  transition: 'background 0.12s',
-                }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-              >
-                <ToolIcon name={tool.icon} size={16} />
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tool.name}</span>
-              </Link>
-              <span
-                role="button"
-                tabIndex={0}
-                onClick={() => onRemove(tool.slug)}
-                onKeyDown={e => { if (e.key === 'Enter') onRemove(tool.slug) }}
-                title="Remove from favourites"
-                aria-label={`Remove ${tool.name} from favourites`}
-                style={{
-                  flexShrink: 0, cursor: 'pointer', fontSize: 13, lineHeight: 1,
-                  opacity: 0.5, padding: '4px 6px', borderRadius: 4,
-                  color: 'var(--sketch-text)',
-                }}
-                onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
-                onMouseLeave={e => (e.currentTarget.style.opacity = '0.5')}
-              >
-                ✕
-              </span>
-            </div>
-          ))}
+        {/* Grid Header / Counter */}
+        <div style={{ margin: showFav ? '28px 0 24px' : '0 0 24px', textAlign: 'left' }}>
+          <span style={{ fontSize: 18, opacity: 0.8 }}>
+            {search !== ''
+              ? `search matches (${gridTools.length}) ↓`
+              : activeCat === 'All'
+                ? (showFav ? `everything else (${gridTools.length}) ↓` : `all ${gridTools.length} of them ↓`)
+                : `${activeCat.toLowerCase()} tools (${gridTools.length}) ↓`
+            }
+          </span>
         </div>
-      )}
+
+        {/* Tools grid */}
+        {gridTools.length === 0 ? (
+          <div style={{ padding: '60px 0', textAlign: 'center', color: 'var(--sketch-text)', fontSize: 18, opacity: 0.6 }}>
+            {search ? `No tools matched your search "${search}"` : 'Nothing here yet.'}
+          </div>
+        ) : (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+            gap: 20,
+          }}>
+            {gridTools.map((tool, i) => (
+              <ToolCard key={tool.slug} tool={tool} index={i} />
+            ))}
+          </div>
+        )}
+
+      </div>
     </div>
   )
 }

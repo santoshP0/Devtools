@@ -79,13 +79,16 @@ export default function ToolCard({ tool, index }: ToolCardProps) {
 
       {/* Card Header: Shorthand/Icon + Index & Pin */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+        {/* Big icon chip — the fast way to spot a tool at a glance */}
         <div style={{
-          fontSize: 24,
-          fontWeight: 700,
-          color: catStyle.text,
-          fontFamily: 'var(--font-sans)',
+          width: 52, height: 52, flexShrink: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          borderRadius: 12,
+          background: catStyle.text,
+          color: catStyle.bg,
+          border: '2px solid var(--sketch-text)',
         }}>
-          <ToolIcon name={tool.icon} size={24} />
+          <ToolIcon name={tool.icon} size={30} strokeWidth={2.1} />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{
