@@ -7,6 +7,7 @@ import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import CommandPalette from './components/CommandPalette'
 import ToolSwitcher from './components/ToolSwitcher'
+import SessionBar from './components/SessionBar'
 import UpdateBanner from './components/UpdateBanner'
 
 // Smooth transition on every route change — one wrapper covers all pages.
@@ -44,6 +45,7 @@ function AnimatedRoutes({ children }: { children: ReactNode }) {
 }
 import Home from './pages/Home'
 import About from './pages/About'
+import TimeTracker from './pages/TimeTracker'
 const JsonFormatter = lazy(() => import('./pages/JsonFormatter'))
 import JsonXml from './pages/JsonXml'
 import Base64 from './pages/Base64'
@@ -137,6 +139,7 @@ export default function App() {
       }}>
         <CommandPalette />
         <ToolSwitcher />
+        <SessionBar />
         <UpdateBanner />
         <Navbar />
         <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -151,6 +154,7 @@ export default function App() {
               />
             } />
             <Route path="/about" element={<About />} />
+            <Route path="/time-tracker" element={<TimeTracker />} />
             <Route path="/json-formatter"      element={<Suspense fallback={null}><JsonFormatter /></Suspense>} />
             <Route path="/json-xml"            element={<JsonXml />} />
             <Route path="/base64"              element={<Base64 />} />

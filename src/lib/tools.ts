@@ -48,6 +48,7 @@ const ALL_TOOLS: Tool[] = [
   { name: 'Slugify',           slug: 'slugify',           icon: 'TextCursorInput', description: 'Convert text to URL-friendly slugs',                       category: 'Text', keywords: ['url', 'seo', 'permalink', 'slug', 'dash'] },
 
   // ── Remaining Utils ──
+  { name: 'Time Tracker',      slug: 'time-tracker',      icon: 'Timer',           description: 'Calculate durations and end times, add breaks, or run a live timer', category: 'Utils', keywords: ['time', 'duration', 'hours', 'timesheet', 'clock', 'timer', 'stopwatch', 'break', 'work', 'end time'] },
   { name: 'Number Base',       slug: 'base-converter',    icon: 'Sigma',           description: 'Convert numbers between decimal, hex, binary, and octal',  category: 'Utils', keywords: ['hex', 'bin', 'oct', 'decimal', 'convert', 'radix', 'binary', 'hexadecimal'] },
   { name: 'HTTP Status Codes', slug: 'http-status-codes', icon: 'CircleAlert',     description: 'Searchable reference for all HTTP 1xx–5xx status codes',   category: 'Utils', keywords: ['200', '301', '403', '404', '500', 'error', 'status', 'response'] },
   { name: 'Semver Checker',    slug: 'semver-checker',    icon: 'GitBranch',       description: 'Parse npm semantic version ranges and check compatibility', category: 'Utils', keywords: ['version', 'npm', 'package', 'range', 'compatible'] },
