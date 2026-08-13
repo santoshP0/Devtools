@@ -31,6 +31,7 @@ function AnimatedRoutes({ children }: { children: ReactNode }) {
 }
 import Home from './pages/Home'
 import About from './pages/About'
+import Settings from './pages/Settings'
 const JsonFormatter = lazy(() => import('./pages/JsonFormatter'))
 import JsonXml from './pages/JsonXml'
 import Base64 from './pages/Base64'
@@ -138,6 +139,7 @@ export default function App() {
               />
             } />
             <Route path="/about" element={<About />} />
+            <Route path="/settings" element={<Settings />} />
             <Route path="/json-formatter"      element={<Suspense fallback={null}><JsonFormatter /></Suspense>} />
             <Route path="/json-xml"            element={<JsonXml />} />
             <Route path="/base64"              element={<Base64 />} />

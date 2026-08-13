@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { tools } from '../lib/tools'
 import { useFavorites } from '../lib/storage'
+import { useSettings } from '../lib/settings'
 import LineSidebar from './LineSidebar'
 import ToolIcon from './ToolIcon'
 
@@ -36,7 +37,9 @@ export default function ToolSwitcher() {
   // Starred tools, in toolbox order, surfaced at the top of the drawer so the
   // ones you use are one click away from any page — same list as the Home rail.
   const { favorites } = useFavorites()
+  const { settings } = useSettings()
   const favTools = useMemo(() => tools.filter(t => favorites.includes(t.slug)), [favorites])
+  const showFavs = settings.favoritesQuickAccess && favTools.length > 0
   const go = (slug: string) => { navigate(`/${slug}`); setOpen(false) }
 
   // Hover-driven auto-scroll of the drawer body: velocity grows toward the edges.
@@ -136,8 +139,8 @@ export default function ToolSwitcher() {
               <div ref={bodyRef} className="no-scrollbar" onPointerMove={onBodyMove} onPointerLeave={onBodyLeave}
                 style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 24px 24px' }}>
 
-                {/* Favourites — quick access, above the full list */}
-                {favTools.length > 0 && (
+                {/* Favourites — quick access, above the full list (opt-out via Settings) */}
+                {showFavs && (
                   <div style={{ marginBottom: 14 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 0 8px', fontSize: 12, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)', fontFamily: 'var(--font-sans)' }}>
                       <span style={{ fontSize: 13 }}>★</span>

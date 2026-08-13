@@ -4,6 +4,7 @@ import ToolCard from '../components/ToolCard'
 import ToolIcon from '../components/ToolIcon'
 import { tools, categories } from '../lib/tools'
 import { useFavorites } from '../lib/storage'
+import { useSettings } from '../lib/settings'
 
 const ALL_CATS = categories
 
@@ -47,6 +48,7 @@ export default function Home({ search, setSearch, activeCat, setActiveCat }: Pro
   const searchRef = useRef<HTMLInputElement>(null)
   const [searchFocused, setSearchFocused] = useState(false)
   const { favorites, toggleFavorite } = useFavorites()
+  const { settings } = useSettings()
 
   // Starred tools, in the order they appear in the toolbox (stable, not by
   // when they were starred) so the rail doesn't reshuffle on every toggle.
@@ -228,11 +230,13 @@ export default function Home({ search, setSearch, activeCat, setActiveCat }: Pro
           maxWidth: '100%',
         }} />
 
-        {/* Favourites rail + tools grid */}
+        {/* Favourites rail + tools grid (rail is opt-out via Settings) */}
         <div className="home-layout">
-          <aside className="fav-rail">
-            <FavoritesPanel favTools={favTools} onRemove={toggleFavorite} />
-          </aside>
+          {settings.favoritesQuickAccess && (
+            <aside className="fav-rail">
+              <FavoritesPanel favTools={favTools} onRemove={toggleFavorite} />
+            </aside>
+          )}
 
           <div className="home-main">
             {/* Grid Header / Counter */}
