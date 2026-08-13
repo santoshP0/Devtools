@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { tools } from '../lib/tools'
+import { useFavorites } from '../lib/storage'
 import LineSidebar from './LineSidebar'
 import ToolIcon from './ToolIcon'
 
@@ -31,6 +32,12 @@ export default function ToolSwitcher() {
 
   const activeSlug = pathname.split('/').filter(Boolean)[0]
   const activeIndex = tools.findIndex(t => t.slug === activeSlug)
+
+  // Starred tools, in toolbox order, surfaced at the top of the drawer so the
+  // ones you use are one click away from any page — same list as the Home rail.
+  const { favorites } = useFavorites()
+  const favTools = useMemo(() => tools.filter(t => favorites.includes(t.slug)), [favorites])
+  const go = (slug: string) => { navigate(`/${slug}`); setOpen(false) }
 
   // Hover-driven auto-scroll of the drawer body: velocity grows toward the edges.
   const bodyRef = useRef<HTMLDivElement>(null)
@@ -128,6 +135,46 @@ export default function ToolSwitcher() {
                   proximity math (offsetTop vs pointer) stays aligned. */}
               <div ref={bodyRef} className="no-scrollbar" onPointerMove={onBodyMove} onPointerLeave={onBodyLeave}
                 style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 24px 24px' }}>
+
+                {/* Favourites — quick access, above the full list */}
+                {favTools.length > 0 && (
+                  <div style={{ marginBottom: 14 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 0 8px', fontSize: 12, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)', fontFamily: 'var(--font-sans)' }}>
+                      <span style={{ fontSize: 13 }}>★</span>
+                      <span>favourites</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {favTools.map(t => (
+                        <div
+                          key={t.slug}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => go(t.slug)}
+                          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(t.slug) } }}
+                          title={t.description}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 10,
+                            padding: '8px 10px', borderRadius: 6, cursor: 'pointer',
+                            color: t.slug === activeSlug ? 'var(--sketch-bg)' : 'var(--sketch-text)',
+                            background: t.slug === activeSlug ? 'var(--sketch-text)' : 'transparent',
+                            fontFamily: 'var(--font-sans)', fontSize: 14, fontWeight: 600,
+                            transition: 'background 0.12s',
+                          }}
+                          onMouseEnter={e => { if (t.slug !== activeSlug) e.currentTarget.style.background = 'var(--surface2)' }}
+                          onMouseLeave={e => { if (t.slug !== activeSlug) e.currentTarget.style.background = 'transparent' }}
+                        >
+                          <ToolIcon name={t.icon} size={16} />
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{ borderTop: '1px dashed var(--border)', margin: '14px 0 10px' }} />
+                    <div style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)', fontFamily: 'var(--font-sans)', marginBottom: 4 }}>
+                      all tools
+                    </div>
+                  </div>
+                )}
+
                 <LineSidebar
                   items={tools.map(t => t.name)}
                   itemAccents={tools.map(t => catColor(t.category))}
