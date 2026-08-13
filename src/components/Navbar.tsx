@@ -206,22 +206,20 @@ export default function Navbar() {
           </button>
         )}
 
-        {/* About — in the desktop app this replaces the (web-only) footer link */}
-        {inApp && (
-          <Link
-            to="/about"
-            title="About DevToolbox"
-            style={{
-              textDecoration: 'none', color: 'var(--sketch-text)',
-              fontFamily: "'Architects Daughter', var(--font-sans)", fontWeight: 700,
-              fontSize: 13, opacity: 0.85, padding: '4px 6px',
-            }}
-            onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
-            onMouseLeave={e => (e.currentTarget.style.opacity = '0.85')}
-          >
-            about
-          </Link>
-        )}
+        {/* About — the app has no footer, so this is the way to reach it */}
+        <Link
+          to="/about"
+          title="About DevToolbox"
+          style={{
+            textDecoration: 'none', color: 'var(--sketch-text)',
+            fontFamily: "'Architects Daughter', var(--font-sans)", fontWeight: 700,
+            fontSize: 13, opacity: 0.85, padding: '4px 6px',
+          }}
+          onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+          onMouseLeave={e => (e.currentTarget.style.opacity = '0.85')}
+        >
+          about
+        </Link>
 
         {/* Theme toggle */}
         <button

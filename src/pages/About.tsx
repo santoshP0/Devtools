@@ -1,5 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { appVersion, checkForUpdate, inDesktopApp, AvailableUpdate } from '../lib/updater'
+import { useIsDark } from '../hooks/useIsDark'
 
 const REPO_URL = 'https://github.com/santoshP0/Devtools'
 const SITE_URL = 'https://devtoolbox.dev'
@@ -15,6 +16,7 @@ type CheckState =
 export default function About() {
   const [version, setVersion] = useState('')
   const [state, setState] = useState<CheckState>({ kind: 'idle' })
+  const dark = useIsDark()
 
   useEffect(() => { appVersion().then(setVersion) }, [])
 
@@ -50,7 +52,7 @@ export default function About() {
         boxShadow: '5px 5px 0px var(--sketch-text)', borderRadius: 12,
         padding: 30, textAlign: 'center',
       }}>
-        <img src="/AppIconLightTheme.png" alt="DevToolbox" style={{ width: 64, height: 64, margin: '0 auto 12px' }} />
+        <img src={dark ? '/AppIconDarkTheme.png' : '/AppIconLightTheme.png'} alt="DevToolbox" style={{ width: 64, height: 64, margin: '0 auto 12px' }} />
         <h1 style={{ margin: 0, fontSize: 26, fontWeight: 700 }}>DevToolbox</h1>
         <p style={{ margin: '4px 0 0', fontSize: 14, opacity: 0.7 }}>
           version {version || '…'}{!inDesktopApp && ' · web'}

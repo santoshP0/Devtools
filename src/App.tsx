@@ -4,7 +4,6 @@ import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { ToastProvider } from './components/Toast'
 import Navbar from './components/Navbar'
-import Footer from './components/Footer'
 import CommandPalette from './components/CommandPalette'
 import ToolSwitcher from './components/ToolSwitcher'
 import UpdateBanner from './components/UpdateBanner'
@@ -13,18 +12,6 @@ import UpdateBanner from './components/UpdateBanner'
 // AnimatePresence keeps the exiting page's last render mounted while it fades,
 // so the old page animates out and the new one in. Opacity+scale only (no
 // translate) so tall, viewport-height tool pages never flash a scrollbar.
-// Full-screen tools (the video editor) fill the viewport and scroll internally —
-// the page footer would push the layout past 100dvh and add a whole-page scroll.
-// The footer is web-only chrome ("…in your browser", GitHub link). Hide it in the
-// desktop app entirely — it's dead weight there and its height added a useless
-// whole-page scroll on full-height tool pages. About lives in the navbar instead.
-const NO_FOOTER = new Set(['/video-editor'])
-function AppFooter() {
-  const { pathname } = useLocation()
-  if (isTauri()) return null
-  return NO_FOOTER.has(pathname) ? null : <Footer />
-}
-
 function AnimatedRoutes({ children }: { children: ReactNode }) {
   const location = useLocation()
   return (
@@ -222,7 +209,6 @@ export default function App() {
           </Routes>
           </AnimatedRoutes>
         </main>
-        <AppFooter />
       </div>
     </BrowserRouter>
     </ToastProvider>
