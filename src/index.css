@@ -147,15 +147,26 @@
     color: var(--sketch-text) !important;
   }
 
-  /* Custom scrollbar */
-  ::-webkit-scrollbar { width: 8px; height: 8px; }
-  ::-webkit-scrollbar-track { background: var(--sketch-bg); }
-  ::-webkit-scrollbar-thumb { 
-    background: var(--surface); 
-    border: 2px solid var(--sketch-text);
-    border-radius: 4px; 
+  /* Native-feeling scrollbar — thin, muted, no track chrome. Uses the
+     OS overlay style on Firefox and a soft rounded thumb on WebKit so it
+     reads like a native app rather than a bordered browser scrollbar. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--sketch-text) 28%, transparent) transparent;
   }
-  ::-webkit-scrollbar-thumb:hover { background: var(--sketch-dot); }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: color-mix(in srgb, var(--sketch-text) 26%, transparent);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    border-radius: 999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in srgb, var(--sketch-text) 42%, transparent);
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-corner { background: transparent; }
 
   /* Input range and checkbox overrides */
   input[type="range"] {
@@ -1183,6 +1194,40 @@ button:disabled, .btn:disabled {
 .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 .no-scrollbar::-webkit-scrollbar { width: 0; height: 0; display: none; }
 
+/* ── Notes editor ─────────────────────────────────────────────────────────
+   The global form rules force a 2px sketch border + hard offset shadow on
+   every input/textarea, which fought the clean, native note surface. These
+   scoped rules (one extra class = higher specificity, same layer) strip that
+   chrome so the title and body read as bare text on the note's own colour.
+   Ink/paper come from CSS vars set inline per note colour + theme. */
+.notes-editor .notes-title,
+.notes-editor .notes-content {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  color: var(--note-ink) !important;
+  transform: none !important;
+  border-radius: 0 !important;
+  font-family: var(--font-sans) !important;
+  resize: none !important;
+  min-height: 0 !important;
+}
+.notes-editor .notes-title { padding: 14px 20px 6px !important; font-size: 18px !important; font-weight: 700 !important; }
+.notes-editor .notes-content { padding: 6px 20px 16px !important; font-size: 14px !important; line-height: 1.8 !important; flex: 1; }
+.notes-editor .notes-title::placeholder,
+.notes-editor .notes-content::placeholder { color: var(--note-ink) !important; opacity: 0.38; }
+.notes-editor .notes-find-input {
+  border: 1.5px solid var(--note-border) !important;
+  box-shadow: none !important;
+  background: var(--note-bg) !important;
+  color: var(--note-ink) !important;
+  transform: none !important;
+  border-radius: 6px !important;
+  padding: 6px 10px !important;
+  font-size: 13px !important;
+  font-family: var(--font-mono) !important;
+}
+
 /* Themed tooltips for the video editor icon buttons — driven by aria-label so
    they stay accessible; scoped to the editor so nothing else gets them. */
 .editor-tips [aria-label] { position: relative; }
@@ -1278,6 +1323,15 @@ button:disabled, .btn:disabled {
     box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.45) !important;
   }
 }
+
+/* ── Animated theme switch (View Transitions) ──
+   The new theme reveals in an expanding circle from the toggle; disable the
+   default cross-fade so only our clip-path animation plays, and stack the new
+   snapshot on top so it wipes over the old one. */
+::view-transition-old(root),
+::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+::view-transition-old(root) { z-index: 0; }
+::view-transition-new(root) { z-index: 1; }
 
 /* Video editor pane dividers — make the four panels visibly draggable */
 .pane-grip > div { transition: background 0.15s ease, transform 0.15s ease; }

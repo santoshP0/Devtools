@@ -79,13 +79,16 @@ export default function ToolCard({ tool, index }: ToolCardProps) {
 
       {/* Card Header: Shorthand/Icon + Index & Pin */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+        {/* Big icon chip — the fast way to spot a tool at a glance */}
         <div style={{
-          fontSize: 24,
-          fontWeight: 700,
-          color: catStyle.text,
-          fontFamily: 'var(--font-sans)',
+          width: 52, height: 52, flexShrink: 0,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          borderRadius: 12,
+          background: catStyle.text,
+          color: catStyle.bg,
+          border: '2px solid var(--sketch-text)',
         }}>
-          <ToolIcon name={tool.icon} size={24} />
+          <ToolIcon name={tool.icon} size={30} strokeWidth={2.1} />
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <span style={{
@@ -102,23 +105,29 @@ export default function ToolCard({ tool, index }: ToolCardProps) {
               e.stopPropagation()
               toggleFavorite(tool.slug)
             }}
+            title={fav ? 'Remove from favourites' : 'Add to favourites'}
+            aria-label={fav ? 'Remove from favourites' : 'Add to favourites'}
+            aria-pressed={fav}
             style={{
-              background: fav ? 'var(--sketch-text)' : 'transparent',
-              border: '1.5px solid var(--sketch-text)',
+              background: fav ? catStyle.text : 'transparent',
+              border: `2px solid ${catStyle.text}`,
               borderRadius: '50%',
-              width: 20,
-              height: 20,
+              width: 30,
+              height: 30,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               cursor: 'pointer',
-              fontSize: 10,
-              color: fav ? catStyle.bg : 'var(--sketch-text)',
+              fontSize: 16,
+              color: fav ? catStyle.bg : catStyle.text,
               padding: 0,
               lineHeight: 1,
+              transition: 'transform 0.12s ease, background 0.15s ease, color 0.15s ease',
             }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.18)' }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)' }}
           >
-            ★
+            {fav ? '★' : '☆'}
           </button>
         </div>
       </div>

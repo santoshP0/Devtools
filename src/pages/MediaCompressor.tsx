@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import ToolLayout from '../components/ToolLayout'
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { open, save } from '@tauri-apps/plugin-dialog'
+import { useTauriFileDrop } from '../hooks/useTauriFileDrop'
 
 const RELEASES_URL = 'https://github.com/santoshP0/Devtools/releases/latest'
 
@@ -16,6 +17,18 @@ function fmt(bytes: number) {
 
 function ext(path: string) {
   return path.split('.').pop()?.toLowerCase() ?? ''
+}
+
+/** Directory of a path (everything up to the last separator), '' if none. */
+function dirOf(path: string) {
+  const i = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'))
+  return i >= 0 ? path.slice(0, i + 1) : ''
+}
+
+/** Filename without directory and without extension. */
+function baseName(path: string) {
+  const file = path.slice(dirOf(path).length)
+  return file.replace(/\.[^.]+$/, '')
 }
 
 /** Small helper line under a control explaining what it does */
@@ -58,6 +71,7 @@ function DesktopCompressor() {
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<Result | null>(null)
   const [outPath, setOutPath] = useState('')
+  const [outName, setOutName] = useState('')  // chosen output filename (no ext)
   const [showMore, setShowMore] = useState(false)
 
   // image options — 'same' keeps the input format (.gif stays .gif)
@@ -93,13 +107,21 @@ function DesktopCompressor() {
       multiple: false,
       filters: [{ name: 'Media', extensions: [...IMAGE_EXTS, ...VIDEO_EXTS] }],
     })
-    if (typeof p === 'string') { setInput(p); setResult(null) }
+    if (typeof p === 'string') { setInput(p); setResult(null); setOutName(baseName(p)) }
   }
+
+  // Drag a file straight onto the window (native path, ready for ffmpeg).
+  const { dragging } = useTauriFileDrop(
+    p => { setInput(p); setResult(null); setOutName(baseName(p)) },
+    [...IMAGE_EXTS, ...VIDEO_EXTS],
+  )
 
   const run = async () => {
     if (!input || !kind) return
-    const base = input.replace(/\.[^.]+$/, '')
-    const target = await save({ defaultPath: `${base}-compressed.${targetExt}` })
+    // Use the name the user chose (defaults to the source name). Falls back to
+    // the source base name if the field was cleared — never silently appends.
+    const name = (outName.trim() || baseName(input))
+    const target = await save({ defaultPath: `${dirOf(input)}${name}.${targetExt}` })
     if (!target) return
 
     // Send bounded options only — ffmpeg flags are built in Rust (no arg injection surface)
@@ -154,11 +176,38 @@ Linux:    sudo apt install ffmpeg`}</pre>
 
         {ffmpeg?.available && (
           <>
-            <div className="panel" style={{ padding: 20, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-              <button onClick={pick} className="btn-primary">Choose file…</button>
-              <span style={{ fontSize: 13, fontFamily: 'var(--font-mono)', color: 'var(--text-dim)', wordBreak: 'break-all' }}>
-                {input || 'No file selected — images or videos'}
-              </span>
+            <div className="panel" style={{
+              padding: 20, display: 'flex', flexDirection: 'column', gap: 14,
+              borderStyle: dragging ? 'dashed' : undefined,
+              outline: dragging ? '2px dashed var(--accent)' : 'none',
+              outlineOffset: 3,
+              background: dragging ? 'var(--surface2)' : undefined,
+              transition: 'background 0.15s',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                <button onClick={pick} className="btn-primary">Choose file…</button>
+                <span style={{ fontSize: 13, fontFamily: 'var(--font-mono)', color: 'var(--text-dim)', wordBreak: 'break-all' }}>
+                  {dragging ? 'Drop to load…' : (input || 'No file selected — or drag one in')}
+                </span>
+              </div>
+
+              {input && (
+                <div>
+                  <label className="label" title="The name of the saved file. Change it to whatever you like — it won't append “-compressed” unless you type it.">Output file name</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <input
+                      type="text"
+                      value={outName}
+                      onChange={e => setOutName(e.target.value)}
+                      placeholder={baseName(input)}
+                      spellCheck={false}
+                      style={{ flex: 1, minWidth: 180 }}
+                    />
+                    <span style={{ fontSize: 13, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>.{targetExt}</span>
+                  </div>
+                  <Hint>You'll still get the native save dialog to confirm the location — this just sets the starting name.</Hint>
+                </div>
+              )}
             </div>
 
             {/* ── Minimal settings ── */}

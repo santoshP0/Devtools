@@ -1,12 +1,13 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useMemo, type ReactNode } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { tools } from '../lib/tools'
-import LineSidebar from './LineSidebar'
+import { useFavorites } from '../lib/storage'
+import { useSettings } from '../lib/settings'
 import ToolIcon from './ToolIcon'
 
-// Per-category text + background colours (same tokens the tool cards use) so
-// each item tints and gets a card-like highlight in its own category colour.
+// Per-category text colours (same tokens the tool cards use) so each section
+// header and its tool icons tint in that category's colour.
 const CAT_TEXT: Record<string, string> = {
   API: 'var(--card-api-text)', Data: 'var(--card-data-text)', Security: 'var(--card-sec-text)',
   Generator: 'var(--card-gen-text)', Text: 'var(--card-txt-text)', Design: 'var(--card-des-text)',
@@ -20,45 +21,25 @@ const CAT_BG: Record<string, string> = {
   Backend: 'var(--card-back-bg)',
 }
 const catColor = (c: string) => CAT_TEXT[c] ?? 'var(--accent)'
-const catBg = (c: string) => CAT_BG[c] ?? 'transparent'
+const catBg = (c: string) => CAT_BG[c] ?? 'var(--surface2)'
 
-// Non-blocking quick tool switcher: a floating button opens a right-side
-// drawer with the hover-animated LineSidebar. Complements the Cmd+K palette.
+// Non-blocking quick tool switcher: a floating tab opens a right-side drawer
+// with favourites up top and the rest grouped by category. Complements Cmd+K.
 export default function ToolSwitcher() {
   const [open, setOpen] = useState(false)
   const navigate = useNavigate()
   const { pathname } = useLocation()
 
   const activeSlug = pathname.split('/').filter(Boolean)[0]
-  const activeIndex = tools.findIndex(t => t.slug === activeSlug)
 
-  // Hover-driven auto-scroll of the drawer body: velocity grows toward the edges.
-  const bodyRef = useRef<HTMLDivElement>(null)
-  const velRef = useRef(0)
-  const scrollRaf = useRef<number | null>(null)
-  const scrollTick = () => {
-    const el = bodyRef.current
-    if (el && velRef.current !== 0) {
-      const max = el.scrollHeight - el.clientHeight
-      const nt = Math.max(0, Math.min(max, el.scrollTop + velRef.current))
-      if (nt !== el.scrollTop) { el.scrollTop = nt; scrollRaf.current = requestAnimationFrame(scrollTick); return }
-    }
-    scrollRaf.current = null
-  }
-  const onBodyMove = (e: React.PointerEvent) => {
-    const el = bodyRef.current
-    if (!el) return
-    const r = el.getBoundingClientRect()
-    const rel = (e.clientY - r.top) / r.height
-    const dz = 0.2 // middle 40% = no scroll
-    let v = 0
-    if (rel < 0.5 - dz) v = -(((0.5 - dz) - rel) / (0.5 - dz))
-    else if (rel > 0.5 + dz) v = (rel - (0.5 + dz)) / (0.5 - dz)
-    velRef.current = Math.max(-1, Math.min(1, v)) * 10
-    if (velRef.current !== 0 && scrollRaf.current == null) scrollRaf.current = requestAnimationFrame(scrollTick)
-  }
-  const onBodyLeave = () => { velRef.current = 0 }
-  useEffect(() => () => { if (scrollRaf.current != null) cancelAnimationFrame(scrollRaf.current) }, [])
+  const { favorites } = useFavorites()
+  const { settings } = useSettings()
+  const favTools = useMemo(() => tools.filter(t => favorites.includes(t.slug)), [favorites])
+  const showFavs = settings.favoritesQuickAccess && favTools.length > 0
+  // Only relevant on a tool page — we surface that tool's own category.
+  const currentTool = tools.find(t => t.slug === activeSlug)
+  const catTools = currentTool ? tools.filter(t => t.category === currentTool.category) : []
+  const go = (slug: string) => { navigate(`/${slug}`); setOpen(false) }
 
   useEffect(() => {
     if (!open) return
@@ -66,6 +47,56 @@ export default function ToolSwitcher() {
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [open])
+
+  // One tool row — tinted icon, active-state fill, subtle hover.
+  const Row = ({ slug, name, icon, category, desc }: { slug: string; name: string; icon: string; category: string; desc: string }) => {
+    const active = slug === activeSlug
+    return (
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => go(slug)}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(slug) } }}
+        title={desc}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '8px 10px', borderRadius: 6, cursor: 'pointer',
+          color: active ? 'var(--sketch-bg)' : 'var(--sketch-text)',
+          background: active ? 'var(--sketch-text)' : 'transparent',
+          fontFamily: 'var(--font-sans)', fontSize: 14, fontWeight: 600,
+          transition: 'background 0.12s',
+        }}
+        onMouseEnter={e => { if (!active) e.currentTarget.style.background = 'var(--surface2)' }}
+        onMouseLeave={e => { if (!active) e.currentTarget.style.background = 'transparent' }}
+      >
+        <span style={{
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+          width: 34, height: 34, borderRadius: 9,
+          background: active ? 'transparent' : catBg(category),
+          border: active ? 'none' : '1.5px solid var(--sketch-text)',
+          color: active ? 'var(--sketch-bg)' : catColor(category),
+        }}>
+          <ToolIcon name={icon} size={20} strokeWidth={2} />
+        </span>
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+      </div>
+    )
+  }
+
+  const SectionLabel = ({ children, color }: { children: ReactNode; color?: string }) => (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 6,
+      padding: '10px 2px 6px', fontSize: 12, fontWeight: 700,
+      letterSpacing: '0.05em', textTransform: 'uppercase',
+      color: color ?? 'var(--text-muted)', fontFamily: 'var(--font-sans)',
+    }}>
+      {children}
+    </div>
+  )
+
+  // The switcher is a per-tool convenience — hide the tab entirely on the home
+  // page, about, settings, and anywhere that isn't a tool.
+  if (!currentTool) return null
 
   return (
     <>
@@ -124,38 +155,39 @@ export default function ToolSwitcher() {
                 <button onClick={() => setOpen(false)} className="btn-icon" title="Close" style={{ fontSize: 20, lineHeight: 1 }}>×</button>
               </div>
 
-              {/* Body scrolls; the list itself is not a scroll container, so the
-                  proximity math (offsetTop vs pointer) stays aligned. */}
-              <div ref={bodyRef} className="no-scrollbar" onPointerMove={onBodyMove} onPointerLeave={onBodyLeave}
-                style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 24px 24px' }}>
-                <LineSidebar
-                  items={tools.map(t => t.name)}
-                  itemAccents={tools.map(t => catColor(t.category))}
-                  itemBg={tools.map(t => catBg(t.category))}
-                  itemTitles={tools.map(t => t.description)}
-                  textColor="var(--text-dim)"
-                  markerColor="var(--border)"
-                  markerLength={28}
-                  markerGap={6}
-                  itemGap={16}
-                  fontSize={1}
-                  proximityRadius={110}
-                  maxShift={18}
-                  smoothing={120}
-                  defaultActive={activeIndex >= 0 ? activeIndex : null}
-                  onItemClick={index => {
-                    navigate(`/${tools[index].slug}`)
-                    setOpen(false)
-                  }}
-                />
+              <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '4px 24px 24px' }}>
+
+                {/* Favourites — quick access, above the categories (opt-out via Settings) */}
+                {showFavs && (
+                  <div>
+                    <SectionLabel><span style={{ fontSize: 13 }}>★</span><span>favourites</span></SectionLabel>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {favTools.map(t => (
+                        <Row key={t.slug} slug={t.slug} name={t.name} icon={t.icon} category={t.category} desc={t.description} />
+                      ))}
+                    </div>
+                    <div style={{ borderTop: '1px dashed var(--border)', margin: '12px 0 2px' }} />
+                  </div>
+                )}
+
+                {/* Just this tool's category — keeps the panel short and relevant */}
+                <div>
+                  <SectionLabel color={catColor(currentTool.category)}>{currentTool.category}</SectionLabel>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {catTools.map(t => (
+                      <Row key={t.slug} slug={t.slug} name={t.name} icon={t.icon} category={t.category} desc={t.description} />
+                    ))}
+                  </div>
+                </div>
               </div>
+
               <p style={{
                 flexShrink: 0, padding: '10px 20px', margin: 0,
                 fontSize: 11, color: 'var(--text-muted)', textAlign: 'center',
                 borderTop: '1px dashed var(--border)',
                 fontFamily: 'var(--font-sans)',
               }}>
-                move up / down to scroll · click a tool to open
+                click a tool to open · esc to close
               </p>
             </motion.aside>
           </>
