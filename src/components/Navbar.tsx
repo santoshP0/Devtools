@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import { tools } from '../lib/tools'
 import { useIsDark } from '../hooks/useIsDark'
+import { switchTheme } from '../lib/theme'
 
 // macOS desktop uses an overlay titlebar, so we pad left to clear the traffic
 // lights. Only matters inside the app on a Mac.
@@ -38,7 +39,7 @@ export default function Navbar() {
           <img src={dark ? '/AppIconDarkTheme.png' : '/AppIconLightTheme.png'} alt="DevToolbox" style={{ width: 34, height: 34, objectFit: 'contain' }} />
         </Link>
 
-        {tool ? (
+        {pathname !== '/' ? (
           <>
             <Link
               to="/"
@@ -54,8 +55,8 @@ export default function Navbar() {
               ← all tools
             </Link>
             <span style={{ color: 'var(--sketch-text)', opacity: 0.3, fontSize: 18, lineHeight: 1 }}>|</span>
-            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--sketch-text)', fontFamily: "'Architects Daughter', var(--font-sans)" }}>
-              {tool.name.toLowerCase()}
+            <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--sketch-text)', fontFamily: "'Architects Daughter', var(--font-sans)", textTransform: 'lowercase' }}>
+              {tool ? tool.name.toLowerCase() : (slug ?? '')}
             </span>
           </>
         ) : (
@@ -69,30 +70,61 @@ export default function Navbar() {
         )}
       </div>
 
-      {/* Right side — theme, downloads and about all live in Settings now; the
-          nav just gets you there. */}
-      <Link
-        to="/settings"
-        title="Settings — theme, favourites, downloads, about"
-        aria-label="Settings"
-        style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          padding: '5px 10px', borderRadius: 4,
-          background: 'var(--surface)', border: '2px solid var(--sketch-text)',
-          boxShadow: '2px 2px 0px var(--sketch-text)',
-          color: 'var(--sketch-text)', textDecoration: 'none',
-          fontFamily: "'Architects Daughter', var(--font-sans)", fontWeight: 700, fontSize: 13,
-          transition: 'all 0.1s ease-out',
-        }}
-        onMouseEnter={e => { e.currentTarget.style.transform = 'translate(-1px,-1px)'; e.currentTarget.style.boxShadow = '3px 3px 0px var(--sketch-text)' }}
-        onMouseLeave={e => { e.currentTarget.style.transform = 'translate(0,0)'; e.currentTarget.style.boxShadow = '2px 2px 0px var(--sketch-text)' }}
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="3" />
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-        </svg>
-        <span className="hidden sm:inline">settings</span>
-      </Link>
+      {/* Right side — instant theme toggle + settings (theme also lives in
+          Settings, but a nav toggle is faster for a quick flip). */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <button
+          onClick={e => switchTheme(dark ? 'light' : 'dark', { x: e.clientX, y: e.clientY })}
+          title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+          aria-label="Toggle theme"
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            width: 34, height: 32, padding: 0, borderRadius: 4,
+            background: 'var(--surface)', border: '2px solid var(--sketch-text)',
+            boxShadow: '2px 2px 0px var(--sketch-text)',
+            color: 'var(--sketch-text)', cursor: 'pointer',
+            transition: 'all 0.1s ease-out',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.transform = 'translate(-1px,-1px)'; e.currentTarget.style.boxShadow = '3px 3px 0px var(--sketch-text)' }}
+          onMouseLeave={e => { e.currentTarget.style.transform = 'translate(0,0)'; e.currentTarget.style.boxShadow = '2px 2px 0px var(--sketch-text)' }}
+        >
+          <span style={{ display: 'inline-flex', transition: 'transform 0.45s cubic-bezier(0.22,1,0.36,1)', transform: dark ? 'rotate(0deg)' : 'rotate(180deg)' }}>
+            {dark ? (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z" />
+              </svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="4" />
+                <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+              </svg>
+            )}
+          </span>
+        </button>
+
+        <Link
+          to="/settings"
+          title="Settings — theme, favourites, downloads, about"
+          aria-label="Settings"
+          style={{
+            display: 'flex', alignItems: 'center', gap: 6,
+            padding: '5px 10px', borderRadius: 4,
+            background: 'var(--surface)', border: '2px solid var(--sketch-text)',
+            boxShadow: '2px 2px 0px var(--sketch-text)',
+            color: 'var(--sketch-text)', textDecoration: 'none',
+            fontFamily: "'Architects Daughter', var(--font-sans)", fontWeight: 700, fontSize: 13,
+            transition: 'all 0.1s ease-out',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.transform = 'translate(-1px,-1px)'; e.currentTarget.style.boxShadow = '3px 3px 0px var(--sketch-text)' }}
+          onMouseLeave={e => { e.currentTarget.style.transform = 'translate(0,0)'; e.currentTarget.style.boxShadow = '2px 2px 0px var(--sketch-text)' }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+          <span className="hidden sm:inline">settings</span>
+        </Link>
+      </div>
     </nav>
   )
 }

@@ -1319,3 +1319,12 @@ button:disabled, .btn:disabled {
     box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.45) !important;
   }
 }
+
+/* ── Animated theme switch (View Transitions) ──
+   The new theme reveals in an expanding circle from the toggle; disable the
+   default cross-fade so only our clip-path animation plays, and stack the new
+   snapshot on top so it wipes over the old one. */
+::view-transition-old(root),
+::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+::view-transition-old(root) { z-index: 0; }
+::view-transition-new(root) { z-index: 1; }

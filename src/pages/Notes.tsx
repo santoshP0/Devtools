@@ -80,43 +80,93 @@ export default function Notes() {
   const { copied: copiedNote, copy: copyNote } = useClipboardCopy(2000)
   const titleRef = useRef<HTMLInputElement>(null)
   const contentRef = useRef<HTMLTextAreaElement>(null)
+  const findRef = useRef<HTMLInputElement>(null)
 
   const active = notes.find(n => n.id === activeId) ?? null
 
-  // On first mount, guarantee there is always an open note to write in and put
-  // the cursor in the title so you can just start typing (title stays blank).
+  // Persist on every change — the ONE place notes are saved, always the latest
+  // state. Previously each handler saved its own (stale-closure) array, so a fast
+  // keystroke could overwrite a create/delete → notes "came back" on reload.
+  useEffect(() => { saveNotes(notes) }, [notes])
+
+  // Always keep an open note to write in, and keep activeId pointing at a note
+  // that still exists — covers first mount, deletes, and emptying the list.
   useEffect(() => {
     if (notes.length === 0) {
       const note = newNote()
-      setNotes([note]); saveNotes([note]); setActiveId(note.id)
-    } else if (!activeId) {
+      setNotes([note]); setActiveId(note.id)
+    } else if (!activeId || !notes.some(n => n.id === activeId)) {
       setActiveId(notes[0].id)
     }
-    setTimeout(() => titleRef.current?.focus(), 60)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notes, activeId])
+
+  // Focus the title on first mount so you can just start typing.
+  useEffect(() => {
+    const t = setTimeout(() => titleRef.current?.focus(), 60)
+    return () => clearTimeout(t)
   }, [])
 
+  // VS Code-style: Cmd/Ctrl+F opens (and focuses) the find bar from anywhere in
+  // the editor; Esc closes it and returns to the note.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'f' || e.key === 'F')) {
+        e.preventDefault()
+        setShowFind(true)
+        setTimeout(() => { findRef.current?.focus(); findRef.current?.select() }, 0)
+      } else if (e.key === 'Escape' && showFind) {
+        e.preventDefault()
+        setShowFind(false)
+        contentRef.current?.focus()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [showFind])
+
+  // Step through every occurrence of findText one by one (Enter / ↓ / ↑), wrapping
+  // around. Focus stays in the find box so repeated Enter keeps advancing; the
+  // match is selected + scrolled into view in the note.
+  const findStep = (dir: 1 | -1) => {
+    const ta = contentRef.current
+    if (!active || !findText || !ta) return
+    const text = active.content
+    const starts: number[] = []
+    for (let i = text.indexOf(findText); i !== -1; i = text.indexOf(findText, i + findText.length)) starts.push(i)
+    if (starts.length === 0) return
+    const cur = ta.selectionStart
+    const onMatch = starts.includes(cur) && text.slice(cur, cur + findText.length) === findText
+    let target: number
+    if (dir === 1) target = (onMatch ? starts.find(s => s > cur) : starts.find(s => s >= cur)) ?? starts[0]
+    else target = (onMatch ? [...starts].reverse().find(s => s < cur) : [...starts].reverse().find(s => s <= cur)) ?? starts[starts.length - 1]
+    // focus the textarea so the selection is actually highlighted (an unfocused
+    // textarea's selection is invisible in WebKit), then select + scroll to it.
+    ta.focus()
+    ta.setSelectionRange(target, target + findText.length)
+    const line = text.slice(0, target).split('\n').length - 1
+    const lh = parseFloat(getComputedStyle(ta).lineHeight) || 20
+    ta.scrollTop = Math.max(0, line * lh - ta.clientHeight / 2)
+  }
+  const findNext = () => findStep(1)
+  const findPrev = () => findStep(-1)
+
+  // Every mutation is a functional update, so it acts on the latest state and can
+  // never be clobbered by a concurrent change (typing while creating/deleting).
   const update = (id: string, patch: Partial<Note>) => {
-    const updated = notes.map(n => n.id === id ? { ...n, ...patch, updatedAt: Date.now() } : n)
-    setNotes(updated)
-    saveNotes(updated)
+    setNotes(prev => prev.map(n => n.id === id ? { ...n, ...patch, updatedAt: Date.now() } : n))
   }
 
   const addNote = () => {
     const note = newNote()
-    const updated = [note, ...notes]
-    setNotes(updated)
-    saveNotes(updated)
+    setNotes(prev => [note, ...prev])
     setActiveId(note.id)
     setShowFind(false)
     setTimeout(() => titleRef.current?.focus(), 50)
   }
 
   const deleteNote = (id: string) => {
-    const updated = notes.filter(n => n.id !== id)
-    setNotes(updated)
-    saveNotes(updated)
-    if (activeId === id) setActiveId(updated[0]?.id ?? null)
+    setNotes(prev => prev.filter(n => n.id !== id))
+    setActiveId(cur => (cur === id ? null : cur)) // the effect above reselects a valid note
     setConfirmDelete(null)
   }
 
@@ -285,44 +335,6 @@ export default function Notes() {
                 </div>
               </div>
 
-              {/* Find & replace bar */}
-              {showFind && (
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
-                  padding: '8px 14px', flexShrink: 0,
-                  borderBottom: `1px solid ${ac.border}`,
-                  background: dark ? '#00000022' : '#ffffff55',
-                }}>
-                  <input
-                    autoFocus
-                    className="notes-find-input"
-                    placeholder="Find…"
-                    value={findText}
-                    onChange={e => setFindText(e.target.value)}
-                    style={{ flex: 1, minWidth: 120 }}
-                  />
-                  <input
-                    className="notes-find-input"
-                    placeholder="Replace with…"
-                    value={replaceText}
-                    onChange={e => setReplaceText(e.target.value)}
-                    style={{ flex: 1, minWidth: 120 }}
-                  />
-                  <span style={{ fontSize: 12, color: ac.text + 'aa', minWidth: 62, textAlign: 'center' }}>
-                    {findText ? `${matchCount} match${matchCount !== 1 ? 'es' : ''}` : ''}
-                  </span>
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    onClick={replaceAll}
-                    onKeyDown={e => { if (e.key === 'Enter') replaceAll() }}
-                    style={{ fontSize: 12, fontWeight: 700, padding: '6px 12px', borderRadius: 6, cursor: (!findText || matchCount === 0) ? 'default' : 'pointer', border: `1.5px solid ${ac.border}`, background: ac.bg, color: ac.text, opacity: (!findText || matchCount === 0) ? 0.4 : 1, whiteSpace: 'nowrap' }}
-                  >
-                    Replace all
-                  </span>
-                </div>
-              )}
-
               {/* Title */}
               <input
                 ref={titleRef}
@@ -340,10 +352,70 @@ export default function Notes() {
                 className="notes-content"
                 value={active.content}
                 onChange={e => update(active.id, { content: e.target.value })}
+                onKeyDown={e => {
+                  // while finding, Enter on a highlighted match jumps to the next
+                  // one (Shift+Enter → previous); otherwise Enter is a normal newline
+                  if (showFind && findText && e.key === 'Enter') {
+                    const ta = e.currentTarget
+                    if (active.content.slice(ta.selectionStart, ta.selectionEnd) === findText) {
+                      e.preventDefault()
+                      if (e.shiftKey) findPrev(); else findNext()
+                    }
+                  }
+                }}
                 placeholder="Start writing…"
                 style={{ width: '100%', outline: 'none', boxSizing: 'border-box' }}
                 spellCheck
               />
+
+              {/* Find & replace — pinned to the bottom (Notepad++ style) so it
+                  never pushes the note down. Enter / ↓ next, Shift+Enter / ↑ prev. */}
+              {showFind && (
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+                  padding: '8px 14px', flexShrink: 0,
+                  borderTop: `1px solid ${ac.border}`,
+                  background: dark ? '#00000026' : '#ffffff66',
+                }}>
+                  <input
+                    ref={findRef}
+                    autoFocus
+                    className="notes-find-input"
+                    placeholder="Find…"
+                    value={findText}
+                    onChange={e => setFindText(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); e.shiftKey ? findPrev() : findNext() } }}
+                    style={{ flex: 1, minWidth: 110 }}
+                  />
+                  <span
+                    role="button" tabIndex={0} title="Previous match (Shift+Enter)"
+                    onClick={findPrev} onKeyDown={e => { if (e.key === 'Enter') findPrev() }}
+                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 6, border: `1.5px solid ${ac.border}`, background: ac.bg, color: ac.text, cursor: 'pointer', fontSize: 14, fontWeight: 700, flexShrink: 0 }}
+                  >↑</span>
+                  <span
+                    role="button" tabIndex={0} title="Next match (Enter)"
+                    onClick={findNext} onKeyDown={e => { if (e.key === 'Enter') findNext() }}
+                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 26, height: 26, borderRadius: 6, border: `1.5px solid ${ac.border}`, background: ac.bg, color: ac.text, cursor: 'pointer', fontSize: 14, fontWeight: 700, flexShrink: 0 }}
+                  >↓</span>
+                  <span style={{ fontSize: 12, color: ac.text + 'aa', minWidth: 56, textAlign: 'center' }}>
+                    {findText ? `${matchCount} match${matchCount !== 1 ? 'es' : ''}` : ''}
+                  </span>
+                  <input
+                    className="notes-find-input"
+                    placeholder="Replace…"
+                    value={replaceText}
+                    onChange={e => setReplaceText(e.target.value)}
+                    style={{ flex: 1, minWidth: 110 }}
+                  />
+                  <span
+                    role="button" tabIndex={0}
+                    onClick={replaceAll} onKeyDown={e => { if (e.key === 'Enter') replaceAll() }}
+                    style={{ fontSize: 12, fontWeight: 700, padding: '6px 12px', borderRadius: 6, cursor: (!findText || matchCount === 0) ? 'default' : 'pointer', border: `1.5px solid ${ac.border}`, background: ac.bg, color: ac.text, opacity: (!findText || matchCount === 0) ? 0.4 : 1, whiteSpace: 'nowrap' }}
+                  >
+                    Replace all
+                  </span>
+                </div>
+              )}
 
               {/* Footer */}
               <div style={{

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useSettings } from '../lib/settings'
 import { appVersion, inDesktopApp } from '../lib/updater'
 import { useIsDark } from '../hooks/useIsDark'
-import { syncWindowTheme } from '../lib/windowTheme'
+import { switchTheme } from '../lib/theme'
 
 const REPO_URL = 'https://github.com/santoshP0/Devtools'
 const RELEASES_URL = `${REPO_URL}/releases/latest`
@@ -20,16 +20,6 @@ function assetInfo(name: string): { os: Asset['os']; label: string } | null {
   if (name.endsWith('.AppImage')) return { os: 'linux', label: 'Linux (AppImage)' }
   if (name.endsWith('.deb')) return { os: 'linux', label: 'Linux (deb)' }
   return null
-}
-
-// Applies a theme the same way the old nav toggle did — attribute, saved
-// preference, favicon, and (in the desktop app) the native window chrome.
-function applyTheme(next: 'light' | 'dark') {
-  document.documentElement.dataset.theme = next
-  localStorage.setItem('dt-theme', next)
-  const favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"]')
-  if (favicon) favicon.href = next === 'dark' ? '/AppIconDarkTheme.png' : '/AppIconLightTheme.png'
-  syncWindowTheme(next)
 }
 
 export default function Settings() {
@@ -68,7 +58,7 @@ export default function Settings() {
           <Row title="Theme" desc="Light or dark — applies everywhere instantly.">
             <Segmented
               value={dark ? 'dark' : 'light'}
-              onChange={v => applyTheme(v as 'light' | 'dark')}
+              onChange={(v, origin) => switchTheme(v as 'light' | 'dark', origin)}
               options={[{ v: 'light', label: '☀ Light' }, { v: 'dark', label: '☾ Dark' }]}
             />
           </Row>
@@ -189,20 +179,21 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
         border: '2px solid var(--sketch-text)',
         background: checked ? 'var(--sketch-text)' : 'var(--surface2)',
         boxShadow: '2px 2px 0px var(--sketch-text)',
-        cursor: 'pointer', transition: 'background 0.15s',
-        justifyContent: checked ? 'flex-end' : 'flex-start',
+        cursor: 'pointer', transition: 'background 0.2s ease',
+        justifyContent: 'flex-start',
       }}
     >
       <span style={{
         width: 18, height: 18, borderRadius: '50%',
         background: checked ? 'var(--sketch-bg)' : 'var(--sketch-text)',
-        transition: 'all 0.15s',
+        transform: checked ? 'translateX(20px)' : 'translateX(0)',
+        transition: 'transform 0.2s cubic-bezier(0.22,1,0.36,1), background 0.2s ease',
       }} />
     </span>
   )
 }
 
-function Segmented({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: { v: string; label: string }[] }) {
+function Segmented({ value, onChange, options }: { value: string; onChange: (v: string, origin?: { x: number; y: number }) => void; options: { v: string; label: string }[] }) {
   return (
     <span style={{ display: 'inline-flex', border: '2px solid var(--sketch-text)', borderRadius: 8, overflow: 'hidden', boxShadow: '2px 2px 0px var(--sketch-text)' }}>
       {options.map((o, i) => {
@@ -212,7 +203,7 @@ function Segmented({ value, onChange, options }: { value: string; onChange: (v: 
             key={o.v}
             role="button"
             tabIndex={0}
-            onClick={() => onChange(o.v)}
+            onClick={e => onChange(o.v, { x: e.clientX, y: e.clientY })}
             onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onChange(o.v) } }}
             style={{
               padding: '7px 14px', fontSize: 13, fontWeight: 700, cursor: 'pointer',

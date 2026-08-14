@@ -8,25 +8,35 @@ import CommandPalette from './components/CommandPalette'
 import ToolSwitcher from './components/ToolSwitcher'
 import UpdateBanner from './components/UpdateBanner'
 
-// Smooth transition on every route change — one wrapper covers all pages.
-// AnimatePresence keeps the exiting page's last render mounted while it fades,
-// so the old page animates out and the new one in. Opacity+scale only (no
-// translate) so tall, viewport-height tool pages never flash a scrollbar.
-function AnimatedRoutes({ children }: { children: ReactNode }) {
+// Home stays PERSISTENTLY mounted (hidden with display, not unmounted) so
+// returning to it is instant — no re-render of the 60+ motion cards, no flicker,
+// scroll position kept. Tool pages render in an absolutely-positioned overlay on
+// top with a compositor-cheap opacity fade (no transform → no jank on the heavy
+// grid). Going back just fades the overlay out, revealing the live Home beneath.
+function MainArea({ home, children }: { home: ReactNode; children: ReactNode }) {
   const location = useLocation()
+  const onHome = location.pathname === '/'
   return (
-    <AnimatePresence mode="wait" initial={false}>
-      <motion.div
-        key={location.pathname}
-        initial={{ opacity: 0, scale: 0.99 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.99 }}
-        transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-        style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
-      >
-        {children}
-      </motion.div>
-    </AnimatePresence>
+    <div style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+      <div style={{ flex: 1, display: onHome ? 'flex' : 'none', flexDirection: 'column', minHeight: 0 }}>
+        {home}
+      </div>
+      <AnimatePresence mode="wait" initial={false}>
+        {!onHome && (
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1, transition: { duration: 0.2, ease: [0.16, 1, 0.3, 1] } }}
+            exit={{ opacity: 0, transition: { duration: 0.12, ease: [0.4, 0, 1, 1] } }}
+            style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', minHeight: 0, background: 'var(--bg)' }}
+          >
+            <Routes location={location}>
+              {children}
+            </Routes>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   )
 }
 import Home from './pages/Home'
@@ -128,16 +138,14 @@ export default function App() {
         <UpdateBanner />
         <Navbar />
         <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-          <AnimatedRoutes>
-          <Routes>
-            <Route path="/" element={
-              <Home
-                search={homeSearch}
-                setSearch={setHomeSearch}
-                activeCat={homeActiveCat}
-                setActiveCat={setHomeActiveCat}
-              />
-            } />
+          <MainArea home={
+            <Home
+              search={homeSearch}
+              setSearch={setHomeSearch}
+              activeCat={homeActiveCat}
+              setActiveCat={setHomeActiveCat}
+            />
+          }>
             <Route path="/about" element={<About />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/json-formatter"      element={<Suspense fallback={null}><JsonFormatter /></Suspense>} />
@@ -208,8 +216,7 @@ export default function App() {
             <Route path="/toml-json"             element={<TomlJson />} />
             <Route path="/json-path"             element={<JsonPathTester />} />
             <Route path="/text-binary"           element={<TextBinaryHex />} />
-          </Routes>
-          </AnimatedRoutes>
+          </MainArea>
         </main>
       </div>
     </BrowserRouter>
