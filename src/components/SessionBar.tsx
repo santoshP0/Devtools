@@ -34,10 +34,11 @@ export default function SessionBar() {
   const finish = targetMs != null ? start + targetMs : null
   const remainMs = targetMs != null ? Math.max(0, targetMs - elapsed) : null
   const pct = progress != null ? Math.round(progress * 100) : null
+  // minute-resolution (no ticking seconds) so the native tooltip doesn't flicker
   const tip = countdown
     ? done
       ? `Time up — target reached`
-      : `${pct}% done · ${hms(remainMs!)} left · finishes ${clock(finish!)}`
+      : `${pct}% done · finishes ${clock(finish!)}`
     : `${hms(elapsed)} elapsed`
 
   return (

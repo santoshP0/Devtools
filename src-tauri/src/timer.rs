@@ -31,6 +31,11 @@ pub struct TimerInner {
   run_start: Option<Instant>,
   target_min: Option<u32>,
   notified: bool, // fired the "time up" notification for this session already
+  tray_tip: Option<String>,   // last tooltip text pushed to the tray
+  tray_pct: Option<u8>,       // last pie percentage drawn to the tray
+  tray_title: Option<String>, // last menu-bar title (always-visible remaining time)
+  menu_status: Option<String>,// last tray-menu status line
+  tray_visible: Option<bool>, // whether the tray icon is currently shown
 }
 
 impl TimerInner {
@@ -111,6 +116,14 @@ fn draw_pie(progress: Option<f32>, done: bool) -> Image<'static> {
   Image::new_owned(buf, size, size)
 }
 
+// minute-resolution duration (no seconds) so the tooltip changes at most once a
+// minute — a per-second tooltip makes the native hover flicker/close.
+fn fmt_hm(ms: u64) -> String {
+  let total_min = ms / 60_000;
+  let (h, m) = (total_min / 60, total_min % 60);
+  if h > 0 { format!("{}h {}m", h, m) } else { format!("{}m", m) }
+}
+
 // ── redraw the tray + menu + taskbar from current state ─────────────────────
 fn refresh(app: &AppHandle) {
   let (active, running, elapsed, target) = {
@@ -128,6 +141,16 @@ fn refresh(app: &AppHandle) {
       if let Some(ico) = app.default_window_icon() { let _ = t.set_icon(Some(ico.clone())); }
       let _ = t.set_tooltip(Some("DevToolbox"));
     }
+    // no timer → hide the tray icon entirely and clear the render caches
+    let hide = {
+      let st = app.state::<TimerState>();
+      let mut i = st.0.lock().unwrap();
+      i.tray_tip = None; i.tray_pct = None; i.tray_title = None; i.menu_status = None;
+      let c = i.tray_visible != Some(false);
+      if c { i.tray_visible = Some(false); }
+      c
+    };
+    if hide { if let Some(t) = &tray { let _ = t.set_visible(false); } }
     if let Some(m) = &menu {
       let _ = m.status.set_text("No timer running");
       let _ = m.toggle.set_text("Pause");
@@ -159,25 +182,74 @@ fn refresh(app: &AppHandle) {
     if first { notify_done(app); }
   }
 
+  // timer running → make sure the tray icon is shown (guarded, once)
+  let show = {
+    let st = app.state::<TimerState>();
+    let mut i = st.0.lock().unwrap();
+    let c = i.tray_visible != Some(true);
+    if c { i.tray_visible = Some(true); }
+    c
+  };
+  if show { if let Some(t) = &tray { let _ = t.set_visible(true); } }
+
+  // Only touch the tray when the *visible* value actually changes. Rewriting the
+  // icon/tooltip every second makes the native tooltip flicker and close while
+  // the pointer is hovering it.
+  let pct: u8 = prog.map(|p| (p * 100.0).round() as u8).unwrap_or(0);
+  let tip = match target_ms {
+    Some(_) if done => "Time up — target reached ✓".to_string(),
+    Some(tm) => format!("{}% · {} left", pct, fmt_hm(tm.saturating_sub(elapsed))),
+    None => fmt_hms(elapsed),
+  };
+  let (redraw, retip) = {
+    let st = app.state::<TimerState>();
+    let mut i = st.0.lock().unwrap();
+    let redraw = i.tray_pct != Some(pct);
+    let retip = i.tray_tip.as_deref() != Some(tip.as_str());
+    if redraw { i.tray_pct = Some(pct); }
+    if retip { i.tray_tip = Some(tip.clone()); }
+    (redraw, retip)
+  };
+  // Always-visible menu-bar title (remaining time). macOS auto-dismisses hover
+  // tooltips, so the tooltip alone "disappears" — the title never does.
+  let title = match target_ms {
+    Some(_) if done => "done".to_string(),
+    Some(tm) => fmt_hm(tm.saturating_sub(elapsed)),
+    None => fmt_hm(elapsed),
+  };
+  let retitle = {
+    let st = app.state::<TimerState>();
+    let mut i = st.0.lock().unwrap();
+    let c = i.tray_title.as_deref() != Some(title.as_str());
+    if c { i.tray_title = Some(title.clone()); }
+    c
+  };
   if let Some(t) = &tray {
-    let _ = t.set_icon(Some(draw_pie(prog, done)));
-    let _ = t.set_icon_as_template(false); // keep our colours on macOS
-    let tip = match target_ms {
-      Some(_) if done => format!("Time up · {} done ✓", fmt_hms(elapsed)),
-      Some(tm) => format!("{}% · {} left", (prog.unwrap_or(0.0) * 100.0).round() as u32, fmt_hms(tm.saturating_sub(elapsed))),
-      None => fmt_hms(elapsed),
-    };
-    let _ = t.set_tooltip(Some(tip));
+    if redraw {
+      let _ = t.set_icon(Some(draw_pie(prog, done)));
+      let _ = t.set_icon_as_template(false); // keep our colours on macOS
+    }
+    if retip { let _ = t.set_tooltip(Some(tip)); }
+    if retitle { let _ = t.set_title(Some(title)); }
   }
   if let Some(m) = &menu {
     let status = match (target_ms, running) {
-      (Some(tm), _) => format!("{} of {} · {}", fmt_hms(elapsed), fmt_hms(tm), if running { "running" } else { "paused" }),
-      (None, true) => format!("{} elapsed", fmt_hms(elapsed)),
-      (None, false) => format!("{} · paused", fmt_hms(elapsed)),
+      (Some(tm), _) => format!("{} of {} · {}", fmt_hm(elapsed), fmt_hm(tm), if running { "running" } else { "paused" }),
+      (None, true) => format!("{} elapsed", fmt_hm(elapsed)),
+      (None, false) => format!("{} · paused", fmt_hm(elapsed)),
     };
-    let _ = m.status.set_text(status);
-    let _ = m.toggle.set_text(if running { "Pause" } else { "Resume" });
-    let _ = m.toggle.set_enabled(true);
+    let changed = {
+      let st = app.state::<TimerState>();
+      let mut i = st.0.lock().unwrap();
+      let c = i.menu_status.as_deref() != Some(status.as_str());
+      if c { i.menu_status = Some(status.clone()); }
+      c
+    };
+    if changed {
+      let _ = m.status.set_text(status);
+      let _ = m.toggle.set_text(if running { "Pause" } else { "Resume" });
+      let _ = m.toggle.set_enabled(true);
+    }
   }
   if let Some(w) = &main {
     let _ = w.set_progress_bar(ProgressBarState {
@@ -194,6 +266,7 @@ fn notify_done(app: &AppHandle) {
     .builder()
     .title("Time's up")
     .body("You've reached your target time.")
+    .sound("default") // play the system notification sound
     .show();
 }
 
@@ -340,7 +413,8 @@ pub fn setup(app: &tauri::App) -> tauri::Result<()> {
   if let Some(ic) = app.default_window_icon() {
     builder = builder.icon(ic.clone());
   }
-  let _tray = builder.build(app)?;
+  let tray = builder.build(app)?;
+  let _ = tray.set_visible(false); // hidden until a timer is running
 
   // Closing the window while a session runs hides to the tray instead of
   // quitting, so the timer keeps going. "Quit DevToolbox" in the tray exits.
