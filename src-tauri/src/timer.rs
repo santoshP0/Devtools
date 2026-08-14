@@ -30,6 +30,7 @@ pub struct TimerInner {
   accumulated_ms: u64,
   run_start: Option<Instant>,
   target_min: Option<u32>,
+  notified: bool, // fired the "time up" notification for this session already
 }
 
 impl TimerInner {
@@ -52,7 +53,7 @@ pub struct TrayMenu {
 }
 
 #[derive(Serialize, Clone)]
-struct StatePayload {
+pub(crate) struct StatePayload {
   active: bool,
   running: bool,
   #[serde(rename = "elapsedMs")]
@@ -145,11 +146,25 @@ fn refresh(app: &AppHandle) {
   let prog = target_ms.map(|t| (elapsed as f32 / t.max(1) as f32).clamp(0.0, 1.0));
   let done = prog.map(|p| p >= 1.0).unwrap_or(false);
 
+  // Fire the "time up" notification exactly once, the first refresh after we hit
+  // the target — works even while the window is hidden to the tray.
+  if done {
+    let first = {
+      let st = app.state::<TimerState>();
+      let mut inner = st.0.lock().unwrap();
+      let was = inner.notified;
+      inner.notified = true;
+      !was
+    };
+    if first { notify_done(app); }
+  }
+
   if let Some(t) = &tray {
     let _ = t.set_icon(Some(draw_pie(prog, done)));
     let _ = t.set_icon_as_template(false); // keep our colours on macOS
-    let tip = match target {
-      Some(min) => format!("{} / {}m{}", fmt_hms(elapsed), min, if done { " · done" } else { "" }),
+    let tip = match target_ms {
+      Some(_) if done => format!("Time up · {} done ✓", fmt_hms(elapsed)),
+      Some(tm) => format!("{}% · {} left", (prog.unwrap_or(0.0) * 100.0).round() as u32, fmt_hms(tm.saturating_sub(elapsed))),
       None => fmt_hms(elapsed),
     };
     let _ = t.set_tooltip(Some(tip));
@@ -172,6 +187,16 @@ fn refresh(app: &AppHandle) {
   }
 }
 
+fn notify_done(app: &AppHandle) {
+  use tauri_plugin_notification::NotificationExt;
+  let _ = app
+    .notification()
+    .builder()
+    .title("Time's up")
+    .body("You've reached your target time.")
+    .show();
+}
+
 fn emit_state(app: &AppHandle) {
   let st = app.state::<TimerState>();
   let p = { payload(&st.0.lock().unwrap()) };
@@ -188,6 +213,7 @@ pub fn timer_start(app: AppHandle, state: State<'_, TimerState>, target_min: Opt
     s.accumulated_ms = 0;
     s.run_start = Some(Instant::now());
     s.target_min = target_min.filter(|&m| m > 0);
+    s.notified = false;
   }
   refresh(&app);
 }
@@ -237,6 +263,9 @@ pub fn timer_restore(app: AppHandle, state: State<'_, TimerState>, running: bool
     s.accumulated_ms = elapsed_ms;
     s.run_start = if running { Some(Instant::now()) } else { None };
     s.target_min = target_min.filter(|&m| m > 0);
+    // if the restored session is already complete, don't fire a stale notification
+    let done_ms = target_min.filter(|&m| m > 0).map(|m| m as u64 * 60_000);
+    s.notified = done_ms.map(|t| elapsed_ms >= t).unwrap_or(false);
   }
   refresh(&app);
 }

@@ -996,7 +996,8 @@ fn close_splashscreen(app: tauri::AppHandle) {
 pub fn run() {
   let mut builder = tauri::Builder::default()
     .plugin(tauri_plugin_dialog::init())
-    .plugin(tauri_plugin_process::init());
+    .plugin(tauri_plugin_process::init())
+    .plugin(tauri_plugin_notification::init());
 
   // in-app auto-update (desktop only)
   #[cfg(desktop)]
@@ -1032,8 +1033,24 @@ pub fn run() {
 
       Ok(())
     })
-    .run(tauri::generate_context!())
-    .expect("error while running tauri application");
+    .build(tauri::generate_context!())
+    .expect("error while building tauri application")
+    .run(move |_app_handle, _event| {
+      // macOS: closing hides the window to the tray (so the timer keeps its tray
+      // pie). Without this, clicking the dock icon does nothing and the app looks
+      // stuck. Reopen re-reveals the hidden window.
+      #[cfg(target_os = "macos")]
+      {
+        if let tauri::RunEvent::Reopen { .. } = _event {
+          use tauri::Manager;
+          if let Some(w) = _app_handle.get_webview_window("main") {
+            let _ = w.show();
+            let _ = w.unminimize();
+            let _ = w.set_focus();
+          }
+        }
+      }
+    });
 }
 
 #[cfg(test)]

@@ -1,17 +1,16 @@
-import { useState, type CSSProperties } from 'react'
+import { useState, useEffect, useRef, type CSSProperties } from 'react'
 import ToolLayout from '../components/ToolLayout'
 import ToolIcon from '../components/ToolIcon'
 import {
-  useSession, useTick, elapsedMs,
-  startSession, pauseSession, resumeSession, resetSession,
+  useSession, useTick, elapsedMs, startCountdown, resetSession,
 } from '../lib/timeSession'
 
-type Mode = 'duration' | 'end' | 'timer'
+type Mode = 'countdown' | 'duration' | 'end'
 
 const MODES: { id: Mode; label: string; icon: string; hint: string; accent: string }[] = [
-  { id: 'duration', label: 'Duration',  icon: 'Hourglass',         hint: 'from → to',       accent: 'var(--card-data-text)' },
-  { id: 'end',      label: 'End time',   icon: 'FlagTriangleRight', hint: 'start + length',  accent: 'var(--card-gen-text)' },
-  { id: 'timer',    label: 'Live timer', icon: 'Timer',             hint: 'track as you go', accent: 'var(--card-sec-text)' },
+  { id: 'countdown', label: 'Countdown', icon: 'Timer',             hint: 'start → target',  accent: 'var(--card-sec-text)' },
+  { id: 'duration',  label: 'Duration',  icon: 'Hourglass',         hint: 'from → to',       accent: 'var(--card-data-text)' },
+  { id: 'end',       label: 'End time',   icon: 'FlagTriangleRight', hint: 'start + length',  accent: 'var(--card-gen-text)' },
 ]
 
 // ── time helpers ──
@@ -53,10 +52,10 @@ const timeInput: CSSProperties = {
 }
 
 export default function TimeTracker() {
-  const [mode, setMode] = useState<Mode>('duration')
+  const [mode, setMode] = useState<Mode>('countdown')
 
   return (
-    <ToolLayout title="Time Tracker" description="Work out durations and end times, factor in breaks, or run a live timer toward a target.">
+    <ToolLayout title="Time Tracker" description="Count down from a start time to a target and get notified when it's up, or work out durations and end times.">
       <div style={{ maxWidth: 720, margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
         {/* Icon-forward mode picker — big glyphs so you spot the mode instantly */}
@@ -88,9 +87,9 @@ export default function TimeTracker() {
           })}
         </div>
 
+        {mode === 'countdown' && <CountdownMode />}
         {mode === 'duration' && <DurationMode />}
         {mode === 'end' && <EndMode />}
-        {mode === 'timer' && <TimerMode />}
       </div>
     </ToolLayout>
   )
@@ -240,74 +239,201 @@ function EndMode() {
   )
 }
 
-// ── Live timer: run toward a target, feeds the global top bar ──
-function TimerMode() {
-  const session = useSession()
-  useTick(!!session?.running)
-  const [h, setH] = useState('1')
-  const [m, setM] = useState('0')
-
-  const elapsed = session ? elapsedMs(session) : 0
-  const targetMs = session?.targetMin ? session.targetMin * 60000 : null
-  const progress = targetMs ? Math.min(1, elapsed / targetMs) : null
-  const remaining = targetMs ? Math.max(0, targetMs - elapsed) : null
-  const done = progress !== null && progress >= 1
-
-  const btn = (bg: string): CSSProperties => ({
-    flex: 1, padding: '12px 0', borderRadius: 8, cursor: 'pointer',
+// ── Countdown: pick a start time + a target length → live count-down to a
+// deadline. Anchored to a fixed wall-clock start, fed to the top progress line +
+// tray, and fires a notification when the target is reached.
+function clockOf(ms: number) {
+  return new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+}
+function bigBtn(bg: string): CSSProperties {
+  return {
+    width: '100%', padding: '12px 0', borderRadius: 8, cursor: 'pointer',
     border: '2px solid var(--sketch-text)', background: bg, color: 'var(--sketch-bg)',
     boxShadow: '2px 2px 0 var(--sketch-text)', fontSize: 15, fontWeight: 700,
     fontFamily: "'Architects Daughter', var(--font-sans)",
-  })
+  }
+}
+const ghostBtn: CSSProperties = {
+  height: 44, padding: '0 14px', fontSize: 14, fontWeight: 700, cursor: 'pointer',
+  fontFamily: "'Architects Daughter', var(--font-sans)", whiteSpace: 'nowrap',
+  background: 'var(--surface)', color: 'var(--sketch-text)', border: '2px solid var(--sketch-text)',
+  borderRadius: 6, boxShadow: '2px 2px 0 var(--sketch-text)',
+}
+const wheelLabel: CSSProperties = { fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: 8 }
+function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+  return (
+    <div style={{ padding: '10px 12px', borderRadius: 8, background: 'var(--surface2)', border: '2px solid var(--sketch-text)', textAlign: 'center' }}>
+      <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>{label}</div>
+      <div style={{ fontSize: 18, fontWeight: 800, fontFamily: "'Architects Daughter', var(--font-sans)", color: accent ? 'oklch(0.55 0.17 145)' : 'var(--sketch-text)' }}>{value}</div>
+    </div>
+  )
+}
 
-  if (!session) {
+// Rolling number wheel — native CSS scroll-snap, no library. Settles on the
+// nearest value after a short scroll pause and snaps it to the centre band.
+const WHEEL_ITEM = 40
+function Wheel({ max, value, onChange }: { max: number; value: number; onChange: (n: number) => void }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const t = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const drag = useRef<{ y: number; top: number } | null>(null)
+
+  useEffect(() => {
+    const el = ref.current; if (!el) return
+    const target = value * WHEEL_ITEM
+    if (Math.abs(el.scrollTop - target) > 2) el.scrollTop = target
+  }, [value])
+
+  // snap to the nearest value once movement stops (works for wheel + drag)
+  const settle = () => {
+    const el = ref.current; if (!el) return
+    const n = Math.max(0, Math.min(max, Math.round(el.scrollTop / WHEEL_ITEM)))
+    const target = n * WHEEL_ITEM
+    if (Math.abs(el.scrollTop - target) > 1) el.scrollTo({ top: target, behavior: 'smooth' })
+    if (n !== value) onChange(n)
+  }
+  const onScroll = () => {
+    if (drag.current) return // settle on release, not mid-drag
+    clearTimeout(t.current)
+    t.current = setTimeout(settle, 80)
+  }
+  const onPointerDown = (e: React.PointerEvent) => {
+    const el = ref.current; if (!el) return
+    drag.current = { y: e.clientY, top: el.scrollTop }
+    el.setPointerCapture(e.pointerId)
+  }
+  const onPointerMove = (e: React.PointerEvent) => {
+    const el = ref.current; if (!el || !drag.current) return
+    el.scrollTop = drag.current.top - (e.clientY - drag.current.y)
+  }
+  const onPointerUp = (e: React.PointerEvent) => {
+    const el = ref.current
+    if (el) { try { el.releasePointerCapture(e.pointerId) } catch { /* already released */ } }
+    drag.current = null
+    settle()
+  }
+
+  return (
+    <div style={{ position: 'relative', height: WHEEL_ITEM * 3, width: 60 }}>
+      <div style={{ position: 'absolute', top: WHEEL_ITEM, left: 0, right: 0, height: WHEEL_ITEM, borderTop: '2px solid var(--sketch-text)', borderBottom: '2px solid var(--sketch-text)', pointerEvents: 'none' }} />
+      <div
+        ref={ref}
+        className="wheel-scroll"
+        onScroll={onScroll}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        style={{
+          height: '100%', overflowY: 'scroll', boxSizing: 'border-box',
+          padding: `${WHEEL_ITEM}px 0`, scrollbarWidth: 'none',
+          userSelect: 'none', WebkitUserSelect: 'none', touchAction: 'none', cursor: 'grab',
+        }}
+      >
+        {Array.from({ length: max + 1 }, (_, n) => (
+          <div key={n} style={{
+            height: WHEEL_ITEM, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 22, fontFamily: 'var(--font-mono)', fontWeight: 700, pointerEvents: 'none',
+            color: n === value ? 'var(--sketch-text)' : 'var(--text-muted)',
+            opacity: n === value ? 1 : 0.4, transition: 'opacity 0.15s, color 0.15s',
+          }}>{String(n).padStart(2, '0')}</div>
+        ))}
+      </div>
+    </div>
+  )
+}
+function TimeWheels({ h, m, setH, setM, sep }: { h: number; m: number; setH: (n: number) => void; setM: (n: number) => void; sep: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+      <Wheel max={23} value={h} onChange={setH} />
+      <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--text-muted)' }}>{sep}</span>
+      <Wheel max={59} value={m} onChange={setM} />
+    </div>
+  )
+}
+
+function CountdownMode() {
+  const session = useSession()
+  const cd = session?.label === 'countdown' ? session : null
+  useTick(!!cd?.running)
+
+  const nd = new Date()
+  const [sh, setSh] = useState(nd.getHours())   // start time defaults to now (sensible, not a preset)
+  const [sm, setSm] = useState(nd.getMinutes())
+  const [th, setTh] = useState(0)               // target length — no preset
+  const [tm, setTm] = useState(0)
+
+  const targetMin = th * 60 + tm
+  const start = () => {
+    if (targetMin <= 0) return
+    const mid = new Date(); mid.setHours(0, 0, 0, 0)
+    const startEpoch = mid.getTime() + (sh * 60 + sm) * 60000
+    startCountdown(startEpoch, targetMin)
+  }
+
+  // ── setup ──
+  if (!cd) {
     return (
       <Panel>
-        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <Field label="Target hours"><input type="number" min={0} value={h} onChange={e => setH(e.target.value)} style={timeInput} /></Field>
-          <Field label="Target minutes"><input type="number" min={0} max={59} value={m} onChange={e => setM(e.target.value)} style={timeInput} /></Field>
+        <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap', justifyContent: 'center' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={wheelLabel}>Start time</div>
+            <TimeWheels h={sh} m={sm} setH={setSh} setM={setSm} sep=":" />
+            <button onClick={() => { const d = new Date(); setSh(d.getHours()); setSm(d.getMinutes()) }} style={{ ...ghostBtn, height: 32, marginTop: 10 }}>Now</button>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={wheelLabel}>Target length</div>
+            <TimeWheels h={th} m={tm} setH={setTh} setM={setTm} sep="h" />
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 14 }}>hours&nbsp;·&nbsp;minutes</div>
+          </div>
         </div>
-        <p style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: 0 }}>
-          Optional — leave at 0:0 to just count up. A target fills the progress line at the top of the screen as you work.
+        <button onClick={start} disabled={targetMin <= 0} style={{ ...bigBtn('oklch(0.62 0.17 145)'), opacity: targetMin <= 0 ? 0.5 : 1, cursor: targetMin <= 0 ? 'not-allowed' : 'pointer' }}>▶ Start countdown</button>
+        <p style={{ fontSize: 12.5, color: 'var(--text-muted)', margin: 0, textAlign: 'center' }}>
+          A line at the top of the app fills as time passes — you'll get a notification when the target is reached.
         </p>
-        <button
-          onClick={() => { const t = (Number(h) || 0) * 60 + (Number(m) || 0); startSession(t > 0 ? t : null) }}
-          style={btn('oklch(0.62 0.17 145)')}
-        >
-          ▶ Start timer
-        </button>
       </Panel>
     )
   }
 
+  // ── live count-down ──
+  const now = Date.now()
+  const elapsed = elapsedMs(cd, now)
+  const tMs = (cd.targetMin || 0) * 60000
+  const startMs = now - elapsed
+  const finish = startMs + tMs
+  const progress = tMs ? Math.min(1, elapsed / tMs) : 0
+  const remaining = Math.max(0, tMs - elapsed) // freezes at 0 — the timer stops at the end
+  const done = elapsed >= tMs
+  const green = 'oklch(0.55 0.17 145)'
+
   return (
     <Panel>
-      <div style={{ textAlign: 'center', padding: '8px 0 4px' }}>
-        <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>
-          {session.running ? 'Tracking' : 'Paused'}{session.targetMin ? ` · target ${fmtDur(session.targetMin)}` : ''}
+      <div style={{ textAlign: 'center', padding: '6px 0 2px' }}>
+        <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: done ? green : 'var(--text-muted)' }}>
+          {done ? '✓ Complete' : `${(progress * 100).toFixed(0)}% · target ${fmtDur(cd.targetMin!)}`}
         </div>
-        <div style={{ fontSize: 54, fontWeight: 800, lineHeight: 1.1, fontVariantNumeric: 'tabular-nums', fontFamily: 'var(--font-mono)', color: done ? 'oklch(0.62 0.19 25)' : 'var(--sketch-text)' }}>
-          {hms(elapsed)}
+        <div style={{ fontSize: 56, fontWeight: 800, lineHeight: 1.1, fontVariantNumeric: 'tabular-nums', fontFamily: 'var(--font-mono)', color: done ? green : 'var(--sketch-text)' }}>
+          {hms(remaining)}
         </div>
-        {remaining !== null && (
-          <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-            {done ? 'target reached 🎉' : `${hms(remaining)} to go`}
-          </div>
-        )}
+        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{done ? 'time reached — timer stopped' : 'remaining'}</div>
       </div>
 
-      {progress !== null && (
-        <div style={{ height: 12, borderRadius: 999, background: 'var(--surface2)', border: '2px solid var(--sketch-text)', overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${progress * 100}%`, background: done ? 'oklch(0.62 0.19 25)' : 'oklch(0.62 0.17 145)', transition: 'width 0.4s linear' }} />
-        </div>
-      )}
-
-      <div style={{ display: 'flex', gap: 10 }}>
-        {session.running
-          ? <button onClick={pauseSession} style={btn('var(--card-data-text)')}>❚❚ Pause</button>
-          : <button onClick={resumeSession} style={btn('oklch(0.62 0.17 145)')}>▶ Resume</button>}
-        <button onClick={resetSession} style={{ ...btn('oklch(0.62 0.18 25)') }}>■ Reset</button>
+      <div style={{ height: 14, borderRadius: 999, background: 'var(--surface2)', border: '2px solid var(--sketch-text)', overflow: 'hidden' }}>
+        <div style={{ height: '100%', width: `${progress * 100}%`, background: done ? green : 'var(--accent)', transition: 'width 0.4s linear' }} />
       </div>
+
+      {/* placeholder line under the timer once it ends, per request */}
+      <div style={{ fontSize: 13.5, lineHeight: 1.5, color: 'var(--sketch-text)', textAlign: 'center' }}>
+        {done
+          ? <>Reached your target of <b>{fmtDur(cd.targetMin!)}</b> at <b>{clockOf(finish)}</b>.</>
+          : <>Started <b>{clockOf(startMs)}</b> · finishes at <b>{clockOf(finish)}</b>.</>}
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+        <Stat label="Started" value={clockOf(startMs)} />
+        <Stat label={done ? 'Finished' : 'Finishes'} value={clockOf(finish)} accent={done} />
+      </div>
+
+      <button onClick={resetSession} style={bigBtn('oklch(0.62 0.18 25)')}>■ {done ? 'Start new' : 'Cancel'}</button>
     </Panel>
   )
 }

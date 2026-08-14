@@ -54,6 +54,17 @@ export function startSession(targetMin: number | null, label = '') {
   emit()
   toNative('timer_start', { targetMin })
 }
+
+/**
+ * Start a countdown anchored to a fixed wall-clock start time (`startEpoch`), so
+ * elapsed = now − start and it counts down to a real deadline (start + target).
+ * Survives quit/reopen because everything derives from the stored start time.
+ */
+export function startCountdown(startEpoch: number, targetMin: number) {
+  state = { running: true, startedAt: startEpoch, accumulatedMs: 0, targetMin, label: 'countdown' }
+  emit()
+  toNative('timer_restore', { running: true, elapsedMs: Math.max(0, Date.now() - startEpoch), targetMin })
+}
 export function pauseSession() {
   if (!state || !state.running) return
   state = { ...state, running: false, accumulatedMs: elapsedMs(state), startedAt: 0 }
@@ -77,8 +88,9 @@ export function setTarget(targetMin: number | null) {
 // resync) — no re-invoke back to Rust, so there's no feedback loop.
 interface NativePayload { active: boolean; running: boolean; elapsedMs: number; targetMin: number | null }
 function applyNative(p: NativePayload) {
+  const prev = state
   state = p.active
-    ? { running: p.running, startedAt: p.running ? Date.now() : 0, accumulatedMs: p.elapsedMs, targetMin: p.targetMin ?? null, label: '' }
+    ? { running: p.running, startedAt: p.running ? Date.now() : 0, accumulatedMs: p.elapsedMs, targetMin: p.targetMin ?? null, label: prev?.label ?? '' }
     : null
   emit()
 }
