@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import ToolLayout from '../components/ToolLayout'
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { open, save } from '@tauri-apps/plugin-dialog'
+import { useTauriFileDrop } from '../hooks/useTauriFileDrop'
 
 const RELEASES_URL = 'https://github.com/santoshP0/Devtools/releases/latest'
 const VIDEO_EXTS = ['mp4', 'mov', 'mkv', 'webm', 'avi', 'm4v']
@@ -69,6 +70,9 @@ function DesktopVideoGif() {
     if (typeof p === 'string') { setInput(p); setResult(null) }
   }
 
+  // Drag a video onto the window to load it.
+  const { dragging } = useTauriFileDrop(p => { setInput(p); setResult(null) }, VIDEO_EXTS)
+
   const run = async () => {
     if (!input || !isVideo) return
     const base = input.replace(/\.[^.]+$/, '')
@@ -107,12 +111,18 @@ function DesktopVideoGif() {
         )}
 
         {/* Source */}
-        <div className="panel" style={{ padding: 20 }}>
+        <div className="panel" style={{
+          padding: 20,
+          outline: dragging ? '2px dashed var(--accent)' : 'none',
+          outlineOffset: 3,
+          background: dragging ? 'var(--surface2)' : undefined,
+          transition: 'background 0.15s',
+        }}>
           <label className="label">Video file</label>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <button className="btn-secondary" onClick={pick}>Choose video…</button>
             <span style={{ fontSize: 12, color: 'var(--text-dim)', wordBreak: 'break-all' }}>
-              {input ? input.split('/').pop() : 'No file selected'}
+              {dragging ? 'Drop to load…' : (input ? input.split(/[\\/]/).pop() : 'No file selected — or drag one in')}
             </span>
           </div>
           {input && !isVideo && <Hint>Not a supported video. Use {VIDEO_EXTS.join(', ')}.</Hint>}
