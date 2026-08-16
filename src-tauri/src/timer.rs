@@ -123,7 +123,65 @@ fn fmt_remaining(ms: u64) -> String {
 }
 
 // ── icons (raw RGBA, no image deps) ─────────────────────────────────────────
-fn draw_pie(progress: f32, done: bool) -> Image<'static> {
+// A tiny 3x5 bitmap font so the time is legible IN the icon — the only way to
+// show it on Windows/Linux, whose trays have no inline text label like macOS.
+fn glyph(ch: char) -> Option<[u8; 5]> {
+  Some(match ch {
+    '0' => [0b111, 0b101, 0b101, 0b101, 0b111],
+    '1' => [0b010, 0b110, 0b010, 0b010, 0b111],
+    '2' => [0b111, 0b001, 0b111, 0b100, 0b111],
+    '3' => [0b111, 0b001, 0b111, 0b001, 0b111],
+    '4' => [0b101, 0b101, 0b111, 0b001, 0b001],
+    '5' => [0b111, 0b100, 0b111, 0b001, 0b111],
+    '6' => [0b111, 0b100, 0b111, 0b101, 0b111],
+    '7' => [0b111, 0b001, 0b010, 0b010, 0b010],
+    '8' => [0b111, 0b101, 0b111, 0b101, 0b111],
+    '9' => [0b111, 0b101, 0b111, 0b001, 0b111],
+    'h' => [0b100, 0b100, 0b110, 0b101, 0b101],
+    _ => return None,
+  })
+}
+// Draw `text` centered, sized to `frac` of the icon, in `color`.
+fn draw_glyphs(buf: &mut [u8], size: u32, text: &str, color: (u8, u8, u8), frac: f32) {
+  let n = text.chars().count() as u32;
+  if n == 0 { return; }
+  let unit_w = 3 * n + (n - 1); // cells wide incl. 1-cell gaps
+  let budget = (size as f32 * frac) as u32;
+  let scale = (budget / unit_w).min(budget / 5).max(1);
+  let total_w = unit_w * scale;
+  let total_h = 5 * scale;
+  let x0 = (size.saturating_sub(total_w)) / 2;
+  let y0 = (size.saturating_sub(total_h)) / 2;
+  let mut cx = x0;
+  for ch in text.chars() {
+    if let Some(g) = glyph(ch) {
+      for (row, bits) in g.iter().enumerate() {
+        for col in 0..3u32 {
+          if bits & (1 << (2 - col)) != 0 {
+            for dy in 0..scale {
+              for dx in 0..scale {
+                let px = cx + col * scale + dx;
+                let py = y0 + row as u32 * scale + dy;
+                if px < size && py < size {
+                  let idx = ((py * size + px) * 4) as usize;
+                  buf[idx] = color.0; buf[idx + 1] = color.1; buf[idx + 2] = color.2; buf[idx + 3] = 255;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    cx += 4 * scale;
+  }
+}
+// Compact icon label: seconds (<1m), minutes (<1h), else whole hours ("2h").
+fn icon_label(ms: u64) -> String {
+  let s = ms / 1000;
+  if s < 60 { s.max(1).to_string() } else if s < 3600 { (s / 60).to_string() } else { format!("{}h", s / 3600) }
+}
+
+fn draw_pie(progress: f32, done: bool, label: &str) -> Image<'static> {
   let size = ICON;
   let c = size as f32 / 2.0;
   let outer = c - 1.0;
@@ -149,9 +207,18 @@ fn draw_pie(progress: f32, done: bool) -> Image<'static> {
       }
     }
   }
+  draw_glyphs(&mut buf, size, label, (fr, fg, fb), 0.5); // remaining, in the ring's centre
   Image::new_owned(buf, size, size)
 }
-// Small filled dot for the count-up stopwatch (no target → no pie).
+// Count-up stopwatch: the elapsed number as the icon (Windows/Linux, no title).
+fn draw_num(running: bool, label: &str) -> Image<'static> {
+  let size = ICON;
+  let color = if running { (78u8, 201, 122) } else { (150u8, 150, 150) };
+  let mut buf = vec![0u8; (size * size * 4) as usize];
+  draw_glyphs(&mut buf, size, label, color, 0.85);
+  Image::new_owned(buf, size, size)
+}
+// Small filled dot for the macOS stopwatch (macOS shows the time via set_title).
 fn draw_dot(running: bool) -> Image<'static> {
   let size = ICON;
   let c = size as f32 / 2.0;
@@ -259,10 +326,21 @@ fn update_tray(app: &AppHandle, tray_id: &str, which: Which, v: &View, tray_off:
     (vis_changed, redraw, retip, retitle)
   };
 
+  // macOS shows the time as the tray title, so its icon stays clean (pie/dot,
+  // redrawn only on % change). Windows/Linux have no title, so the time is drawn
+  // INTO the icon and it must redraw whenever the shown time changes.
+  let is_mac = cfg!(target_os = "macos");
   if let Some(t) = &tray {
     if vis_changed { let _ = t.set_visible(show); }
-    if redraw {
-      let icon = if has_target { draw_pie(prog.unwrap_or(0.0), done) } else { draw_dot(v.running) };
+    if redraw || (!is_mac && retitle) {
+      let icon = if has_target {
+        let label = if is_mac || done { String::new() } else { icon_label(target_ms.unwrap().saturating_sub(v.elapsed)) };
+        draw_pie(prog.unwrap_or(0.0), done, &label)
+      } else if is_mac {
+        draw_dot(v.running)
+      } else {
+        draw_num(v.running, &icon_label(v.elapsed))
+      };
       let _ = t.set_icon(Some(icon));
       let _ = t.set_icon_as_template(false); // keep our colours on macOS
     }
