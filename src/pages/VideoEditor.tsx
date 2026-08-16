@@ -720,7 +720,7 @@ function Editor() {
             </div>
           </div>
 
-          <div onPointerDown={e => startPaneDrag(e, mediaW, setMediaW, 'x', 1, 120, 380)} style={gripX}><div style={gripBarX} /></div>
+          <div className="pane-grip" title="Drag to resize" onPointerDown={e => startPaneDrag(e, mediaW, setMediaW, 'x', 1, 120, 380)} style={gripX}><div style={gripBarX} /></div>
 
           {/* preview + transport */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
@@ -764,7 +764,7 @@ function Editor() {
             </div>
           </div>
 
-          <div onPointerDown={e => startPaneDrag(e, propsW, setPropsW, 'x', -1, 180, 480)} style={gripX}><div style={gripBarX} /></div>
+          <div className="pane-grip" title="Drag to resize" onPointerDown={e => startPaneDrag(e, propsW, setPropsW, 'x', -1, 180, 480)} style={gripX}><div style={gripBarX} /></div>
 
           {/* properties (right) */}
           <div className="panel" style={{ width: propsW, flexShrink: 0, padding: 14, overflowY: 'auto' }}>
@@ -838,7 +838,7 @@ function Editor() {
           </div>
         </div>
 
-        <div onPointerDown={e => startPaneDrag(e, timelineH, setTimelineH, 'y', -1, 120, 460)} style={gripY}><div style={gripBarY} /></div>
+        <div className="pane-grip" title="Drag to resize" onPointerDown={e => startPaneDrag(e, timelineH, setTimelineH, 'y', -1, 120, 460)} style={gripY}><div style={gripBarY} /></div>
 
         {/* timeline */}
         <div className="panel" style={{ padding: 0, flexShrink: 0, height: timelineH, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
@@ -950,10 +950,10 @@ const mediaCard: React.CSSProperties = {
   borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)',
   color: 'var(--text-dim)', cursor: 'pointer', width: '100%',
 }
-const gripX: React.CSSProperties = { width: 8, flexShrink: 0, cursor: 'col-resize', display: 'flex', alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch' }
-const gripY: React.CSSProperties = { height: 8, flexShrink: 0, cursor: 'row-resize', display: 'flex', alignItems: 'center', justifyContent: 'center' }
-const gripBarX: React.CSSProperties = { width: 3, height: '26%', maxHeight: 40, borderRadius: 2, background: 'var(--border)' }
-const gripBarY: React.CSSProperties = { height: 3, width: 60, borderRadius: 2, background: 'var(--border)' }
+const gripX: React.CSSProperties = { width: 12, flexShrink: 0, cursor: 'col-resize', display: 'flex', alignItems: 'center', justifyContent: 'center', alignSelf: 'stretch' }
+const gripY: React.CSSProperties = { height: 12, flexShrink: 0, cursor: 'row-resize', display: 'flex', alignItems: 'center', justifyContent: 'center' }
+const gripBarX: React.CSSProperties = { width: 4, height: '34%', maxHeight: 48, borderRadius: 3, background: 'var(--text-muted)' }
+const gripBarY: React.CSSProperties = { height: 4, width: 64, borderRadius: 3, background: 'var(--text-muted)' }
 const sectionLabel: React.CSSProperties = { fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--text-muted)', marginBottom: 8 }
 const fieldLabel: React.CSSProperties = { display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: 'var(--text-dim)' }
 const rangeStyle: React.CSSProperties = { width: '100%', accentColor: 'var(--accent)' }

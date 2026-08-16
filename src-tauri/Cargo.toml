@@ -22,10 +22,11 @@ serde_json = { version = "1.0", features = ["preserve_order"] }
 serde = { version = "1.0", features = ["derive"] }
 regex = "1"
 log = "0.4"
-tauri = { version = "2.11.3", features = ["protocol-asset"] }
+tauri = { version = "2.11.3", features = ["protocol-asset", "tray-icon"] }
 tauri-plugin-log = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-process = "2"
+tauri-plugin-notification = "2"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "gzip", "brotli", "deflate"] }
 base64 = "0.22"
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "net", "io-util", "process", "sync", "time", "macros"] }

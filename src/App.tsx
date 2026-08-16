@@ -6,6 +6,7 @@ import { ToastProvider } from './components/Toast'
 import Navbar from './components/Navbar'
 import CommandPalette from './components/CommandPalette'
 import ToolSwitcher from './components/ToolSwitcher'
+import SessionBar from './components/SessionBar'
 import UpdateBanner from './components/UpdateBanner'
 
 // Home stays PERSISTENTLY mounted (hidden with display, not unmounted) so
@@ -41,6 +42,7 @@ function MainArea({ home, children }: { home: ReactNode; children: ReactNode }) 
 }
 import Home from './pages/Home'
 import About from './pages/About'
+import TimeTracker from './pages/TimeTracker'
 import Settings from './pages/Settings'
 const JsonFormatter = lazy(() => import('./pages/JsonFormatter'))
 import JsonXml from './pages/JsonXml'
@@ -135,6 +137,7 @@ export default function App() {
       }}>
         <CommandPalette />
         <ToolSwitcher />
+        <SessionBar />
         <UpdateBanner />
         <Navbar />
         <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
@@ -147,6 +150,7 @@ export default function App() {
             />
           }>
             <Route path="/about" element={<About />} />
+            <Route path="/time-tracker" element={<TimeTracker />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/json-formatter"      element={<Suspense fallback={null}><JsonFormatter /></Suspense>} />
             <Route path="/json-xml"            element={<JsonXml />} />

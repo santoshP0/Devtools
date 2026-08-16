@@ -9,10 +9,19 @@ import { useLocalStorage } from './storage'
 export interface Settings {
   /** Show starred tools in the home rail and the tool switcher drawer. */
   favoritesQuickAccess: boolean
+  /** Where a running timer is shown: the top progress bar, the menu-bar tray, or both. */
+  timerIndicator: 'both' | 'bar' | 'tray'
+  /** Play a beep when a countdown finishes. */
+  timerBeep: boolean
+  /** Beep loudness, 0..1. */
+  timerVolume: number
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   favoritesQuickAccess: true,
+  timerIndicator: 'both',
+  timerBeep: true,
+  timerVolume: 0.6,
 }
 
 const KEY = 'devtoolbox-settings'

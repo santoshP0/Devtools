@@ -4,6 +4,22 @@ use std::process::Command;
 
 mod mirror;
 
+// Native work-timer tray indicator. Tray + taskbar progress are desktop-only, so
+// on mobile targets we compile no-op commands to keep the shared handler list valid.
+#[cfg(desktop)]
+mod timer;
+#[cfg(not(desktop))]
+mod timer {
+  #[tauri::command] pub fn timer_start(_target_min: Option<u32>) {}
+  #[tauri::command] pub fn timer_pause() {}
+  #[tauri::command] pub fn timer_resume() {}
+  #[tauri::command] pub fn timer_reset() {}
+  #[tauri::command] pub fn timer_restore(_running: bool, _elapsed_ms: u64, _target_min: Option<u32>) {}
+  #[tauri::command] pub fn timer_get() -> serde_json::Value {
+    serde_json::json!({ "active": false, "running": false, "elapsedMs": 0, "targetMin": null })
+  }
+}
+
 // Resolve the ffmpeg binary. We ship ffmpeg as a Tauri sidecar (externalBin),
 // so it lives right next to the app executable — check there first so the user
 // never has to install anything. Then fall back to common system locations
@@ -980,7 +996,8 @@ fn close_splashscreen(app: tauri::AppHandle) {
 pub fn run() {
   let mut builder = tauri::Builder::default()
     .plugin(tauri_plugin_dialog::init())
-    .plugin(tauri_plugin_process::init());
+    .plugin(tauri_plugin_process::init())
+    .plugin(tauri_plugin_notification::init());
 
   // in-app auto-update (desktop only)
   #[cfg(desktop)]
@@ -989,7 +1006,7 @@ pub fn run() {
   }
 
   builder
-    .invoke_handler(tauri::generate_handler![ffmpeg_check, ffmpeg_compress, ffmpeg_render, ffmpeg_filmstrip, http_request, close_splashscreen, parse_log_file, mirror::mirror_list_devices, mirror::mirror_start, mirror::mirror_stop, mirror::mirror_input])
+    .invoke_handler(tauri::generate_handler![ffmpeg_check, ffmpeg_compress, ffmpeg_render, ffmpeg_filmstrip, http_request, close_splashscreen, parse_log_file, mirror::mirror_list_devices, mirror::mirror_start, mirror::mirror_stop, mirror::mirror_input, timer::timer_sync, timer::timer_set_tray])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
@@ -1009,10 +1026,31 @@ pub fn run() {
         }
         if let Some(s) = handle.get_webview_window("splashscreen") { let _ = s.close(); }
       });
+
+      // Native work-timer tray indicator (desktop only).
+      #[cfg(desktop)]
+      timer::setup(app)?;
+
       Ok(())
     })
-    .run(tauri::generate_context!())
-    .expect("error while running tauri application");
+    .build(tauri::generate_context!())
+    .expect("error while building tauri application")
+    .run(move |_app_handle, _event| {
+      // macOS: closing hides the window to the tray (so the timer keeps its tray
+      // pie). Without this, clicking the dock icon does nothing and the app looks
+      // stuck. Reopen re-reveals the hidden window.
+      #[cfg(target_os = "macos")]
+      {
+        if let tauri::RunEvent::Reopen { .. } = _event {
+          use tauri::Manager;
+          if let Some(w) = _app_handle.get_webview_window("main") {
+            let _ = w.show();
+            let _ = w.unminimize();
+            let _ = w.set_focus();
+          }
+        }
+      }
+    });
 }
 
 #[cfg(test)]
