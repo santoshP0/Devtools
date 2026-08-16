@@ -2,15 +2,12 @@ import { useSyncExternalStore, useEffect, useState } from 'react'
 import { isTauri, invoke } from '@tauri-apps/api/core'
 
 /**
- * Tiny live work-session store — module-level state + subscribers so the Time
- * Tracker page and the global progress bar stay in sync and survive navigation.
- * Persisted to localStorage so a running session outlives a reload, and synced
- * across tabs via the storage event.
- *
- * In the desktop app it also mirrors to Rust (see src-tauri/src/timer.rs), which
- * drives the tray "pie" + taskbar progress and keeps them updating while the
- * window is minimized/hidden. Tray-initiated pause/resume/reset flow back here
- * via the `timer://state` event.
+ * Two independent timers that survive navigation + reload and sync across tabs:
+ *   • countdown — a wall-clock deadline (start → target), drives notifications.
+ *   • timer     — a plain count-up stopwatch (pause/resume).
+ * Both can run at once and both show in the in-app quick menu. The desktop
+ * menu-bar tray can only show one icon, so it mirrors the countdown (which has
+ * the deadline + notification); if there's no countdown it mirrors the stopwatch.
  */
 export interface TimeSession {
   running: boolean
@@ -19,81 +16,74 @@ export interface TimeSession {
   targetMin: number | null
   label: string
 }
+export interface Sessions { countdown: TimeSession | null; timer: TimeSession | null }
 
-const KEY = 'devtoolbox-time-session'
-let state: TimeSession | null = load()
+const EMPTY: Sessions = { countdown: null, timer: null }
+const KEY = 'devtoolbox-time-sessions'
+let state: Sessions = load()
 const subs = new Set<() => void>()
 
-function load(): TimeSession | null {
-  try { const s = localStorage.getItem(KEY); return s ? JSON.parse(s) : null } catch { return null }
+function load(): Sessions {
+  try { const s = localStorage.getItem(KEY); if (s) return { ...EMPTY, ...JSON.parse(s) } } catch { /* ignore */ }
+  return EMPTY
 }
 function persist() {
-  try { state ? localStorage.setItem(KEY, JSON.stringify(state)) : localStorage.removeItem(KEY) } catch { /* ignore */ }
+  try {
+    if (state.countdown || state.timer) localStorage.setItem(KEY, JSON.stringify(state))
+    else localStorage.removeItem(KEY)
+  } catch { /* ignore */ }
 }
-function emit() {
-  persist()
-  subs.forEach(f => f())
-}
+function emit() { persist(); subs.forEach(f => f()) }
 
-// ── native (desktop) bridge ──────────────────────────────────────────────
+// ── native (desktop) bridge — mirrors ONE timer to the tray ────────────────
 const native = typeof window !== 'undefined' && isTauri()
 function toNative(cmd: string, args?: Record<string, unknown>) {
   if (native) invoke(cmd, args).catch(() => { /* desktop-only, ignore on web */ })
 }
 
 export function subscribe(fn: () => void) { subs.add(fn); return () => { subs.delete(fn) } }
-export function getSession() { return state }
+export function getSessions() { return state }
 
 export function elapsedMs(s: TimeSession | null, now = Date.now()) {
   if (!s) return 0
   return s.accumulatedMs + (s.running ? Math.max(0, now - s.startedAt) : 0)
 }
 
-export function startSession(targetMin: number | null, label = '') {
-  state = { running: true, startedAt: Date.now(), accumulatedMs: 0, targetMin, label }
-  emit()
-  toNative('timer_start', { targetMin })
+// Push both timers to the native tray (each gets its own menu-bar icon). For a
+// scheduled countdown, startInMs > 0 tells Rust to hold at 0 until the start.
+function pushNative() {
+  const n = Date.now()
+  const cd = state.countdown
+  const sw = state.timer
+  toNative('timer_sync', {
+    cd: cd ? { running: cd.running, elapsedMs: elapsedMs(cd, n), targetMin: cd.targetMin, startInMs: Math.max(0, cd.startedAt - n) } : null,
+    sw: sw ? { running: sw.running, elapsedMs: elapsedMs(sw, n) } : null,
+  })
 }
 
-/**
- * Start a countdown anchored to a fixed wall-clock start time (`startEpoch`), so
- * elapsed = now − start and it counts down to a real deadline (start + target).
- * Survives quit/reopen because everything derives from the stored start time.
- */
+// ── countdown ──────────────────────────────────────────────────────────────
 export function startCountdown(startEpoch: number, targetMin: number) {
-  state = { running: true, startedAt: startEpoch, accumulatedMs: 0, targetMin, label: 'countdown' }
-  emit()
-  toNative('timer_restore', { running: true, elapsedMs: Math.max(0, Date.now() - startEpoch), targetMin })
+  state = { ...state, countdown: { running: true, startedAt: startEpoch, accumulatedMs: 0, targetMin, label: 'countdown' } }
+  emit(); pushNative()
 }
-export function pauseSession() {
-  if (!state || !state.running) return
-  state = { ...state, running: false, accumulatedMs: elapsedMs(state), startedAt: 0 }
-  emit()
-  toNative('timer_pause')
-}
-export function resumeSession() {
-  if (!state || state.running) return
-  state = { ...state, running: true, startedAt: Date.now() }
-  emit()
-  toNative('timer_resume')
-}
-export function resetSession() { state = null; emit(); toNative('timer_reset') }
-export function setTarget(targetMin: number | null) {
-  if (!state) return
-  state = { ...state, targetMin }
-  emit()
-}
+export function resetCountdown() { state = { ...state, countdown: null }; emit(); pushNative() }
 
-// Apply a state pushed FROM the native side (tray pause/resume/reset, or a
-// resync) — no re-invoke back to Rust, so there's no feedback loop.
-interface NativePayload { active: boolean; running: boolean; elapsedMs: number; targetMin: number | null }
-function applyNative(p: NativePayload) {
-  const prev = state
-  state = p.active
-    ? { running: p.running, startedAt: p.running ? Date.now() : 0, accumulatedMs: p.elapsedMs, targetMin: p.targetMin ?? null, label: prev?.label ?? '' }
-    : null
-  emit()
+// ── stopwatch (count-up timer) ───────────────────────────────────────────────
+export function startTimer() {
+  state = { ...state, timer: { running: true, startedAt: Date.now(), accumulatedMs: 0, targetMin: null, label: 'timer' } }
+  emit(); pushNative()
 }
+export function pauseTimer() {
+  const t = state.timer; if (!t || !t.running) return
+  state = { ...state, timer: { ...t, running: false, accumulatedMs: elapsedMs(t), startedAt: 0 } }
+  emit(); pushNative()
+}
+export function resumeTimer() {
+  const t = state.timer; if (!t || t.running) return
+  state = { ...state, timer: { ...t, running: true, startedAt: Date.now() } }
+  emit(); pushNative()
+}
+export function resetTimer() { state = { ...state, timer: null }; emit(); pushNative() }
 
 // keep browser tabs in sync
 if (typeof window !== 'undefined') {
@@ -102,26 +92,16 @@ if (typeof window !== 'undefined') {
   })
 }
 
-// desktop: two-way sync with the Rust timer
+// desktop: the web UI is authoritative — push both timers to the tray on launch,
+// and re-push on focus to correct any drift (e.g. a scheduled start after sleep).
 if (native) {
-  import('@tauri-apps/api/event')
-    .then(({ listen }) => listen<NativePayload>('timer-state', e => applyNative(e.payload)))
-    .catch(() => {})
-  const resync = () => invoke<NativePayload>('timer_get').then(applyNative).catch(() => {})
-  // On launch, push an in-progress session into Rust (so the tray shows it),
-  // otherwise adopt whatever Rust reports.
-  const cur = state
-  if (cur && (cur.running || cur.accumulatedMs > 0)) {
-    toNative('timer_restore', { running: cur.running, elapsedMs: elapsedMs(cur), targetMin: cur.targetMin })
-  } else {
-    resync()
-  }
-  window.addEventListener('focus', resync)
+  pushNative()
+  window.addEventListener('focus', pushNative)
 }
 
-/** Subscribe a component to the session. */
-export function useSession() {
-  return useSyncExternalStore(subscribe, getSession, () => null)
+/** Subscribe a component to both timers. */
+export function useSessions() {
+  return useSyncExternalStore(subscribe, getSessions, () => EMPTY)
 }
 
 /** Re-render on an interval while `active`, for the ticking clock display. */

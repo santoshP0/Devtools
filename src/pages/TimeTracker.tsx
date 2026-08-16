@@ -3,8 +3,8 @@ import ToolLayout from '../components/ToolLayout'
 import ToolIcon from '../components/ToolIcon'
 import { Wheel, TimeWheel } from '../components/Wheel'
 import {
-  useSession, useTick, elapsedMs, startCountdown,
-  startSession, pauseSession, resumeSession, resetSession,
+  useSessions, useTick, elapsedMs, startCountdown, resetCountdown,
+  startTimer, pauseTimer, resumeTimer, resetTimer,
 } from '../lib/timeSession'
 
 type Mode = 'countdown' | 'timer'
@@ -83,8 +83,7 @@ function Panel({ children }: { children: React.ReactNode }) {
 
 // ── Timer: a plain count-up stopwatch, shown in the top bar + tray ──
 function StopwatchMode() {
-  const session = useSession()
-  const sw = session && session.label !== 'countdown' ? session : null
+  const { timer: sw } = useSessions()
   useTick(!!sw?.running)
 
   if (!sw) {
@@ -96,7 +95,7 @@ function StopwatchMode() {
             Counts up from zero. Stays visible in the top bar and menu-bar tray while it runs — even if you switch tools.
           </p>
         </div>
-        <button onClick={() => startSession(null, 'timer')} style={bigBtn('oklch(0.62 0.17 145)')}>▶ Start timer</button>
+        <button onClick={startTimer} style={bigBtn('oklch(0.62 0.17 145)')}>▶ Start timer</button>
       </Panel>
     )
   }
@@ -115,9 +114,9 @@ function StopwatchMode() {
       </div>
       <div style={{ display: 'flex', gap: 10 }}>
         {sw.running
-          ? <button onClick={pauseSession} style={{ ...bigBtn('var(--card-data-text)'), flex: 1, width: 'auto' }}>❚❚ Pause</button>
-          : <button onClick={resumeSession} style={{ ...bigBtn('oklch(0.62 0.17 145)'), flex: 1, width: 'auto' }}>▶ Resume</button>}
-        <button onClick={resetSession} style={{ ...bigBtn('oklch(0.62 0.18 25)'), flex: 1, width: 'auto' }}>■ Reset</button>
+          ? <button onClick={pauseTimer} style={{ ...bigBtn('var(--card-data-text)'), flex: 1, width: 'auto' }}>❚❚ Pause</button>
+          : <button onClick={resumeTimer} style={{ ...bigBtn('oklch(0.62 0.17 145)'), flex: 1, width: 'auto' }}>▶ Resume</button>}
+        <button onClick={resetTimer} style={{ ...bigBtn('oklch(0.62 0.18 25)'), flex: 1, width: 'auto' }}>■ Reset</button>
       </div>
     </Panel>
   )
@@ -166,8 +165,7 @@ function chip(active: boolean): CSSProperties {
 }
 
 function CountdownMode() {
-  const session = useSession()
-  const cd = session?.label === 'countdown' ? session : null
+  const { countdown: cd } = useSessions()
   useTick(!!cd?.running)
 
   const [durationMin, setDurationMin] = useState(0) // no preset selected
@@ -242,44 +240,47 @@ function CountdownMode() {
 
   // ── live count-down ──
   const now = Date.now()
-  const elapsed = elapsedMs(cd, now)
+  const startMs = cd.startedAt                 // authoritative — may be in the future (scheduled)
   const tMs = (cd.targetMin || 0) * 60000
-  const startMs = now - elapsed
   const finish = startMs + tMs
-  const progress = tMs ? Math.min(1, elapsed / tMs) : 0
-  const remaining = Math.max(0, tMs - elapsed) // freezes at 0 — the timer stops at the end
-  const done = elapsed >= tMs
+  const pending = now < startMs                // scheduled, not started yet
+  const done = now >= finish
+  const elapsed = Math.min(tMs, Math.max(0, now - startMs))
+  const progress = tMs ? elapsed / tMs : 0
+  const untilStart = Math.max(0, startMs - now)
+  const bigRemain = pending ? tMs : Math.max(0, finish - now) // frozen at full while scheduled
   const green = 'oklch(0.55 0.17 145)'
 
   return (
     <Panel>
       <div style={{ textAlign: 'center', padding: '6px 0 2px' }}>
-        <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: done ? green : 'var(--text-muted)' }}>
-          {done ? '✓ Complete' : `${(progress * 100).toFixed(0)}% · target ${fmtDur(cd.targetMin!)}`}
+        <div style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: done ? green : 'var(--sketch-text)' }}>
+          {done ? '✓ Complete' : pending ? `Scheduled · starts in ${hms(untilStart)}` : `${(progress * 100).toFixed(0)}% · target ${fmtDur(cd.targetMin!)}`}
         </div>
         <div style={{ fontSize: 56, fontWeight: 800, lineHeight: 1.1, fontVariantNumeric: 'tabular-nums', fontFamily: 'var(--font-mono)', color: done ? green : 'var(--sketch-text)' }}>
-          {hms(remaining)}
+          {hms(bigRemain)}
         </div>
-        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{done ? 'time reached — timer stopped' : 'remaining'}</div>
+        <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>{done ? 'time reached — timer stopped' : pending ? 'will count down when it starts' : 'remaining'}</div>
       </div>
 
       <div style={{ height: 14, borderRadius: 999, background: 'var(--surface2)', border: '2px solid var(--sketch-text)', overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${progress * 100}%`, background: done ? green : 'var(--accent)', transition: 'width 0.4s linear' }} />
       </div>
 
-      {/* placeholder line under the timer once it ends, per request */}
       <div style={{ fontSize: 13.5, lineHeight: 1.5, color: 'var(--sketch-text)', textAlign: 'center' }}>
         {done
           ? <>Reached your target of <b>{fmtDur(cd.targetMin!)}</b> at <b>{clockOf(finish)}</b>.</>
-          : <>Started <b>{clockOf(startMs)}</b> · finishes at <b>{clockOf(finish)}</b>.</>}
+          : pending
+            ? <>Starts at <b>{clockOf(startMs)}</b> · finishes at <b>{clockOf(finish)}</b>.</>
+            : <>Started <b>{clockOf(startMs)}</b> · finishes at <b>{clockOf(finish)}</b>.</>}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-        <Stat label="Started" value={clockOf(startMs)} />
+        <Stat label={pending ? 'Starts' : 'Started'} value={clockOf(startMs)} accent={pending} />
         <Stat label={done ? 'Finished' : 'Finishes'} value={clockOf(finish)} accent={done} />
       </div>
 
-      <button onClick={resetSession} style={bigBtn('oklch(0.62 0.18 25)')}>■ {done ? 'Start new' : 'Cancel'}</button>
+      <button onClick={resetCountdown} style={bigBtn('oklch(0.62 0.18 25)')}>■ {done ? 'Start new' : pending ? 'Cancel schedule' : 'Cancel'}</button>
     </Panel>
   )
 }
