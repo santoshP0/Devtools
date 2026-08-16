@@ -2,8 +2,6 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::process::Command;
 
-mod mirror;
-
 // Native work-timer tray indicator. Tray + taskbar progress are desktop-only, so
 // on mobile targets we compile no-op commands to keep the shared handler list valid.
 #[cfg(desktop)]
@@ -1006,7 +1004,7 @@ pub fn run() {
   }
 
   builder
-    .invoke_handler(tauri::generate_handler![ffmpeg_check, ffmpeg_compress, ffmpeg_render, ffmpeg_filmstrip, http_request, close_splashscreen, parse_log_file, mirror::mirror_list_devices, mirror::mirror_start, mirror::mirror_stop, mirror::mirror_input, timer::timer_sync, timer::timer_set_tray])
+    .invoke_handler(tauri::generate_handler![ffmpeg_check, ffmpeg_compress, ffmpeg_render, ffmpeg_filmstrip, http_request, close_splashscreen, parse_log_file, timer::timer_sync, timer::timer_set_tray])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(

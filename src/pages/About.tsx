@@ -59,7 +59,7 @@ export default function About() {
         </p>
         <p style={{ margin: '14px 0 0', fontSize: 14, opacity: 0.85, lineHeight: 1.6 }}>
           Free, local-first developer tools — 60+ utilities to format, convert, encode,
-          generate and inspect, plus a video editor and an Android screen mirror. Everything
+          generate and inspect, plus a video editor. Everything
           runs on your device; your files never leave it. Free and open source.
         </p>
 

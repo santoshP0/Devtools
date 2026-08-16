@@ -124,7 +124,7 @@ export default function Settings() {
           <Section title="Get the app">
             <div style={{ padding: '14px 0', borderTop: '1px dashed var(--sketch-text)' }}>
               <p style={{ fontSize: 13.5, opacity: 0.8, lineHeight: 1.6, margin: '0 0 12px' }}>
-                The desktop app adds native tools — FFmpeg media compression, screen mirror — and works offline.
+                The desktop app adds native tools — FFmpeg media compression — and works offline.
               </p>
               {assets === null && <span style={{ fontSize: 13, opacity: 0.6 }}>loading downloads…</span>}
               {assets && assets.length > 0 && (

@@ -56,8 +56,7 @@
     "active": true,
     "targets": "all",
     "createUpdaterArtifacts": false,
-    "externalBin": ["binaries/ffmpeg", "binaries/adb"],
-    "resources": ["binaries/scrcpy-server.jar"],
+    "externalBin": ["binaries/ffmpeg"],
     "macOS": {
       "signingIdentity": "-"
     },
