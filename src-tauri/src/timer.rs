@@ -36,6 +36,7 @@ pub struct TimerInner {
   tray_title: Option<String>, // last menu-bar title (always-visible remaining time)
   menu_status: Option<String>,// last tray-menu status line
   tray_visible: Option<bool>, // whether the tray icon is currently shown
+  tray_off: bool,             // user disabled the tray (top-bar-only indicator)
 }
 
 impl TimerInner {
@@ -118,10 +119,38 @@ fn draw_pie(progress: Option<f32>, done: bool) -> Image<'static> {
 
 // minute-resolution duration (no seconds) so the tooltip changes at most once a
 // minute — a per-second tooltip makes the native hover flicker/close.
+// A small filled status dot for the count-up stopwatch (no target → no pie).
+fn draw_dot(running: bool) -> Image<'static> {
+  let size = ICON;
+  let c = size as f32 / 2.0;
+  let r = c * 0.42;
+  let (fr, fg, fb) = if running { (78u8, 201, 122) } else { (150u8, 150, 150) };
+  let mut buf = vec![0u8; (size * size * 4) as usize];
+  for y in 0..size {
+    for x in 0..size {
+      let dx = x as f32 + 0.5 - c;
+      let dy = y as f32 + 0.5 - c;
+      let idx = ((y * size + x) * 4) as usize;
+      if (dx * dx + dy * dy).sqrt() <= r {
+        buf[idx] = fr; buf[idx + 1] = fg; buf[idx + 2] = fb; buf[idx + 3] = 255;
+      } else {
+        buf[idx + 3] = 0;
+      }
+    }
+  }
+  Image::new_owned(buf, size, size)
+}
+
 fn fmt_hm(ms: u64) -> String {
   let total_min = ms / 60_000;
   let (h, m) = (total_min / 60, total_min % 60);
   if h > 0 { format!("{}h {}m", h, m) } else { format!("{}m", m) }
+}
+
+// Remaining time for the tray: seconds under a minute (so a 30s countdown doesn't
+// read "0m"), minutes/hours above. Seconds are ceiled so it counts 30→1, not 29→0.
+fn fmt_remaining(ms: u64) -> String {
+  if ms < 60_000 { format!("{}s", ms.div_ceil(1000)) } else { fmt_hm(ms) }
 }
 
 // ── redraw the tray + menu + taskbar from current state ─────────────────────
@@ -182,51 +211,52 @@ fn refresh(app: &AppHandle) {
     if first { notify_done(app); }
   }
 
-  // timer running → make sure the tray icon is shown (guarded, once)
-  let show = {
+  // timer running → show the tray unless the user picked "top bar only"
+  let (vis_changed, want_vis) = {
     let st = app.state::<TimerState>();
     let mut i = st.0.lock().unwrap();
-    let c = i.tray_visible != Some(true);
-    if c { i.tray_visible = Some(true); }
-    c
+    let want = !i.tray_off;
+    let changed = i.tray_visible != Some(want);
+    if changed { i.tray_visible = Some(want); }
+    (changed, want)
   };
-  if show { if let Some(t) = &tray { let _ = t.set_visible(true); } }
+  if vis_changed { if let Some(t) = &tray { let _ = t.set_visible(want_vis); } }
 
-  // Only touch the tray when the *visible* value actually changes. Rewriting the
-  // icon/tooltip every second makes the native tooltip flicker and close while
-  // the pointer is hovering it.
-  let pct: u8 = prog.map(|p| (p * 100.0).round() as u8).unwrap_or(0);
+  // Countdown → progress pie + minute-resolution remaining. Plain stopwatch (no
+  // target) → a small status dot + ticking H:MM:SS, no pie (nothing to fill).
+  // Only touch the tray when the visible value changes, so a hover tooltip on the
+  // menu-bar icon doesn't flicker/close.
+  let has_target = target_ms.is_some();
+  let pct: u8 = match (target_ms, running) {
+    (Some(_), _) => prog.map(|p| (p * 100.0).round() as u8).unwrap_or(0),
+    (None, true) => 200,  // stopwatch running (sentinel; redraws the dot on pause)
+    (None, false) => 201, // stopwatch paused
+  };
   let tip = match target_ms {
     Some(_) if done => "Time up — target reached ✓".to_string(),
-    Some(tm) => format!("{}% · {} left", pct, fmt_hm(tm.saturating_sub(elapsed))),
-    None => fmt_hms(elapsed),
+    Some(tm) => format!("{}% · {} left", pct, fmt_remaining(tm.saturating_sub(elapsed))),
+    None => format!("Timer · {}", fmt_hms(elapsed)),
   };
-  let (redraw, retip) = {
+  let title = match target_ms {
+    Some(_) if done => "done".to_string(),
+    Some(tm) => fmt_remaining(tm.saturating_sub(elapsed)),
+    None => fmt_hms(elapsed), // stopwatch ticks seconds
+  };
+  let (redraw, retip, retitle) = {
     let st = app.state::<TimerState>();
     let mut i = st.0.lock().unwrap();
     let redraw = i.tray_pct != Some(pct);
     let retip = i.tray_tip.as_deref() != Some(tip.as_str());
+    let retitle = i.tray_title.as_deref() != Some(title.as_str());
     if redraw { i.tray_pct = Some(pct); }
     if retip { i.tray_tip = Some(tip.clone()); }
-    (redraw, retip)
-  };
-  // Always-visible menu-bar title (remaining time). macOS auto-dismisses hover
-  // tooltips, so the tooltip alone "disappears" — the title never does.
-  let title = match target_ms {
-    Some(_) if done => "done".to_string(),
-    Some(tm) => fmt_hm(tm.saturating_sub(elapsed)),
-    None => fmt_hm(elapsed),
-  };
-  let retitle = {
-    let st = app.state::<TimerState>();
-    let mut i = st.0.lock().unwrap();
-    let c = i.tray_title.as_deref() != Some(title.as_str());
-    if c { i.tray_title = Some(title.clone()); }
-    c
+    if retitle { i.tray_title = Some(title.clone()); }
+    (redraw, retip, retitle)
   };
   if let Some(t) = &tray {
     if redraw {
-      let _ = t.set_icon(Some(draw_pie(prog, done)));
+      let icon = if has_target { draw_pie(prog, done) } else { draw_dot(running) };
+      let _ = t.set_icon(Some(icon));
       let _ = t.set_icon_as_template(false); // keep our colours on macOS
     }
     if retip { let _ = t.set_tooltip(Some(tip)); }
@@ -266,7 +296,6 @@ fn notify_done(app: &AppHandle) {
     .builder()
     .title("Time's up")
     .body("You've reached your target time.")
-    .sound("default") // play the system notification sound
     .show();
 }
 
@@ -346,6 +375,13 @@ pub fn timer_restore(app: AppHandle, state: State<'_, TimerState>, running: bool
 #[tauri::command]
 pub fn timer_get(state: State<'_, TimerState>) -> StatePayload {
   payload(&state.0.lock().unwrap())
+}
+
+// Toggle whether the menu-bar tray indicator is shown (top-bar-only hides it).
+#[tauri::command]
+pub fn timer_set_tray(app: AppHandle, state: State<'_, TimerState>, enabled: bool) {
+  { let mut s = state.0.lock().unwrap(); s.tray_off = !enabled; }
+  refresh(&app);
 }
 
 // ── tray menu actions (these DO echo back to the web UI) ─────────────────────

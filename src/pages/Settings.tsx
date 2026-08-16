@@ -4,6 +4,7 @@ import { useSettings } from '../lib/settings'
 import { appVersion, inDesktopApp } from '../lib/updater'
 import { useIsDark } from '../hooks/useIsDark'
 import { switchTheme } from '../lib/theme'
+import { playBeep } from '../lib/beep'
 
 const REPO_URL = 'https://github.com/santoshP0/Devtools'
 const RELEASES_URL = `${REPO_URL}/releases/latest`
@@ -72,6 +73,41 @@ export default function Settings() {
             checked={settings.favoritesQuickAccess}
             onChange={v => setSetting('favoritesQuickAccess', v)}
           />
+        </Section>
+
+        {/* ── Time Tracker ── */}
+        <Section title="Time Tracker">
+          <Row title="Show running timer in" desc="Where a running timer stays visible. The menu-bar tray is desktop-only.">
+            <Segmented
+              value={settings.timerIndicator}
+              onChange={v => setSetting('timerIndicator', v as 'both' | 'bar' | 'tray')}
+              options={[{ v: 'both', label: 'Both' }, { v: 'bar', label: 'Top bar' }, { v: 'tray', label: 'Menu-bar' }]}
+            />
+          </Row>
+          <ToggleRow
+            title="Beep when a countdown ends"
+            desc="Play a short sound the moment a countdown reaches its target."
+            checked={settings.timerBeep}
+            onChange={v => setSetting('timerBeep', v)}
+          />
+          <Row title="Beep volume" desc="How loud the finish beep is.">
+            <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <input
+                type="range" min={0} max={100}
+                value={Math.round(settings.timerVolume * 100)}
+                disabled={!settings.timerBeep}
+                onChange={e => setSetting('timerVolume', Number(e.target.value) / 100)}
+                style={{ width: 120, accentColor: 'var(--sketch-text)', opacity: settings.timerBeep ? 1 : 0.4 }}
+              />
+              <button
+                onClick={() => playBeep(settings.timerVolume)}
+                disabled={!settings.timerBeep}
+                style={{ ...linkBtn, background: 'var(--surface)', color: 'var(--sketch-text)', cursor: settings.timerBeep ? 'pointer' : 'not-allowed', opacity: settings.timerBeep ? 1 : 0.4 }}
+              >
+                Test
+              </button>
+            </span>
+          </Row>
         </Section>
 
         {/* ── Get the app / Desktop app — differentiated ── */}

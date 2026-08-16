@@ -1006,7 +1006,7 @@ pub fn run() {
   }
 
   builder
-    .invoke_handler(tauri::generate_handler![ffmpeg_check, ffmpeg_compress, ffmpeg_render, ffmpeg_filmstrip, http_request, close_splashscreen, parse_log_file, mirror::mirror_list_devices, mirror::mirror_start, mirror::mirror_stop, mirror::mirror_input, timer::timer_start, timer::timer_pause, timer::timer_resume, timer::timer_reset, timer::timer_restore, timer::timer_get])
+    .invoke_handler(tauri::generate_handler![ffmpeg_check, ffmpeg_compress, ffmpeg_render, ffmpeg_filmstrip, http_request, close_splashscreen, parse_log_file, mirror::mirror_list_devices, mirror::mirror_start, mirror::mirror_stop, mirror::mirror_input, timer::timer_start, timer::timer_pause, timer::timer_resume, timer::timer_reset, timer::timer_restore, timer::timer_get, timer::timer_set_tray])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
