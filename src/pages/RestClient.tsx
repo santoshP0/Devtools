@@ -1,8 +1,23 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import ToolLayout from '../components/ToolLayout'
 import CopyBtn from '../components/CopyBtn'
+import { saveFile } from '../lib/saveFile'
 
 interface KV { id: number; key: string; val: string; enabled: boolean }
+type BodyMode = 'none'|'json'|'form'|'text'
+interface SavedReq { id: number; name: string; method: string; url: string; headers: KV[]; params: KV[]; bodyMode: BodyMode; body: string }
+interface Store { saved: SavedReq[]; env: KV[] }
+
+// Collections + environment variables persist across launches. localStorage lives
+// on disk in the desktop webview profile; Export/Import writes a shareable file.
+const STORE_KEY = 'restclient-store'
+function loadStore(): Store {
+  try { const s = localStorage.getItem(STORE_KEY); if (s) return { saved: [], env: [], ...JSON.parse(s) } } catch { /* ignore */ }
+  return { saved: [], env: [] }
+}
+function saveStore(s: Store) { try { localStorage.setItem(STORE_KEY, JSON.stringify(s)) } catch { /* ignore */ } }
+// Replace {{name}} with an environment value; leave unknown vars untouched.
+function subst(str: string, m: Record<string, string>) { return str.replace(/\{\{(\w+)\}\}/g, (_, k) => (k in m ? m[k] : `{{${k}}}`)) }
 
 const METHODS = ['GET','POST','PUT','PATCH','DELETE','HEAD','OPTIONS']
 const SAMPLE_URLS = ['https://jsonplaceholder.typicode.com/posts/1','https://jsonplaceholder.typicode.com/users','https://api.github.com/users/octocat']
@@ -18,9 +33,14 @@ export default function RestClientPage() {
   const [url, setUrl] = useState(SAMPLE_URLS[0])
   const [headers, setHeaders] = useState<KV[]>([kvRow(1)])
   const [params, setParams] = useState<KV[]>([kvRow(1)])
-  const [bodyMode, setBodyMode] = useState<'none'|'json'|'form'|'text'>('none')
+  const [bodyMode, setBodyMode] = useState<BodyMode>('none')
   const [body, setBody] = useState('{\n  "title": "Hello World",\n  "body": "test post",\n  "userId": 1\n}')
-  const [activeTab, setActiveTab] = useState<'headers'|'params'|'body'>('headers')
+  const [activeTab, setActiveTab] = useState<'headers'|'params'|'body'|'env'>('headers')
+  const [saved, setSaved] = useState<SavedReq[]>(() => loadStore().saved)
+  const [env, setEnv] = useState<KV[]>(() => { const e = loadStore().env; return e.length ? e : [kvRow(1)] })
+  const importRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => { saveStore({ saved, env }) }, [saved, env])
 
   const [response, setResponse] = useState<null | { status: number; statusText: string; time: number; size: number; headers: Record<string, string>; body: string }>(null)
   const [loading, setLoading] = useState(false)
@@ -33,9 +53,32 @@ export default function RestClientPage() {
   const updateKV = (setter: React.Dispatch<React.SetStateAction<KV[]>>, id: number, k: 'key'|'val'|'enabled', v: string|boolean) =>
     setter(r => r.map(x => x.id === id ? {...x,[k]:v} : x))
 
-  const buildUrl = () => {
-    const qs = params.filter(p => p.enabled && p.key).map(p => `${encodeURIComponent(p.key)}=${encodeURIComponent(p.val)}`).join('&')
-    return url + (qs ? (url.includes('?') ? '&' : '?') + qs : '')
+  const envMap = () => { const m: Record<string, string> = {}; env.filter(e => e.enabled && e.key).forEach(e => { m[e.key] = e.val }); return m }
+  const buildUrl = (m: Record<string, string>) => {
+    const sUrl = subst(url, m)
+    const qs = params.filter(p => p.enabled && p.key)
+      .map(p => `${encodeURIComponent(subst(p.key, m))}=${encodeURIComponent(subst(p.val, m))}`).join('&')
+    return sUrl + (qs ? (sUrl.includes('?') ? '&' : '?') + qs : '')
+  }
+
+  // Collections + env
+  const saveCurrent = () => {
+    const name = window.prompt('Save request as:', `${method} ${url}`)?.trim()
+    if (!name) return
+    setSaved(s => [...s, { id: Date.now(), name, method, url, headers, params, bodyMode, body }])
+  }
+  const loadReq = (id: number) => {
+    const r = saved.find(x => x.id === id); if (!r) return
+    setMethod(r.method); setUrl(r.url); setHeaders(r.headers); setParams(r.params); setBodyMode(r.bodyMode); setBody(r.body)
+  }
+  const delReq = (id: number) => setSaved(s => s.filter(x => x.id !== id))
+  const exportCollection = () => saveFile('rest-collection.json', JSON.stringify({ saved, env }, null, 2), 'application/json')
+  const importCollection = async (file: File) => {
+    try {
+      const p = JSON.parse(await file.text())
+      if (Array.isArray(p.saved)) setSaved(s => [...s, ...p.saved])
+      if (Array.isArray(p.env) && p.env.length) setEnv(p.env)
+    } catch { setError('Invalid collection file') }
   }
 
   const send = async () => {
@@ -43,18 +86,20 @@ export default function RestClientPage() {
     setLoading(true); setError(''); setResponse(null)
     const t0 = Date.now()
     try {
+      const m = envMap()
       const hdrs: Record<string, string> = {}
-      headers.filter(h => h.enabled && h.key).forEach(h => { hdrs[h.key] = h.val })
+      headers.filter(h => h.enabled && h.key).forEach(h => { hdrs[subst(h.key, m)] = subst(h.val, m) })
       if (bodyMode === 'json') hdrs['Content-Type'] = 'application/json'
       const hasBody = bodyMode !== 'none' && !['GET','HEAD'].includes(method)
-      const finalUrl = buildUrl()
+      const finalUrl = buildUrl(m)
+      const sBody = subst(body, m)
 
       if (NATIVE) {
         const { invoke } = await import('@tauri-apps/api/core')
         const r = await invoke('http_request', { req: {
           method, url: finalUrl,
           headers: Object.entries(hdrs),
-          body: hasBody ? body : null,
+          body: hasBody ? sBody : null,
         }}) as { status: number; status_text: string; headers: [string,string][]; body: string; time_ms: number; size: number }
         const resHdrs: Record<string, string> = {}
         r.headers.forEach(([k, v]) => { resHdrs[k] = v })
@@ -63,7 +108,7 @@ export default function RestClientPage() {
         setResponse({ status: r.status, statusText: r.status_text, time: r.time_ms, size: r.size, headers: resHdrs, body: formatted })
       } else {
         const opts: RequestInit = { method, headers: hdrs }
-        if (hasBody) opts.body = body
+        if (hasBody) opts.body = sBody
         const res = await fetch(finalUrl, opts)
         const elapsed = Date.now() - t0
         const text = await res.text()
@@ -117,10 +162,33 @@ export default function RestClientPage() {
           ))}
         </div>
 
+        {/* Collections — save/load requests, export/import a shareable file */}
+        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+          <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+            <button className="btn btn-ghost btn-sm" onClick={saveCurrent}>💾 Save request</button>
+            <span style={{ marginLeft:'auto', display:'flex', gap:8 }}>
+              <button className="btn btn-ghost btn-sm" onClick={exportCollection} disabled={!saved.length && env.every(e=>!e.key)}>⤓ Export</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => importRef.current?.click()}>⤒ Import</button>
+              <input ref={importRef} type="file" accept="application/json,.json" style={{ display:'none' }}
+                onChange={e => { const f = e.target.files?.[0]; if (f) importCollection(f); e.target.value='' }} />
+            </span>
+          </div>
+          {saved.length > 0 && (
+            <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center' }}>
+              {saved.map(s => (
+                <span key={s.id} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 4px 2px 10px', borderRadius:100, border:'1px solid var(--border)' }}>
+                  <button onClick={() => loadReq(s.id)} title="Load request" style={{ background:'none', border:'none', color: METHOD_COLORS[s.method] || 'var(--text)', cursor:'pointer', fontSize:11, fontFamily:'var(--font-mono)', fontWeight:700, padding:0 }}>{s.name}</button>
+                  <button onClick={() => delReq(s.id)} title="Delete" style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:15, lineHeight:1, padding:'0 2px' }}>×</button>
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Request tabs */}
         <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12 }}>
           <div style={{ display:'flex', gap:0, borderBottom:'1px solid var(--border)', padding:'0 4px' }}>
-            {(['headers','params','body'] as const).map(t => (
+            {(['headers','params','body','env'] as const).map(t => (
               <button key={t} onClick={() => setActiveTab(t)} style={{
                 padding:'10px 16px', background:'none', border:'none', cursor:'pointer', fontSize:13, fontWeight:500,
                 color: activeTab === t ? 'var(--accent)' : 'var(--text-muted)',
@@ -142,6 +210,12 @@ export default function RestClientPage() {
                 {bodyMode !== 'none' && (
                   <textarea value={body} onChange={e => setBody(e.target.value)} style={{ minHeight:140, fontSize:13 }} spellCheck={false} />
                 )}
+              </div>
+            )}
+            {activeTab === 'env' && (
+              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                <div style={{ fontSize:12, color:'var(--text-muted)' }}>Reference these anywhere with <code>{'{{name}}'}</code> — in the URL, headers, params, or body.</div>
+                <KVEditor rows={env} setter={setEnv} placeholder={['VAR','value']} />
               </div>
             )}
           </div>

@@ -1,8 +1,19 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { isTauri } from '@tauri-apps/api/core'
 import ToolLayout from '../components/ToolLayout'
 import imageCompression from 'browser-image-compression'
+import { saveFile, saveFilesToDir, urlToBlob } from '../lib/saveFile'
+import { useNativeDrop } from '../hooks/useNativeDrop'
 
 interface FileInfo { name: string; original: number; compressed: number; url: string }
+interface ImageOut { data: string; width: number; height: number; size: number }
+
+function b64ToBlob(b64: string, mime: string): Blob {
+  const bin = atob(b64)
+  const arr = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i)
+  return new Blob([arr], { type: mime })
+}
 
 function fmt(bytes: number) {
   if (bytes < 1024) return bytes + ' B'
@@ -32,12 +43,24 @@ export default function ImageCompressor() {
     setLoading(true)
     setProgress(0)
     const out: FileInfo[] = []
+    const maxDim = Math.min(8000, Math.max(100, maxWidth || 1920))
     for (let i = 0; i < images.length; i++) {
       const file = images[i]
       try {
+        // Desktop: PNGs go through native oxipng — losslessly far smaller than a
+        // canvas re-encode. Everything else stays on the browser compressor.
+        if (isTauri() && file.type === 'image/png') {
+          const { invoke } = await import('@tauri-apps/api/core')
+          const bytes = new Uint8Array(await file.arrayBuffer())
+          const res = await invoke<ImageOut>('optimize_png', { bytes, maxDim })
+          const blob = b64ToBlob(res.data, 'image/png')
+          out.push({ name: file.name, original: file.size, compressed: blob.size, url: URL.createObjectURL(blob) })
+          setProgress(Math.round(((i + 1) / images.length) * 100))
+          continue
+        }
         const blob = await imageCompression(file, {
           maxSizeMB: 10,
-          maxWidthOrHeight: Math.min(8000, Math.max(100, maxWidth || 1920)),
+          maxWidthOrHeight: maxDim,
           useWebWorker: true,
           initialQuality: quality / 100,
           onProgress: p => setProgress(Math.round(((i / images.length) + p / 100 / images.length) * 100)),
@@ -66,17 +89,23 @@ export default function ImageCompressor() {
     onFiles(e.dataTransfer.files)
   }
 
-  const download = (r: FileInfo) => {
-    const a = document.createElement('a')
-    a.href = r.url
-    a.download = r.name.replace(/\.[^.]+$/, '') + '-compressed' + (r.name.match(/\.[^.]+$/) ?? [''])[0]
-    a.click()
+  // Desktop: Finder drag-drop (HTML onDrop is intercepted by Tauri).
+  useNativeDrop(items => compress(items.map(i => i.file)))
+
+  const outName = (r: FileInfo) => {
+    const ext = (r.name.match(/\.[^.]+$/) ?? [''])[0]
+    return r.name.replace(/\.[^.]+$/, '') + '-compressed' + ext
+  }
+  const download = async (r: FileInfo) => { if (r.url) await saveFile(outName(r), await urlToBlob(r.url)) }
+  const downloadAll = async () => {
+    const files = await Promise.all(
+      results.filter(r => r.url).map(async r => ({ name: outName(r), data: await urlToBlob(r.url) })),
+    )
+    await saveFilesToDir(files)
   }
 
-  const downloadAll = () => results.filter(r => r.url).forEach(download)
-
   return (
-    <ToolLayout title="Image Compressor" description="Compress images in your browser. Files never leave your device.">
+    <ToolLayout title="Image Compressor" description="Compress images locally — the desktop app optimizes PNGs losslessly with oxipng for noticeably smaller files.">
       <div className="flex flex-col gap-5 flex-1">
 
         {/* Settings */}

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { isTauri } from '@tauri-apps/api/core'
 import ToolLayout from '../components/ToolLayout'
 import CopyBtn from '../components/CopyBtn'
 
@@ -55,6 +56,9 @@ export default function MockDataGeneratorPage() {
   const [count, setCount] = useState(10)
   const [format, setFormat] = useState('JSON')
   const [data, setData] = useState('')
+  const [exportRows, setExportRows] = useState(100000)
+  const [exporting, setExporting] = useState(false)
+  const [exportPct, setExportPct] = useState(0)
   const nextId = useRef(7)
 
   const generate = useCallback(() => {
@@ -81,6 +85,57 @@ export default function MockDataGeneratorPage() {
   const addField = () => setFields(f => [...f, { id: nextId.current++, name:'', type: rand(FIELD_TYPES) }])
   const removeField = (id: number) => { if (fields.length > 1) setFields(f => f.filter(x => x.id !== id)) }
   const updateField = (id: number, key: keyof Field, val: string) => setFields(f => f.map(x => x.id===id ? {...x,[key]:val} : x))
+
+  // Desktop: stream any number of rows straight to disk in chunks, so the browser
+  // never holds or downloads a giant string. Reuses generateField — no duplication.
+  const exportToFile = async () => {
+    const ext = format === 'JSON' ? 'json' : format === 'CSV' ? 'csv' : 'md'
+    const { save } = await import('@tauri-apps/plugin-dialog')
+    const path = await save({ defaultPath: `mock-data.${ext}`, filters: [{ name: ext.toUpperCase(), extensions: [ext] }] })
+    if (typeof path !== 'string') return
+    const { invoke } = await import('@tauri-apps/api/core')
+    const enc = new TextEncoder()
+    const write = (s: string) => invoke('append_bytes', { path, bytes: enc.encode(s) })
+    const total = Math.max(1, Math.min(5_000_000, exportRows || 0))
+    const jsonKey = (f: Field) => f.name || f.type.toLowerCase().replace(/\s/g, '_')
+    const colKey = (f: Field) => f.name || f.type
+    const csvCell = (v: unknown) => {
+      const s = String(v ?? '')
+      return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s
+    }
+    setExporting(true); setExportPct(0)
+    try {
+      await invoke('save_bytes', { path, bytes: new Uint8Array() }) // truncate/create fresh
+      if (format === 'CSV') await write(fields.map(colKey).join(',') + '\n')
+      else if (format === 'Markdown') {
+        await write('| ' + fields.map(colKey).join(' | ') + ' |\n')
+        await write('| ' + fields.map(() => '---').join(' | ') + ' |\n')
+      } else await write('[\n')
+
+      const CHUNK = 2000
+      for (let i = 0; i < total; i += CHUNK) {
+        const n = Math.min(CHUNK, total - i)
+        let s = ''
+        for (let j = 0; j < n; j++) {
+          const vals = fields.map(f => generateField(f.type))
+          if (format === 'JSON') {
+            const obj: Record<string, unknown> = {}
+            fields.forEach((f, k) => { obj[jsonKey(f)] = vals[k] })
+            s += '  ' + JSON.stringify(obj) + (i + j + 1 < total ? ',\n' : '\n')
+          } else if (format === 'CSV') {
+            s += vals.map(csvCell).join(',') + '\n'
+          } else {
+            s += '| ' + vals.map(v => String(v ?? '')).join(' | ') + ' |\n'
+          }
+        }
+        await write(s)
+        setExportPct(Math.round(((i + n) / total) * 100))
+      }
+      if (format === 'JSON') await write(']\n')
+    } finally {
+      setExporting(false); setExportPct(100)
+    }
+  }
 
   return (
     <ToolLayout title="Mock Data Generator" description="Generate fake names, emails, addresses and more">
@@ -119,6 +174,20 @@ export default function MockDataGeneratorPage() {
             </div>
           </div>
           <button className="btn btn-primary" onClick={generate}>↻ Regenerate</button>
+          {isTauri() && (
+            <div style={{ borderTop:'1px dashed var(--border)', paddingTop:12, display:'flex', flexDirection:'column', gap:8 }}>
+              <div className="section-label">Export to file · streamed, any size</div>
+              <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                <input type="number" min={1} max={5000000} value={exportRows}
+                  onChange={e => setExportRows(Math.max(1, Math.min(5000000, e.target.valueAsNumber || 0)))}
+                  style={{ width:120, fontSize:12 }} />
+                <span style={{ fontSize:12, color:'var(--text-muted)' }}>rows</span>
+                <button className="btn btn-ghost btn-sm" onClick={exportToFile} disabled={exporting} style={{ marginLeft:'auto' }}>
+                  {exporting ? `Exporting… ${exportPct}%` : `⤓ Export ${format}`}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
         <div>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8 }}>

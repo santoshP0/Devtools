@@ -3,6 +3,7 @@ import ToolLayout from '../components/ToolLayout'
 import { DiffEditor, type DiffOnMount } from '@monaco-editor/react'
 import { monaco, EDITOR_DEFAULTS } from '../lib/monacoSetup'
 import { useIsDark } from '../hooks/useIsDark'
+import { useNativeDrop } from '../hooks/useNativeDrop'
 
 export default function DiffChecker() {
   const [sideBySide, setSideBySide] = useState(true)
@@ -15,9 +16,12 @@ export default function DiffChecker() {
 
   const onMount: DiffOnMount = (editor) => {
     editorRef.current = editor
-    // diff editor doesn't propagate wordWrap to the original (left) pane
-    editor.getOriginalEditor().updateOptions({ wordWrap: 'on' })
-    editor.getModifiedEditor().updateOptions({ wordWrap: 'on' })
+    // Force BOTH panes to the same wrap. monaco-react doesn't reliably propagate
+    // options.wordWrap to both sub-editors, so one pane wrapped and the other
+    // didn't — misaligning lines and rendering identical files as a phantom diff.
+    // 'off' also avoids the 10k-line reflow that froze the tab.
+    editor.getOriginalEditor().updateOptions({ wordWrap: 'off' })
+    editor.getModifiedEditor().updateOptions({ wordWrap: 'off' })
     editor.onDidUpdateDiff(() => {
       let add = 0, del = 0
       for (const c of editor.getLineChanges() ?? []) {
@@ -57,6 +61,17 @@ export default function DiffChecker() {
     r.readAsText(f)
     e.target.value = ''
   }
+
+  // Desktop: drop files from Finder to compare. Two files → left + right; one file
+  // fills an empty pane. (HTML drag-drop is intercepted by Tauri, hence native.)
+  useNativeDrop(async items => {
+    const m = models(); if (!m || items.length === 0) return
+    const texts = await Promise.all(items.slice(0, 2).map(it => it.file.text()))
+    if (texts.length >= 2) { m.orig.setValue(texts[0]); m.mod.setValue(texts[1]); return }
+    if (!m.orig.getValue().trim()) m.orig.setValue(texts[0])
+    else if (!m.mod.getValue().trim()) m.mod.setValue(texts[0])
+    else m.orig.setValue(texts[0])
+  })
 
   const exportTxt = () => {
     const m = models(); if (!m) return
@@ -115,9 +130,14 @@ export default function DiffChecker() {
               ...EDITOR_DEFAULTS,
               originalEditable: true,
               renderSideBySide: sideBySide,
-              renderMarginRevertIcon: true,
+              renderMarginRevertIcon: false,
               renderOverviewRuler: true,
               diffAlgorithm: 'advanced',
+              // Collapse unchanged regions — only changed lines render, so two big
+              // mostly-similar files stay fast instead of laying out every line.
+              hideUnchangedRegions: { enabled: true, contextLineCount: 3, minimumLineCount: 4 },
+              wordWrap: 'off',
+              minimap: { enabled: false },
               placeholder: 'Paste or type original text…',
             }}
           />

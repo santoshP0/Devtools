@@ -554,6 +554,58 @@ async fn image_convert(
   .map_err(|e| e.to_string())?
 }
 
+// ── Losslessly optimize a PNG (oxipng) ──────────────────────────────────────
+// A browser canvas re-encode produces a bloated PNG; oxipng crushes it losslessly
+// (better filtering + zopfli-class deflate). Optional downscale first via the
+// image crate. Pure Rust, off-thread. Reuses ImageOut { data, width, height, size }.
+#[tauri::command]
+async fn optimize_png(bytes: Vec<u8>, max_dim: Option<u32>) -> Result<ImageOut, String> {
+  use base64::Engine;
+  use image::ImageReader;
+  use std::io::Cursor;
+
+  tauri::async_runtime::spawn_blocking(move || {
+    let img = ImageReader::new(Cursor::new(&bytes))
+      .with_guessed_format()
+      .map_err(|e| e.to_string())?
+      .decode()
+      .map_err(|e| e.to_string())?;
+    let (mut w, mut h) = (img.width(), img.height());
+
+    // Re-encode a resized PNG if the longer side exceeds max_dim; else optimize the
+    // original bytes directly (no decode/re-encode round-trip).
+    let png_bytes = match max_dim {
+      Some(md) if md > 0 && w.max(h) > md => {
+        let scale = md as f32 / w.max(h) as f32;
+        let resized = img.resize_exact(
+          ((w as f32 * scale) as u32).max(1),
+          ((h as f32 * scale) as u32).max(1),
+          image::imageops::FilterType::Lanczos3,
+        );
+        w = resized.width();
+        h = resized.height();
+        let mut buf = Vec::new();
+        resized
+          .write_to(&mut Cursor::new(&mut buf), image::ImageFormat::Png)
+          .map_err(|e| e.to_string())?;
+        buf
+      }
+      _ => bytes.clone(),
+    };
+
+    let out = oxipng::optimize_from_memory(&png_bytes, &oxipng::Options::from_preset(3))
+      .map_err(|e| e.to_string())?;
+    Ok(ImageOut {
+      data: base64::engine::general_purpose::STANDARD.encode(&out),
+      width: w,
+      height: h,
+      size: out.len() as u64,
+    })
+  })
+  .await
+  .map_err(|e| e.to_string())?
+}
+
 // ── Video editor: composite a bounded timeline into one video ───────────────
 // Same trust boundary as ffmpeg_compress: the webview sends a *typed* timeline
 // (≤10 layers, numbers + enum kinds), never raw ffmpeg/filtergraph strings. The
@@ -1099,6 +1151,20 @@ fn save_bytes(path: String, bytes: Vec<u8>) -> Result<(), String> {
   std::fs::write(&path, &bytes).map_err(|e| e.to_string())
 }
 
+// Append bytes to a file (creating it if needed). Lets the frontend stream a huge
+// generated dataset to disk in chunks with flat memory, instead of building one
+// giant string the browser can't hold or download.
+#[tauri::command]
+fn append_bytes(path: String, bytes: Vec<u8>) -> Result<(), String> {
+  use std::io::Write;
+  let mut f = std::fs::OpenOptions::new()
+    .create(true)
+    .append(true)
+    .open(&path)
+    .map_err(|e| e.to_string())?;
+  f.write_all(&bytes).map_err(|e| e.to_string())
+}
+
 // Read a file off disk as raw bytes. Backs native Finder drag-drop: Tauri hands
 // the webview OS file paths (not File objects), so tools read the bytes here and
 // wrap them back into a File. Returned as a raw IPC response (not a JSON number
@@ -1155,7 +1221,7 @@ pub fn run() {
   }
 
   builder
-    .invoke_handler(tauri::generate_handler![ffmpeg_check, ffmpeg_compress, ffmpeg_render, ffmpeg_filmstrip, http_request, close_splashscreen, parse_log_file, hash_file, image_convert, save_bytes, read_file, timer::timer_sync, timer::timer_set_tray])
+    .invoke_handler(tauri::generate_handler![ffmpeg_check, ffmpeg_compress, ffmpeg_render, ffmpeg_filmstrip, http_request, close_splashscreen, parse_log_file, hash_file, image_convert, optimize_png, save_bytes, append_bytes, read_file, timer::timer_sync, timer::timer_set_tray])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
