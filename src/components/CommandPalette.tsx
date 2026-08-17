@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { tools } from '../lib/tools'
+import { searchTools } from '../lib/toolSearch'
 import ToolIcon from './ToolIcon'
 
 export default function CommandPalette() {
@@ -10,13 +11,7 @@ export default function CommandPalette() {
   const navigate = useNavigate()
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const filtered = query === '' ? tools.slice(0, 8) : tools.filter(t => {
-    const q = query.toLowerCase()
-    return t.name.toLowerCase().includes(q) ||
-      t.category.toLowerCase().includes(q) ||
-      t.description.toLowerCase().includes(q) ||
-      t.keywords?.some(k => k.includes(q))
-  }).slice(0, 8)
+  const filtered = query === '' ? tools.slice(0, 8) : searchTools(tools, query).slice(0, 8)
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
