@@ -8,6 +8,7 @@ const CSV_SCROLL_STYLE = `
   .csv-scroll::-webkit-scrollbar-corner { background: var(--bg2); }
 `
 import ToolLayout from '../components/ToolLayout'
+import { useNativeDrop } from '../hooks/useNativeDrop'
 
 /* ─── CSV Parser ─────────────────────────────────────────── */
 function parseCSV(text: string): { headers: string[]; rows: string[][] } {
@@ -258,6 +259,9 @@ export default function CsvViewerPage() {
     }
     reader.readAsText(file)
   }, [])
+
+  // Desktop: Finder drag-drop (HTML onDrop is dead in the Tauri webview).
+  useNativeDrop(items => { if (items[0]) loadFile(items[0].file) })
 
   /* ── Drag & Drop ── */
   const onDragOver = useCallback((e: React.DragEvent) => {

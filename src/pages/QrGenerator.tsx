@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import ToolLayout from '../components/ToolLayout'
 import bwipjs from '@bwip-js/browser'
+import { saveFile, urlToBlob } from '../lib/saveFile'
 
 interface BarcodeType {
   id: string
@@ -89,12 +90,9 @@ export default function QrGenerator() {
     return () => clearTimeout(debounceRef.current)
   }, [text, selectedType, scale, fgColor, bgColor, height, includeText])
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!downloadUrl) return
-    const a = document.createElement('a')
-    a.href = downloadUrl
-    a.download = `${selectedType.id}_barcode.png`
-    a.click()
+    await saveFile(`${selectedType.id}_barcode.png`, await urlToBlob(downloadUrl))
   }
 
   return (

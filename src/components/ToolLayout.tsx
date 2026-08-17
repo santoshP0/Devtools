@@ -1,7 +1,6 @@
 import { useLocation } from 'react-router-dom'
 import { ReactNode, useEffect } from 'react'
 import { useHistory } from '../lib/storage'
-import { toolContent } from '../lib/toolContent'
 
 interface Props {
   title: string
@@ -79,56 +78,6 @@ export default function ToolLayout({ title, description, children, fullWidth = f
         )}
         {children}
       </div>
-      {/* Outside the inner container: fullWidth tools bound that to the viewport
-          height for internal scrolling, which would clip this section. */}
-      <ToolAbout slug={pathname.split('/').filter(Boolean)[0]} title={title} />
     </div>
-  )
-}
-
-/** Long-form explainer + FAQ rendered below the tool. Sits under the fold so
- *  the tool stays the hero, while giving the page real content to read. */
-function ToolAbout({ slug, title }: { slug?: string; title: string }) {
-  const content = slug ? toolContent[slug] : undefined
-  if (!content) return null
-
-  return (
-    <section style={{
-      margin: '0 auto',
-      padding: '28px 32px 56px',
-      borderTop: '1px solid var(--border)',
-      maxWidth: 760,
-      width: '100%',
-      boxSizing: 'border-box',
-      fontFamily: 'var(--font-sans)',
-      color: 'var(--sketch-text)',
-    }}>
-      <h2 style={{
-        fontSize: 18, fontWeight: 700, marginBottom: 14,
-        fontFamily: "'Architects Daughter', var(--font-sans)",
-      }}>
-        About {title}
-      </h2>
-      {content.about.map((p, i) => (
-        <p key={i} style={{ fontSize: 14.5, lineHeight: 1.75, marginBottom: 14, opacity: 0.85 }}>{p}</p>
-      ))}
-
-      {content.faq && content.faq.length > 0 && (
-        <>
-          <h2 style={{
-            fontSize: 18, fontWeight: 700, margin: '28px 0 14px',
-            fontFamily: "'Architects Daughter', var(--font-sans)",
-          }}>
-            Frequently asked questions
-          </h2>
-          {content.faq.map((f, i) => (
-            <div key={i} style={{ marginBottom: 16 }}>
-              <h3 style={{ fontSize: 14.5, fontWeight: 700, marginBottom: 5 }}>{f.q}</h3>
-              <p style={{ fontSize: 14.5, lineHeight: 1.75, opacity: 0.85 }}>{f.a}</p>
-            </div>
-          ))}
-        </>
-      )}
-    </section>
   )
 }

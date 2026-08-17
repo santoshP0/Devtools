@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import { saveFile, urlToBlob } from '../lib/saveFile'
 
 export default function Base64ToImagePage() {
   const [input, setInput] = useState('')
@@ -15,8 +16,8 @@ export default function Base64ToImagePage() {
     setResult(val)
   }
 
-  const download = (url: string) => {
-    const a = document.createElement('a'); a.href = url; a.download = 'decoded-image.png'; a.click()
+  const download = async (url: string) => {
+    await saveFile('decoded-image.png', await urlToBlob(url))
   }
 
   return (

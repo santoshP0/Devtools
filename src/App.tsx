@@ -1,6 +1,6 @@
 import { useState, useEffect, lazy, Suspense, ReactNode } from 'react'
 import { invoke, isTauri } from '@tauri-apps/api/core'
-import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { ToastProvider } from './components/Toast'
 import Navbar from './components/Navbar'
@@ -113,6 +113,20 @@ import TomlJson from './pages/TomlJson'
 import JsonPathTester from './pages/JsonPathTester'
 import TextBinaryHex from './pages/TextBinaryHex'
 
+// Bridges the native macOS "Settings…" menu item to the in-app settings route.
+function MenuBridge() {
+  const navigate = useNavigate()
+  useEffect(() => {
+    if (!isTauri()) return
+    let un: (() => void) | undefined
+    import('@tauri-apps/api/event').then(({ listen }) => {
+      listen('menu:settings', () => navigate('/settings')).then(f => { un = f })
+    })
+    return () => un?.()
+  }, [navigate])
+  return null
+}
+
 export default function App() {
   // Persisted home state — survives navigation to tool pages and back
   const [homeSearch, setHomeSearch] = useState('')
@@ -134,6 +148,7 @@ export default function App() {
         background: 'var(--bg)',
         display: 'flex', flexDirection: 'column',
       }}>
+        <MenuBridge />
         <CommandPalette />
         <ToolSwitcher />
         <SessionBar />

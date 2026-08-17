@@ -2,391 +2,397 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://devtools-9fsp.onrender.com/</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/json-formatter</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/regex-tester</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/base64</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/diff-checker</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/unix-timestamp</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/jwt-decoder</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/color-converter</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/url-encoder</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/image-compressor</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/js-sandbox</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/hash-generator</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/markdown-preview</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/svg-preview</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/yaml-json</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/password-generator</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/qr-generator</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/notes</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/gradient-builder</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/text-case</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/curl-builder</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/json-typescript</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/csv-json</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/csv-viewer</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/sql-formatter</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/json-xml</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/html-entities</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/line-sorter</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/word-counter</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/slugify</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://devtools-9fsp.onrender.com/time-tracker</loc>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/base-converter</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/http-status-codes</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/semver-checker</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/responsive-tester</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/flexbox-playground</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/grid-playground</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/favicon-generator</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/keyframe-builder</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/color-contrast</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/color-palette</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/box-shadow-builder</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/glassmorphism-builder</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/css-unit-converter</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/color-blind-simulator</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/dark-light-converter</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/jwt-generator</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/image-converter</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/exif-viewer</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/blurhash-generator</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/image-to-base64</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/base64-to-image</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/uuid-generator</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/mock-data-generator</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/meta-tag-generator</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/lorem-ipsum</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/timezone-converter</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/pomodoro</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/html-preview</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/toml-json</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/json-path</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/text-binary</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/log-prettifier</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/nosql-viewer</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/cron-parser</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
     <loc>https://devtools-9fsp.onrender.com/rest-client</loc>
-    <lastmod>2026-08-01</lastmod>
+    <lastmod>2026-08-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>

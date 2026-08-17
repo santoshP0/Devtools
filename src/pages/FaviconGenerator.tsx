@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import { saveFile, saveFilesToDir, urlToBlob } from '../lib/saveFile'
 
 const SIZES = [16, 32, 48, 64, 96, 128, 180, 192, 512]
 const BG_PRESETS = ['#0d9488','#7c3aed','#2563eb','#dc2626','#16a34a','#d97706','#000000','#ffffff','transparent']
@@ -42,13 +43,20 @@ export default function FaviconGeneratorPage() {
     if (canvasRef.current) draw(canvasRef.current, previewSize)
   }, [text, bgColor, fgColor, fontSize, radius, bold, shape, previewSize])
 
-  const download = (size: number) => {
+  const pngOf = (size: number) => {
     const canvas = document.createElement('canvas')
     draw(canvas, size)
-    const a = document.createElement('a'); a.href = canvas.toDataURL('image/png'); a.download = `favicon-${size}x${size}.png`; a.click()
+    return urlToBlob(canvas.toDataURL('image/png'))
   }
 
-  const downloadAll = () => SIZES.forEach(s => setTimeout(() => download(s), s * 2))
+  const download = async (size: number) => {
+    await saveFile(`favicon-${size}x${size}.png`, await pngOf(size))
+  }
+
+  const downloadAll = async () => {
+    const files = await Promise.all(SIZES.map(async s => ({ name: `favicon-${s}x${s}.png`, data: await pngOf(s) })))
+    await saveFilesToDir(files)
+  }
 
   return (
     <ToolLayout title="Favicon Generator" description="Create favicons from text or emoji in all required sizes">

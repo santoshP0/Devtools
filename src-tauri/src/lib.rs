@@ -444,6 +444,116 @@ async fn http_request(req: HttpReq) -> Result<HttpRes, String> {
   })
 }
 
+// ── Hash a file on disk in one streaming pass ───────────────────────────────
+// The browser must load the whole file into memory to hash it; here we stream in
+// 1 MiB chunks and feed every hasher at once, so multi-GB files hash with a flat
+// memory footprint. Runs on a blocking thread to keep the UI responsive.
+#[tauri::command]
+async fn hash_file(path: String) -> Result<std::collections::HashMap<String, String>, String> {
+  use md5::Md5;
+  use sha1::Sha1;
+  use sha2::{Digest, Sha256, Sha384, Sha512};
+  use std::io::Read;
+
+  tauri::async_runtime::spawn_blocking(move || {
+    let mut f = std::fs::File::open(&path).map_err(|e| e.to_string())?;
+    let (mut md5, mut s1, mut s256, mut s384, mut s512) =
+      (Md5::new(), Sha1::new(), Sha256::new(), Sha384::new(), Sha512::new());
+    let mut buf = vec![0u8; 1 << 20];
+    loop {
+      let n = f.read(&mut buf).map_err(|e| e.to_string())?;
+      if n == 0 { break; }
+      let c = &buf[..n];
+      md5.update(c); s1.update(c); s256.update(c); s384.update(c); s512.update(c);
+    }
+    let hex = |b: &[u8]| b.iter().map(|x| format!("{:02x}", x)).collect::<String>();
+    let mut out = std::collections::HashMap::new();
+    out.insert("MD5".to_string(), hex(&md5.finalize()));
+    out.insert("SHA-1".to_string(), hex(&s1.finalize()));
+    out.insert("SHA-256".to_string(), hex(&s256.finalize()));
+    out.insert("SHA-384".to_string(), hex(&s384.finalize()));
+    out.insert("SHA-512".to_string(), hex(&s512.finalize()));
+    Ok(out)
+  })
+  .await
+  .map_err(|e| e.to_string())?
+}
+
+// ── Convert an image natively (pure-Rust `image` crate, no system libs) ─────
+// Decodes formats the browser canvas can't (TIFF/TGA/DDS/QOI/PNM/…), resizes with
+// Lanczos3 (sharper than canvas bilinear), and re-encodes — all on a blocking
+// thread so huge images never freeze the UI. Bytes in, bytes out (base64), so the
+// existing File/Blob web UI reuses this unchanged. HEIC stays on the wasm path.
+#[derive(Serialize)]
+struct ImageOut {
+  data: String, // base64 of the encoded output
+  width: u32,
+  height: u32,
+  size: u64,
+}
+
+#[tauri::command]
+async fn image_convert(
+  bytes: Vec<u8>,
+  format: String,
+  quality: u8,
+  width: Option<u32>,
+  height: Option<u32>,
+) -> Result<ImageOut, String> {
+  use base64::Engine;
+  use image::codecs::{jpeg::JpegEncoder, png::PngEncoder, webp::WebPEncoder};
+  use image::{ExtendedColorType, ImageEncoder, ImageReader};
+  use std::io::Cursor;
+
+  tauri::async_runtime::spawn_blocking(move || {
+    let mut img = ImageReader::new(Cursor::new(&bytes))
+      .with_guessed_format()
+      .map_err(|e| e.to_string())?
+      .decode()
+      .map_err(|e| e.to_string())?;
+
+    if let (Some(w), Some(h)) = (width, height) {
+      if w > 0 && h > 0 && (w != img.width() || h != img.height()) {
+        img = img.resize_exact(w, h, image::imageops::FilterType::Lanczos3);
+      }
+    }
+    let (ow, oh) = (img.width(), img.height());
+
+    let mut out: Vec<u8> = Vec::new();
+    match format.as_str() {
+      "jpeg" => {
+        let rgb = img.to_rgb8();
+        JpegEncoder::new_with_quality(&mut out, quality)
+          .write_image(rgb.as_raw(), ow, oh, ExtendedColorType::Rgb8)
+          .map_err(|e| e.to_string())?;
+      }
+      "webp" => {
+        // image-webp encoder is lossless — quality slider doesn't apply here
+        let rgba = img.to_rgba8();
+        WebPEncoder::new_lossless(&mut out)
+          .write_image(rgba.as_raw(), ow, oh, ExtendedColorType::Rgba8)
+          .map_err(|e| e.to_string())?;
+      }
+      _ => {
+        let rgba = img.to_rgba8();
+        PngEncoder::new(&mut out)
+          .write_image(rgba.as_raw(), ow, oh, ExtendedColorType::Rgba8)
+          .map_err(|e| e.to_string())?;
+      }
+    }
+
+    let size = out.len() as u64;
+    Ok(ImageOut {
+      data: base64::engine::general_purpose::STANDARD.encode(&out),
+      width: ow,
+      height: oh,
+      size,
+    })
+  })
+  .await
+  .map_err(|e| e.to_string())?
+}
+
 // ── Video editor: composite a bounded timeline into one video ───────────────
 // Same trust boundary as ffmpeg_compress: the webview sends a *typed* timeline
 // (≤10 layers, numbers + enum kinds), never raw ffmpeg/filtergraph strings. The
@@ -982,6 +1092,22 @@ fn parse_log_file(path: String) -> Result<Vec<LogLine>, String> {
   Ok(log_chunk_raw(&raw).iter().map(|c| log_parse_line(c)).collect())
 }
 
+// Write bytes to a user-chosen path (the frontend picks it via the save dialog).
+// Lets every "download" button become a real native Save As.
+#[tauri::command]
+fn save_bytes(path: String, bytes: Vec<u8>) -> Result<(), String> {
+  std::fs::write(&path, &bytes).map_err(|e| e.to_string())
+}
+
+// Read a file off disk as raw bytes. Backs native Finder drag-drop: Tauri hands
+// the webview OS file paths (not File objects), so tools read the bytes here and
+// wrap them back into a File. Returned as a raw IPC response (not a JSON number
+// array) so large files transfer efficiently.
+#[tauri::command]
+fn read_file(path: String) -> Result<tauri::ipc::Response, String> {
+  std::fs::read(&path).map(tauri::ipc::Response::new).map_err(|e| e.to_string())
+}
+
 // Close the splash window and reveal the main window once the UI has mounted.
 #[tauri::command]
 fn close_splashscreen(app: tauri::AppHandle) {
@@ -997,14 +1123,39 @@ pub fn run() {
     .plugin(tauri_plugin_process::init())
     .plugin(tauri_plugin_notification::init());
 
-  // in-app auto-update (desktop only)
+  // desktop-only plugins: auto-update, window geometry persistence, and a global
+  // hotkey (Cmd/Ctrl+Shift+D) that summons the window from anywhere.
   #[cfg(desktop)]
   {
-    builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+    use tauri_plugin_global_shortcut::ShortcutState;
+    use tauri_plugin_window_state::StateFlags;
+    builder = builder
+      .plugin(tauri_plugin_updater::Builder::new().build())
+      // Restore size/position/maximized — but NOT visibility, or it force-shows the
+      // main window at launch and it flashes over the splash screen.
+      .plugin(
+        tauri_plugin_window_state::Builder::default()
+          .with_state_flags(StateFlags::all() & !StateFlags::VISIBLE)
+          .build(),
+      )
+      .plugin(
+        tauri_plugin_global_shortcut::Builder::new()
+          .with_handler(|app, _shortcut, event| {
+            if event.state() == ShortcutState::Pressed {
+              use tauri::Manager;
+              if let Some(w) = app.get_webview_window("main") {
+                let _ = w.show();
+                let _ = w.unminimize();
+                let _ = w.set_focus();
+              }
+            }
+          })
+          .build(),
+      );
   }
 
   builder
-    .invoke_handler(tauri::generate_handler![ffmpeg_check, ffmpeg_compress, ffmpeg_render, ffmpeg_filmstrip, http_request, close_splashscreen, parse_log_file, timer::timer_sync, timer::timer_set_tray])
+    .invoke_handler(tauri::generate_handler![ffmpeg_check, ffmpeg_compress, ffmpeg_render, ffmpeg_filmstrip, http_request, close_splashscreen, parse_log_file, hash_file, image_convert, save_bytes, read_file, timer::timer_sync, timer::timer_set_tray])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
@@ -1028,6 +1179,55 @@ pub fn run() {
       // Native work-timer tray indicator (desktop only).
       #[cfg(desktop)]
       timer::setup(app)?;
+
+      // Global hotkey to summon the app from anywhere.
+      #[cfg(desktop)]
+      {
+        use tauri_plugin_global_shortcut::GlobalShortcutExt;
+        let _ = app.global_shortcut().register("CmdOrCtrl+Shift+D");
+      }
+
+      // Native macOS menu bar: app menu (About / Settings / Quit) + standard Edit
+      // and Window menus so ⌘C/⌘V/⌘W behave like a real Mac app. Only on macOS —
+      // Windows/Linux keep the frameless look and reach Settings in-app.
+      #[cfg(target_os = "macos")]
+      {
+        use tauri::menu::{MenuBuilder, MenuItemBuilder, SubmenuBuilder};
+        let settings = MenuItemBuilder::with_id("settings", "Settings…")
+          .accelerator("Cmd+,")
+          .build(app)?;
+        let app_menu = SubmenuBuilder::new(app, "DevToolbox")
+          .about(None)
+          .separator()
+          .item(&settings)
+          .separator()
+          .services()
+          .separator()
+          .hide()
+          .hide_others()
+          .show_all()
+          .separator()
+          .quit()
+          .build()?;
+        let edit_menu = SubmenuBuilder::new(app, "Edit")
+          .undo().redo().separator().cut().copy().paste().select_all()
+          .build()?;
+        let window_menu = SubmenuBuilder::new(app, "Window")
+          .minimize().separator().close_window()
+          .build()?;
+        let menu = MenuBuilder::new(app).item(&app_menu).item(&edit_menu).item(&window_menu).build()?;
+        app.set_menu(menu)?;
+      }
+
+      // Route the Settings menu item to the in-app settings page.
+      app.on_menu_event(|app, event| {
+        if event.id() == "settings" {
+          use tauri::{Emitter, Manager};
+          if let Some(w) = app.get_webview_window("main") {
+            let _ = w.emit("menu:settings", ());
+          }
+        }
+      });
 
       Ok(())
     })

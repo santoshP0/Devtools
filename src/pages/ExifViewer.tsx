@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react'
 import ToolLayout from '../components/ToolLayout'
 import { useClipboardCopy } from '../hooks/useClipboardCopy'
+import { useNativeDrop } from '../hooks/useNativeDrop'
 
 /* ── EXIF Tag Definitions ── */
 const EXIF_TAGS: Record<number, string> = {
@@ -585,6 +586,9 @@ export default function ExifViewer() {
     }
     reader.readAsArrayBuffer(file)
   }, [])
+
+  // Desktop: Finder drag-drop (HTML onDrop is dead in the Tauri webview).
+  useNativeDrop(items => { if (items[0]) loadFile(items[0].file) })
 
   const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault(); setIsDragging(false)

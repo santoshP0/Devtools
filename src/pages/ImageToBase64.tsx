@@ -2,6 +2,7 @@ import { useState } from 'react'
 import ToolLayout from '../components/ToolLayout'
 import CopyBtn from '../components/CopyBtn'
 import { useFileDrop } from '../hooks/useFileDrop'
+import { useNativeDrop, usePasteImage } from '../hooks/useNativeDrop'
 
 interface Result {
   dataUrl: string; base64: string; type: string; name: string
@@ -32,6 +33,9 @@ export default function ImageToBase64Page() {
   }
 
   const { dragging, inputRef, dragProps, openPicker, onInputChange } = useFileDrop(handleFile, 'image/*')
+  // Desktop Finder drag-drop + paste a screenshot.
+  useNativeDrop(items => { if (items[0]) handleFile(items[0].file) })
+  usePasteImage(handleFile)
 
   const formats = result ? [
     { label:'Data URI',    val: result.dataUrl },
