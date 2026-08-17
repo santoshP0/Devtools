@@ -1362,3 +1362,30 @@ pre, code, kbd, samp,
   -webkit-user-select: text;
   user-select: text;
 }
+
+/* Edit mode: tiles wobble the way home-screen icons do, so it's obvious the grid
+   is rearrangeable. The animation sits on the card itself, never the sortable
+   wrapper — dnd-kit drives that element's transform while dragging. */
+@keyframes tileJiggle {
+  0%   { transform: rotate(-0.55deg) translateY(0); }
+  50%  { transform: rotate(0.55deg) translateY(-1px); }
+  100% { transform: rotate(-0.55deg) translateY(0); }
+}
+.tile-jiggle {
+  animation: tileJiggle 0.32s ease-in-out infinite;
+  transform-origin: 50% 50%;
+}
+@media (prefers-reduced-motion: reduce) {
+  .tile-jiggle { animation: none; }
+}
+
+/* Drag-to-rearrange needs two opt-ins that the rule above would otherwise break:
+   WebKit refuses to start an HTML5 drag inside `-webkit-user-select: none`, and
+   a nested link would hijack the drag to carry its URL instead of the card. */
+[draggable="true"] {
+  -webkit-user-drag: element;
+}
+[draggable="true"] a,
+[draggable="true"] img {
+  -webkit-user-drag: none;
+}

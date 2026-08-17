@@ -10,7 +10,12 @@ function isMacUA() {
   return /mac/.test(`${navigator.userAgent} ${navigator.platform ?? ''}`.toLowerCase())
 }
 
-export default function Navbar() {
+interface NavbarProps {
+  editMode?: boolean
+  setEditMode?: (v: boolean) => void
+}
+
+export default function Navbar({ editMode, setEditMode }: NavbarProps) {
   const { pathname } = useLocation()
   const slug = pathname.split('/').filter(Boolean)[0]
   const tool = slug ? tools.find(t => t.slug === slug) : null
@@ -73,6 +78,43 @@ export default function Navbar() {
       {/* Right side — instant theme toggle + settings (theme also lives in
           Settings, but a nav toggle is faster for a quick flip). */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {/* Rearrange the tool grid — only meaningful on the home grid itself */}
+        {pathname === '/' && setEditMode && (
+          <button
+            onClick={() => setEditMode(!editMode)}
+            title={editMode ? 'Done rearranging' : 'Rearrange tools'}
+            aria-pressed={editMode}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              height: 32, padding: '0 12px', borderRadius: 4,
+              background: editMode ? 'var(--sketch-text)' : 'var(--surface)',
+              color: editMode ? 'var(--sketch-bg)' : 'var(--sketch-text)',
+              border: '2px solid var(--sketch-text)',
+              boxShadow: '2px 2px 0px var(--sketch-text)',
+              cursor: 'pointer', fontSize: 13, fontWeight: 700,
+              fontFamily: "'Architects Daughter', var(--font-sans)",
+              transition: 'all 0.1s ease-out',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translate(-1px,-1px)'; e.currentTarget.style.boxShadow = '3px 3px 0px var(--sketch-text)' }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'translate(0,0)'; e.currentTarget.style.boxShadow = '2px 2px 0px var(--sketch-text)' }}
+          >
+            {editMode ? (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M20 6 9 17l-5-5" />
+                </svg>
+                done
+              </>
+            ) : (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20" />
+                </svg>
+                arrange
+              </>
+            )}
+          </button>
+        )}
         <button
           onClick={e => switchTheme(dark ? 'light' : 'dark', { x: e.clientX, y: e.clientY })}
           title={dark ? 'Switch to light mode' : 'Switch to dark mode'}

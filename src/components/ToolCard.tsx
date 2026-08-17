@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'motion/react'
+import { useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { Tool } from '../lib/tools'
 import { useFavorites } from '../lib/storage'
 import ToolIcon from './ToolIcon'
@@ -23,26 +25,66 @@ const CAT_STYLES: Record<string, { bg: string; text: string }> = {
 interface ToolCardProps {
   tool: Tool
   index: number
+  /** Enables drag-to-rearrange. Off while searching, where order means relevance. */
+  sortable?: boolean
+  /** Rendered inside the drag overlay — no sortable wiring, no click handling. */
+  overlay?: boolean
+  /** Edit mode: wobble, and don't navigate on click. */
+  editing?: boolean
 }
 
-export default function ToolCard({ tool, index }: ToolCardProps) {
+export default function ToolCard({ tool, index, sortable, overlay, editing }: ToolCardProps) {
   const [hovered, setHovered] = useState(false)
   const catStyle = CAT_STYLES[tool.category] || CAT_STYLES.Utils
   const { isFavorite, toggleFavorite } = useFavorites()
   const fav = isFavorite(tool.slug)
+  // A drag that ends on this card must not also follow the link.
+  const draggedRef = useRef(false)
+
+  const {
+    attributes, listeners, setNodeRef, transform, transition, isDragging,
+  } = useSortable({ id: tool.slug, disabled: !sortable })
 
   const displayIndex = `#${String(index + 1).padStart(2, '0')}`
 
+  // dnd-kit drives the drag from a pointer sensor on this wrapper. The card
+  // itself stays a link, so a plain click still opens the tool.
   return (
+    <div
+      data-tile=""
+      ref={overlay ? undefined : setNodeRef}
+      {...(sortable && !overlay ? attributes : {})}
+      {...(sortable && !overlay ? listeners : {})}
+      onClickCapture={(e: React.MouseEvent) => {
+        // In edit mode a tap rearranges rather than opens; let the click bubble
+        // so the page can leave edit mode.
+        if (editing || draggedRef.current) e.preventDefault()
+      }}
+      style={{
+        display: 'flex',
+        transform: CSS.Transform.toString(transform),
+        transition,
+        // The original slot stays as a gap while its card rides the overlay.
+        opacity: isDragging ? 0.35 : 1,
+        borderRadius: 4,
+        touchAction: sortable ? 'none' : undefined,
+        cursor: overlay ? 'grabbing' : sortable ? 'grab' : 'pointer',
+        zIndex: isDragging ? 2 : undefined,
+      }}
+    >
     <MotionLink
       to={`/${tool.slug}`}
-      className="tool-tile"
+      className={editing && !overlay ? 'tool-tile tile-jiggle' : 'tool-tile'}
+      draggable={false}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      whileHover={{ y: -3, x: -3 }}
-      whileTap={{ scale: 0.97 }}
+      whileHover={sortable ? undefined : { y: -3, x: -3 }}
+      whileTap={sortable ? undefined : { scale: 0.97 }}
       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
       style={{
+        // stagger so the tiles don't wobble in lockstep
+        animationDelay: `${(index % 6) * 0.05}s`,
+        width: '100%',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
@@ -53,7 +95,7 @@ export default function ToolCard({ tool, index }: ToolCardProps) {
         boxShadow: hovered
           ? '6px 6px 0px var(--sketch-text)'
           : '4px 4px 0px var(--sketch-text)',
-        cursor: 'pointer',
+        cursor: 'inherit',
         textDecoration: 'none',
         position: 'relative',
         minHeight: 180,
@@ -178,5 +220,6 @@ export default function ToolCard({ tool, index }: ToolCardProps) {
         </div>
       </div>
     </MotionLink>
+    </div>
   )
 }

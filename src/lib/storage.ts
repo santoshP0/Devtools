@@ -72,5 +72,20 @@ export function useFavorites() {
 
   const isFavorite = (slug: string) => favorites.includes(slug)
 
-  return { favorites, toggleFavorite, isFavorite }
+  /** Add without toggling off — used when a tool is dragged into favourites. */
+  const addFavorite = (slug: string) =>
+    setFavorites(prev => (prev.includes(slug) ? prev : [...prev, slug]))
+
+  /** Drag-reorder: move `from` to the position `to` currently occupies. */
+  const reorderFavorites = (from: string, to: string) =>
+    setFavorites(prev => {
+      const a = prev.indexOf(from), b = prev.indexOf(to)
+      if (a === -1 || b === -1 || a === b) return prev
+      const next = [...prev]
+      next.splice(a, 1)
+      next.splice(b, 0, from)
+      return next
+    })
+
+  return { favorites, toggleFavorite, isFavorite, addFavorite, reorderFavorites }
 }

@@ -168,6 +168,8 @@ export default function App() {
   // Persisted home state — survives navigation to tool pages and back
   const [homeSearch, setHomeSearch] = useState('')
   const [homeActiveCat, setHomeActiveCat] = useState('All')
+  // Rearrange mode for the tool grid, toggled from the header.
+  const [editMode, setEditMode] = useState(false)
 
   // Desktop: dismiss the splash window once React has mounted (min ~900ms so it
   // doesn't flash). The Rust side also has a 4s fallback in case this never runs.
@@ -192,7 +194,7 @@ export default function App() {
         <ToolSwitcher />
         <SessionBar />
         <UpdateBanner />
-        <Navbar />
+        <Navbar editMode={editMode} setEditMode={setEditMode} />
         {/* Desktop: this pane is the only thing that scrolls, and it starts below
             the fixed 54px header so content never slides under it. */}
         <main style={{
@@ -204,6 +206,8 @@ export default function App() {
               search={homeSearch}
               setSearch={setHomeSearch}
               activeCat={homeActiveCat}
+              editMode={editMode}
+              setEditMode={setEditMode}
               setActiveCat={setHomeActiveCat}
             />
           }>
