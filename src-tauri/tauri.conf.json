@@ -55,7 +55,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "createUpdaterArtifacts": false,
+    "createUpdaterArtifacts": true,
     "externalBin": ["binaries/ffmpeg"],
     "fileAssociations": [
       { "ext": ["json"], "name": "JSON Document", "description": "JSON data", "role": "Editor" },

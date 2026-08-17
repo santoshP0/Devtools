@@ -33,7 +33,7 @@ export default function About() {
   const install = async (u: AvailableUpdate) => {
     setState({ kind: 'installing', pct: 0 })
     try {
-      await u.install(p => setState({ kind: 'installing', pct: p }))
+      await u.install!(p => setState({ kind: 'installing', pct: p }))
     } catch {
       setState({ kind: 'error' })
     }
@@ -81,7 +81,14 @@ export default function About() {
             {state.kind === 'available' && (
               <>
                 <p style={{ margin: '0 0 10px', fontSize: 14, fontWeight: 700 }}>v{state.update.version} is available</p>
-                <button onClick={() => install(state.update)} style={btnPrimary}>Update &amp; restart</button>
+                {state.update.install ? (
+                  <button onClick={() => install(state.update)} style={btnPrimary}>Update &amp; restart</button>
+                ) : (
+                  <a href={`${REPO_URL}/releases/latest`} target="_blank" rel="noreferrer"
+                    style={{ ...btnPrimary, display: 'inline-block', textDecoration: 'none' }}>
+                    Download v{state.update.version}
+                  </a>
+                )}
               </>
             )}
             {state.kind === 'installing' && (

@@ -15,6 +15,8 @@ export interface Settings {
   timerBeep: boolean
   /** Beep loudness, 0..1. */
   timerVolume: number
+  /** Desktop: download and stage new versions automatically on launch. */
+  autoUpdate: boolean
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -22,6 +24,7 @@ export const DEFAULT_SETTINGS: Settings = {
   timerIndicator: 'both',
   timerBeep: true,
   timerVolume: 0.6,
+  autoUpdate: true,
 }
 
 const KEY = 'devtoolbox-settings'

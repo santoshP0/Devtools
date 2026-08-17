@@ -116,6 +116,12 @@ export default function Settings() {
             <Row title="Version" desc="The installed DevToolbox build.">
               <span style={{ fontSize: 13, fontFamily: 'var(--font-mono)', opacity: 0.8 }}>{version || '…'}</span>
             </Row>
+            <ToggleRow
+              title="Update automatically"
+              desc="Download new versions on launch and install them on the next restart."
+              checked={settings.autoUpdate}
+              onChange={v => setSetting('autoUpdate', v)}
+            />
             <Row title="Updates" desc="Check for and install new versions.">
               <Link to="/about" style={linkBtn}>Check</Link>
             </Row>
