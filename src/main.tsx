@@ -4,8 +4,13 @@ import App from './App.tsx'
 import './index.css'
 import { registerSW } from 'virtual:pwa-register'
 import { syncWindowTheme } from './lib/windowTheme'
+import { isTauri } from '@tauri-apps/api/core'
 
 registerSW({ immediate: true })
+
+// Desktop: lock the window and let only the content pane scroll (see .app-shell
+// in index.css). Set before first paint so there's no scrollbar flash.
+if (isTauri()) document.documentElement.classList.add('app-shell')
 
 // Match the native titlebar to the saved app theme on desktop launch
 syncWindowTheme(localStorage.getItem('dt-theme') === 'dark' ? 'dark' : 'light')

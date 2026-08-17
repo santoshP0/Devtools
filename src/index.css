@@ -140,7 +140,15 @@
     -moz-osx-font-smoothing: grayscale;
   }
   * { box-sizing: border-box; }
-  
+
+  /* Desktop app shell. In a browser the whole document scrolls, so content
+     slides underneath the fixed header — fine on the web, wrong for an app.
+     Here the window never scrolls: the header is chrome, and only the content
+     pane below it scrolls, with the scrollbar alongside the content. */
+  html.app-shell, html.app-shell body { height: 100%; overflow: hidden; }
+  html.app-shell #root { height: 100%; }
+  html.app-shell .tool-page { min-height: 100%; }
+
   h1, h2, h3, h4, h5, h6 {
     font-family: "'Architects Daughter', var(--font-sans)" !important;
     font-weight: 700 !important;

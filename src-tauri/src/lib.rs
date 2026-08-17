@@ -444,6 +444,123 @@ async fn http_request(req: HttpReq) -> Result<HttpRes, String> {
   })
 }
 
+// ── Expand a shortened URL without visiting it ──────────────────────────────
+// A browser can't do this: with CORS, a cross-origin redirect is opaque — no
+// Location header, no final URL. Here we disable automatic redirects and walk
+// the chain by hand, so every hop is visible and the page is never rendered.
+// Requests are HEAD where possible, carry no cookies or credentials, and stop
+// at MAX_HOPS.
+#[derive(Serialize)]
+struct Hop {
+  url: String,
+  status: u16,
+  status_text: String,
+}
+
+#[derive(Serialize)]
+struct ExpandResult {
+  hops: Vec<Hop>,
+  final_url: String,
+  /// Set when a <meta http-equiv="refresh"> points somewhere else — a redirect
+  /// that never appears in the HTTP status chain.
+  meta_refresh: Option<String>,
+  truncated: bool,
+}
+
+const MAX_HOPS: usize = 15;
+
+#[tauri::command]
+async fn expand_url(url: String) -> Result<ExpandResult, String> {
+  if !(url.starts_with("http://") || url.starts_with("https://")) {
+    return Err("only http and https URLs are allowed".into());
+  }
+  let client = reqwest::Client::builder()
+    .user_agent("DevToolbox")
+    .redirect(reqwest::redirect::Policy::none()) // walk the chain ourselves
+    // no cookie store is built (the "cookies" feature is off), so nothing the
+    // shortener sets is ever sent back on the next hop
+    .timeout(std::time::Duration::from_secs(20))
+    .build()
+    .map_err(|e| e.to_string())?;
+
+  let mut current = reqwest::Url::parse(&url).map_err(|e| e.to_string())?;
+  let mut hops: Vec<Hop> = Vec::new();
+  let mut seen: Vec<String> = Vec::new();
+  let mut truncated = false;
+
+  loop {
+    if hops.len() >= MAX_HOPS {
+      truncated = true;
+      break;
+    }
+    let here = current.to_string();
+    if seen.contains(&here) {
+      truncated = true; // redirect loop
+      break;
+    }
+    seen.push(here.clone());
+
+    // HEAD is enough to read a redirect; some servers reject it, so fall back.
+    let mut resp = client.head(current.clone()).send().await.map_err(|e| e.to_string())?;
+    if matches!(resp.status().as_u16(), 405 | 501 | 400) {
+      resp = client.get(current.clone()).send().await.map_err(|e| e.to_string())?;
+    }
+    let status = resp.status();
+    hops.push(Hop {
+      url: here,
+      status: status.as_u16(),
+      status_text: status.canonical_reason().unwrap_or("").to_string(),
+    });
+
+    let location = resp
+      .headers()
+      .get(reqwest::header::LOCATION)
+      .and_then(|v| v.to_str().ok())
+      .map(|s| s.to_string());
+    match (status.is_redirection(), location) {
+      // Location can be relative — resolve it against the URL we just requested
+      (true, Some(loc)) => match current.join(&loc) {
+        Ok(next) => current = next,
+        Err(e) => return Err(format!("bad redirect target '{loc}': {e}")),
+      },
+      _ => break,
+    }
+  }
+
+  // Shorteners and phishing pages often bounce via <meta refresh>, which never
+  // shows up as a 3xx. Peek at the final page's HTML for it.
+  let final_url = current.to_string();
+  let mut meta_refresh = None;
+  if !truncated {
+    if let Ok(resp) = client.get(current.clone()).send().await {
+      let is_html = resp
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|v| v.to_str().ok())
+        .map(|v| v.contains("text/html"))
+        .unwrap_or(false);
+      if is_html {
+        if let Ok(body) = resp.text().await {
+          let head: String = body.chars().take(8000).collect::<String>().to_lowercase();
+          if let Some(i) = head.find("http-equiv=\"refresh\"").or_else(|| head.find("http-equiv='refresh'")) {
+            if let Some(u) = head[i..].find("url=").map(|p| i + p + 4) {
+              let rest: String = head[u..]
+                .chars()
+                .take_while(|c| !matches!(c, '"' | '\'' | '>' | ' '))
+                .collect();
+              if !rest.is_empty() {
+                meta_refresh = current.join(&rest).ok().map(|u| u.to_string());
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  Ok(ExpandResult { hops, final_url, meta_refresh, truncated })
+}
+
 // ── Hash a file on disk in one streaming pass ───────────────────────────────
 // The browser must load the whole file into memory to hash it; here we stream in
 // 1 MiB chunks and feed every hasher at once, so multi-GB files hash with a flat
@@ -1276,7 +1393,7 @@ pub fn run() {
   }
 
   builder
-    .invoke_handler(tauri::generate_handler![ffmpeg_check, ffmpeg_compress, ffmpeg_render, ffmpeg_filmstrip, http_request, close_splashscreen, parse_log_file, hash_file, image_convert, optimize_png, save_bytes, append_bytes, read_file, take_pending_files, timer::timer_sync, timer::timer_set_tray])
+    .invoke_handler(tauri::generate_handler![ffmpeg_check, ffmpeg_compress, ffmpeg_render, ffmpeg_filmstrip, http_request, close_splashscreen, parse_log_file, hash_file, image_convert, optimize_png, save_bytes, append_bytes, read_file, take_pending_files, expand_url, timer::timer_sync, timer::timer_set_tray])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(

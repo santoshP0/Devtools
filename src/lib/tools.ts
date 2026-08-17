@@ -102,6 +102,7 @@ const ALL_TOOLS: Tool[] = [
 
   // ── API (last) ──
   { name: 'REST Client',       slug: 'rest-client',       icon: 'Plug',            description: 'Advanced REST client — send requests, manage collections, view responses', category: 'API', keywords: ['api', 'http', 'fetch', 'request', 'postman', 'get', 'post', 'put', 'delete', 'endpoint'] },
+  { name: 'URL Expander',      slug: 'url-expander',      icon: 'Link2',           description: 'Reveal where a shortened link really goes, without opening it (desktop app)', category: 'Security', keywords: ['unshorten', 'expand', 'shortener', 'redirect', 'bitly', 'tinyurl', 'phishing', 'link', 'url', 'safe', 'trace'], desktopOnly: true },
 ]
 
 // Desktop-only tools are hidden from the web grid/search; shown inside the app

@@ -10,6 +10,7 @@ import ToolSwitcher from './components/ToolSwitcher'
 import SessionBar from './components/SessionBar'
 import UpdateBanner from './components/UpdateBanner'
 import ErrorBoundary from './components/ErrorBoundary'
+import { NAV_H, NATIVE_SHELL } from './lib/shell'
 
 // Home stays PERSISTENTLY mounted (hidden with display, not unmounted) so
 // returning to it is instant — no re-render of the 60+ motion cards, no flicker,
@@ -121,6 +122,7 @@ const HtmlPreview = lazy(() => import('./pages/HtmlPreview'))
 const TomlJson = lazy(() => import('./pages/TomlJson'))
 const JsonPathTester = lazy(() => import('./pages/JsonPathTester'))
 const TextBinaryHex = lazy(() => import('./pages/TextBinaryHex'))
+const UrlExpander = lazy(() => import('./pages/UrlExpander'))
 
 // Bridges the native macOS "Settings…" menu item to the in-app settings route.
 function MenuBridge() {
@@ -180,6 +182,7 @@ export default function App() {
     <BrowserRouter>
       <div style={{
         minHeight: '100vh',
+        ...(NATIVE_SHELL ? { height: '100vh', overflow: 'hidden' } : null),
         background: 'var(--bg)',
         display: 'flex', flexDirection: 'column',
       }}>
@@ -190,7 +193,12 @@ export default function App() {
         <SessionBar />
         <UpdateBanner />
         <Navbar />
-        <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+        {/* Desktop: this pane is the only thing that scrolls, and it starts below
+            the fixed 54px header so content never slides under it. */}
+        <main style={{
+          flex: 1, display: 'flex', flexDirection: 'column',
+          ...(NATIVE_SHELL ? { marginTop: NAV_H, minHeight: 0, overflowY: 'auto' } : null),
+        }}>
           <MainArea home={
             <Home
               search={homeSearch}
@@ -245,6 +253,7 @@ export default function App() {
             <Route path="/box-shadow-builder"  element={<BoxShadowBuilder />} />
             <Route path="/image-to-base64"     element={<ImageToBase64 />} />
             <Route path="/base64-to-image"     element={<Base64ToImage />} />
+            <Route path="/url-expander"        element={<UrlExpander />} />
             <Route path="/rest-client"         element={<RestClient />} />
             <Route path="/flexbox-playground"  element={<FlexboxPlayground />} />
             <Route path="/grid-playground"     element={<GridPlayground />} />

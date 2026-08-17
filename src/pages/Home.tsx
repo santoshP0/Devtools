@@ -3,6 +3,7 @@ import ToolCard from '../components/ToolCard'
 import ToolIcon from '../components/ToolIcon'
 import { tools, categories } from '../lib/tools'
 import { searchTools } from '../lib/toolSearch'
+import { NATIVE_SHELL } from '../lib/shell'
 import { useFavorites } from '../lib/storage'
 import { useSettings } from '../lib/settings'
 
@@ -88,8 +89,10 @@ export default function Home({ search, setSearch, activeCat, setActiveCat }: Pro
   return (
     <div 
       style={{ 
-        minHeight: 'calc(100vh - 54px)', 
-        marginTop: 54,
+        minHeight: 'calc(100vh - 54px)',
+        // Desktop: the scrolling pane already starts below the fixed header, so
+        // the page must not offset itself again.
+        marginTop: NATIVE_SHELL ? 0 : 54,
         background: 'var(--sketch-bg)',
         backgroundImage: 'radial-gradient(var(--sketch-dot) 1.2px, transparent 1.2px)',
         backgroundSize: '20px 20px',
