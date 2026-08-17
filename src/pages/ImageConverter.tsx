@@ -4,6 +4,7 @@ import ToolLayout from '../components/ToolLayout'
 import { useFileDrop } from '../hooks/useFileDrop'
 import { useNativeDrop, usePasteImage } from '../hooks/useNativeDrop'
 import { saveFile } from '../lib/saveFile'
+import { useOpenedFile } from '../lib/openWith'
 
 // native image_convert result (desktop) — base64 of the encoded bytes
 interface ImageOut { data: string; width: number; height: number; size: number }
@@ -192,6 +193,8 @@ export default function ImageConverter() {
   useNativeDrop(items => { if (items[0]) handleFile(items[0].file) })
   // Paste a screenshot straight in.
   usePasteImage(handleFile)
+  // "Open with DevToolbox" on an image.
+  useOpenedFile('/image-converter', handleFile)
 
   const getOutputDimensions = useCallback(() => {
     if (!sourceImage) return { w: 0, h: 0 }

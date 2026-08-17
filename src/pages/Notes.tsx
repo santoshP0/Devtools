@@ -2,6 +2,8 @@ import { useState, useRef, useEffect } from 'react'
 import ToolLayout from '../components/ToolLayout'
 import { useClipboardCopy } from '../hooks/useClipboardCopy'
 import { useIsDark } from '../hooks/useIsDark'
+import { useNativeDrop } from '../hooks/useNativeDrop'
+import { saveFile } from '../lib/saveFile'
 
 interface Note {
   id: string
@@ -170,14 +172,31 @@ export default function Notes() {
     setConfirmDelete(null)
   }
 
+  // Save as a real Markdown file — a native Save As on desktop, download on web.
+  // Notes live in localStorage; exporting gives them a durable copy on disk.
   const downloadNote = (note: Note) => {
     const name = (note.title.trim() || 'untitled').replace(/[^\w\- ]+/g, '').trim() || 'untitled'
-    const blob = new Blob([note.content], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url; a.download = `${name}.txt`; a.click()
-    URL.revokeObjectURL(url)
+    const md = note.title.trim() ? `# ${note.title.trim()}\n\n${note.content}` : note.content
+    saveFile(`${name}.md`, md, 'text/markdown')
   }
+
+  // Desktop: drop .md/.txt files from Finder to import them as notes.
+  useNativeDrop(async items => {
+    const files = items.filter(i => /\.(md|markdown|txt)$/i.test(i.file.name))
+    if (!files.length) return
+    const imported: Note[] = []
+    for (const f of files) {
+      const text = await f.file.text()
+      const heading = text.match(/^#\s+(.+)$/m)?.[1]
+      imported.push({
+        ...newNote(),
+        title: heading ?? f.file.name.replace(/\.[^.]+$/, ''),
+        content: heading ? text.replace(/^#\s+.+\n\n?/, '') : text,
+      })
+    }
+    setNotes(n => [...imported, ...n])
+    setActiveId(imported[0].id)
+  })
 
   // ── find & replace, scoped to the active note ──
   const matchCount = (active && findText)

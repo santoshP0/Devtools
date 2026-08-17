@@ -43,3 +43,4 @@ oxipng = { version = "9", default-features = false, features = ["parallel"] }
 tauri-plugin-updater = "2"
 tauri-plugin-window-state = "2"
 tauri-plugin-global-shortcut = "2"
+tauri-plugin-single-instance = "2"

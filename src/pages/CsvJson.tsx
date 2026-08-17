@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import { useNativeDrop } from '../hooks/useNativeDrop'
 
 function csvToJson(csv: string): string {
   const lines = csv.trim().split('\n')
@@ -55,6 +56,13 @@ export default function CsvJson() {
   const [csv, setCsv] = useState(SAMPLE_CSV)
   const [json, setJson] = useState('')
   const [error, setError] = useState('')
+
+  // Desktop: drop a file from Finder — .json lands in the JSON box, anything else in CSV.
+  useNativeDrop(async items => {
+    const it = items[0]; if (!it) return
+    const text = await it.file.text()
+    if (/\.json$/i.test(it.file.name)) setJson(text); else setCsv(text)
+  })
 
   const toJson = () => {
     setError('')

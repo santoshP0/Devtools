@@ -9,6 +9,7 @@ const CSV_SCROLL_STYLE = `
 `
 import ToolLayout from '../components/ToolLayout'
 import { useNativeDrop } from '../hooks/useNativeDrop'
+import { useOpenedFile } from '../lib/openWith'
 
 /* ─── CSV Parser ─────────────────────────────────────────── */
 function parseCSV(text: string): { headers: string[]; rows: string[][] } {
@@ -260,8 +261,10 @@ export default function CsvViewerPage() {
     reader.readAsText(file)
   }, [])
 
-  // Desktop: Finder drag-drop (HTML onDrop is dead in the Tauri webview).
+  // Desktop: Finder drag-drop (HTML onDrop is dead in the Tauri webview), and
+  // files opened with "Open with DevToolbox".
   useNativeDrop(items => { if (items[0]) loadFile(items[0].file) })
+  useOpenedFile('/csv-viewer', loadFile)
 
   /* ── Drag & Drop ── */
   const onDragOver = useCallback((e: React.DragEvent) => {

@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import { useNativeDrop } from '../hooks/useNativeDrop'
 
 const SAMPLE_DB = `{
   "users": [
@@ -64,6 +65,9 @@ function JsonNode({ data, depth = 0, keyName }: { data: unknown; depth?: number;
 export default function NoSqlViewerPage() {
   const [input, setInput] = useState(SAMPLE_DB)
   const [search, setSearch] = useState('')
+
+  // Desktop: drop a JSON dump from Finder.
+  useNativeDrop(async items => { if (items[0]) setInput(await items[0].file.text()) })
   const [activeCol, setActiveCol] = useState<string | null>(null)
 
   const parsed = useMemo(() => {

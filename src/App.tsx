@@ -1,5 +1,6 @@
 import { useState, useEffect, lazy, Suspense, ReactNode } from 'react'
 import { invoke, isTauri } from '@tauri-apps/api/core'
+import { routeForFile, queueForRoute } from './lib/openWith'
 import { BrowserRouter, Routes, Route, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import { ToastProvider } from './components/Toast'
@@ -127,6 +128,32 @@ function MenuBridge() {
   return null
 }
 
+// "Open with DevToolbox": route a file opened from Finder/Explorer to its tool.
+function OpenWithBridge() {
+  const navigate = useNavigate()
+  useEffect(() => {
+    if (!isTauri()) return
+    const route = (paths: string[]) => {
+      let target: string | undefined
+      for (const p of paths) {
+        const r = routeForFile(p)
+        if (!r) continue
+        queueForRoute(r, p)
+        target ??= r
+      }
+      if (target) navigate(target)
+    }
+    let un: (() => void) | undefined
+    // Files that arrived before React mounted (app launched by opening a file).
+    invoke<string[]>('take_pending_files').then(route).catch(() => {})
+    import('@tauri-apps/api/event').then(({ listen }) => {
+      listen<string[]>('open-files', e => route(e.payload)).then(f => { un = f })
+    })
+    return () => un?.()
+  }, [navigate])
+  return null
+}
+
 export default function App() {
   // Persisted home state — survives navigation to tool pages and back
   const [homeSearch, setHomeSearch] = useState('')
@@ -149,6 +176,7 @@ export default function App() {
         display: 'flex', flexDirection: 'column',
       }}>
         <MenuBridge />
+        <OpenWithBridge />
         <CommandPalette />
         <ToolSwitcher />
         <SessionBar />

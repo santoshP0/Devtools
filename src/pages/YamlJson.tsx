@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import yaml from 'js-yaml'
 import ToolLayout from '../components/ToolLayout'
 import CopyBtn from '../components/CopyBtn'
+import { useNativeDrop } from '../hooks/useNativeDrop'
+import { useOpenedFile } from '../lib/openWith'
 
 const SAMPLE_YAML = `name: DevToolbox
 version: 2.0
@@ -34,6 +36,15 @@ export default function YamlJsonPage() {
   const [input, setInput] = useState(SAMPLE_YAML)
   const [output, setOutput] = useState('')
   const [error, setError] = useState('')
+
+  // Desktop: drop a file from Finder, or open one with "Open with DevToolbox" —
+  // direction follows the extension.
+  const loadFile = async (file: File) => {
+    setDir(/\.json$/i.test(file.name) ? 'JSON → YAML' : 'YAML → JSON')
+    setInput(await file.text())
+  }
+  useNativeDrop(items => { if (items[0]) loadFile(items[0].file) })
+  useOpenedFile('/yaml-json', loadFile)
 
   useEffect(() => {
     if (!input.trim()) { setOutput(''); setError(''); return }

@@ -57,6 +57,16 @@
     "targets": "all",
     "createUpdaterArtifacts": false,
     "externalBin": ["binaries/ffmpeg"],
+    "fileAssociations": [
+      { "ext": ["json"], "name": "JSON Document", "description": "JSON data", "role": "Editor" },
+      { "ext": ["csv", "tsv"], "name": "CSV Document", "description": "Delimited data", "role": "Editor" },
+      { "ext": ["yaml", "yml"], "name": "YAML Document", "description": "YAML data", "role": "Editor" },
+      { "ext": ["toml"], "name": "TOML Document", "description": "TOML data", "role": "Editor" },
+      { "ext": ["xml"], "name": "XML Document", "description": "XML data", "role": "Editor" },
+      { "ext": ["md", "markdown"], "name": "Markdown Document", "description": "Markdown text", "role": "Editor" },
+      { "ext": ["log"], "name": "Log File", "description": "Application log", "role": "Viewer" },
+      { "ext": ["png", "jpg", "jpeg", "webp", "heic", "tiff"], "name": "Image", "description": "Image file", "role": "Viewer" }
+    ],
     "macOS": {
       "signingIdentity": "-"
     },

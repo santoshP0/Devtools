@@ -1174,6 +1174,49 @@ fn read_file(path: String) -> Result<tauri::ipc::Response, String> {
   std::fs::read(&path).map(tauri::ipc::Response::new).map_err(|e| e.to_string())
 }
 
+// ── "Open with DevToolbox" ──────────────────────────────────────────────────
+// Files opened from Finder/Explorer arrive one of three ways: argv at launch,
+// argv of a second instance (single-instance forwards it), or macOS RunEvent::
+// Opened. All of them land here; the frontend drains the queue and routes each
+// file to the right tool. Queued rather than pushed only, so a file that arrives
+// before the UI mounts isn't lost.
+#[cfg(desktop)]
+static PENDING_FILES: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
+
+#[cfg(desktop)]
+fn queue_files(app: &tauri::AppHandle, paths: Vec<String>) {
+  use tauri::{Emitter, Manager};
+  let files: Vec<String> = paths
+    .into_iter()
+    .filter(|p| !p.starts_with('-') && std::path::Path::new(p).is_file())
+    .collect();
+  if files.is_empty() {
+    return;
+  }
+  if let Ok(mut q) = PENDING_FILES.lock() {
+    q.extend(files.clone());
+  }
+  if let Some(w) = app.get_webview_window("main") {
+    let _ = w.show();
+    let _ = w.unminimize();
+    let _ = w.set_focus();
+  }
+  let _ = app.emit("open-files", files);
+}
+
+// Frontend drains this on mount — covers files that arrived before it was ready.
+#[cfg(desktop)]
+#[tauri::command]
+fn take_pending_files() -> Vec<String> {
+  PENDING_FILES.lock().map(|mut q| std::mem::take(&mut *q)).unwrap_or_default()
+}
+
+#[cfg(not(desktop))]
+#[tauri::command]
+fn take_pending_files() -> Vec<String> {
+  Vec::new()
+}
+
 // Close the splash window and reveal the main window once the UI has mounted.
 #[tauri::command]
 fn close_splashscreen(app: tauri::AppHandle) {
@@ -1184,7 +1227,19 @@ fn close_splashscreen(app: tauri::AppHandle) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-  let mut builder = tauri::Builder::default()
+  #[allow(unused_mut)]
+  let mut builder = tauri::Builder::default();
+
+  // Must be registered first: a second launch (e.g. "Open with DevToolbox" on a
+  // file) forwards its argv here and exits, instead of starting a second app.
+  #[cfg(desktop)]
+  {
+    builder = builder.plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+      queue_files(app, argv.into_iter().skip(1).collect());
+    }));
+  }
+
+  builder = builder
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_process::init())
     .plugin(tauri_plugin_notification::init());
@@ -1221,7 +1276,7 @@ pub fn run() {
   }
 
   builder
-    .invoke_handler(tauri::generate_handler![ffmpeg_check, ffmpeg_compress, ffmpeg_render, ffmpeg_filmstrip, http_request, close_splashscreen, parse_log_file, hash_file, image_convert, optimize_png, save_bytes, append_bytes, read_file, timer::timer_sync, timer::timer_set_tray])
+    .invoke_handler(tauri::generate_handler![ffmpeg_check, ffmpeg_compress, ffmpeg_render, ffmpeg_filmstrip, http_request, close_splashscreen, parse_log_file, hash_file, image_convert, optimize_png, save_bytes, append_bytes, read_file, take_pending_files, timer::timer_sync, timer::timer_set_tray])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
@@ -1251,6 +1306,15 @@ pub fn run() {
       {
         use tauri_plugin_global_shortcut::GlobalShortcutExt;
         let _ = app.global_shortcut().register("CmdOrCtrl+Shift+D");
+      }
+
+      // Files passed on the command line at launch (Windows/Linux "Open with").
+      #[cfg(desktop)]
+      {
+        let args: Vec<String> = std::env::args().skip(1).collect();
+        if !args.is_empty() {
+          queue_files(app.handle(), args);
+        }
       }
 
       // Native macOS menu bar: app menu (About / Settings / Quit) + standard Edit
@@ -1305,13 +1369,25 @@ pub fn run() {
       // stuck. Reopen re-reveals the hidden window.
       #[cfg(target_os = "macos")]
       {
-        if let tauri::RunEvent::Reopen { .. } = _event {
-          use tauri::Manager;
-          if let Some(w) = _app_handle.get_webview_window("main") {
-            let _ = w.show();
-            let _ = w.unminimize();
-            let _ = w.set_focus();
+        match &_event {
+          tauri::RunEvent::Reopen { .. } => {
+            use tauri::Manager;
+            if let Some(w) = _app_handle.get_webview_window("main") {
+              let _ = w.show();
+              let _ = w.unminimize();
+              let _ = w.set_focus();
+            }
           }
+          // macOS delivers "Open with DevToolbox" as file:// URLs, not argv.
+          tauri::RunEvent::Opened { urls } => {
+            let paths: Vec<String> = urls
+              .iter()
+              .filter_map(|u| u.to_file_path().ok())
+              .map(|p| p.to_string_lossy().into_owned())
+              .collect();
+            queue_files(_app_handle, paths);
+          }
+          _ => {}
         }
       }
     });

@@ -2,6 +2,8 @@ import { useState, useMemo, useRef, useCallback, useEffect, MouseEvent as RMouse
 import ToolLayout from '../components/ToolLayout'
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { open as openDialog } from '@tauri-apps/plugin-dialog'
+import { useNativeDrop } from '../hooks/useNativeDrop'
+import { useOpenedFile } from '../lib/openWith'
 
 // ── Persistence ───────────────────────────────────────────────────────────────
 const STORAGE_KEY = 'devtools:log-prettifier:input'
@@ -392,6 +394,12 @@ export default function LogPrettifierPage() {
     if (!isTauri()) { fileRef.current?.click(); return }
     const path = await openDialog({ multiple: false, filters: [{ name: 'Logs', extensions: ['log', 'txt', 'json', 'ndjson', 'out'] }] })
     if (!path || Array.isArray(path)) return
+    await openPath(path)
+  }
+
+  // Desktop: Finder drag-drop and "Open with DevToolbox" — both go through the
+  // native parser by path, so a 100 MB log never touches the UI thread.
+  const openPath = async (path: string) => {
     setIsLoading(true)
     try {
       const parsed = await invoke<LogLine[]>('parse_log_file', { path })
@@ -399,6 +407,8 @@ export default function LogPrettifierPage() {
     } catch (e) { alert('Failed to read file: ' + e) }
     finally { setIsLoading(false) }
   }
+  useNativeDrop(items => { if (items[0]) openPath(items[0].path) })
+  useOpenedFile('/log-prettifier', (_f, path) => openPath(path))
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; if (f) readFile(f); e.target.value = '' }
   const handleDrop = (e: React.DragEvent) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) readFile(f) }

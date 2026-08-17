@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import ToolLayout from '../components/ToolLayout'
 import { useClipboardCopy } from '../hooks/useClipboardCopy'
+import { useNativeDrop } from '../hooks/useNativeDrop'
+import { useOpenedFile } from '../lib/openWith'
 import { marked, Renderer } from 'marked'
 import { markedHighlight } from 'marked-highlight'
 import hljs from 'highlight.js'
@@ -268,6 +270,11 @@ export default function MarkdownPreview() {
   const { copied: copiedMd, copy: copyMd } = useClipboardCopy(2000)
   const { copied: copiedHtml, copy: copyHtml } = useClipboardCopy(2000)
   const [fileName, setFileName] = useState<string | null>(null)
+
+  // Desktop: Finder drag-drop and "Open with DevToolbox" on a .md file.
+  const loadFile = async (file: File) => { setMarkdown(await file.text()); setFileName(file.name) }
+  useNativeDrop(items => { if (items[0]) loadFile(items[0].file) })
+  useOpenedFile('/markdown-preview', loadFile)
 
   // Draggable split
   const [splitPercent, setSplitPercent] = useState(50)

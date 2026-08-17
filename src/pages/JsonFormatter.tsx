@@ -5,6 +5,8 @@ import { monaco } from '../lib/monacoSetup'
 import type { OnMount } from '@monaco-editor/react'
 import { useClipboardCopy } from '../hooks/useClipboardCopy'
 import { useIsDark } from '../hooks/useIsDark'
+import { useNativeDrop } from '../hooks/useNativeDrop'
+import { useOpenedFile } from '../lib/openWith'
 
 // ─── Persistence ──────────────────────────────────────────────────────────────
 const STORAGE_KEY = 'devtools:json-formatter:input'
@@ -298,6 +300,11 @@ export default function JsonFormatter() {
   const [status, setStatus] = useState<'idle' | 'valid' | 'error'>('idle')
   const [indent, setIndent] = useState<number | string>(2)
   const { copied, copy } = useClipboardCopy()
+
+  // Desktop: Finder drag-drop and "Open with DevToolbox" on a .json file.
+  const loadFile = async (file: File) => setInput(await file.text())
+  useNativeDrop(items => { if (items[0]) loadFile(items[0].file) })
+  useOpenedFile('/json-formatter', loadFile)
   const [viewMode, setViewMode] = useState<'tree' | 'raw'>('tree')
   const isDark = useIsDark()
 
