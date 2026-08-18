@@ -46,7 +46,8 @@ export default function UpdateBanner() {
     return () => { alive = false }
   }, [settings.autoUpdate])
 
-  // Esc postpones, like any dialog — but not mid-download.
+  // Esc postpones, like any dialog — but not mid-download, where dismissing
+  // would abandon an install in progress.
   useEffect(() => {
     if (!update || busy) return
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setDismissed(true) }
@@ -55,6 +56,7 @@ export default function UpdateBanner() {
   }, [update, busy])
 
   if (!update || dismissed) return null
+
 
   const canInstall = typeof update.install === 'function'
   const notes = readNotes(update.notes)
@@ -170,7 +172,10 @@ export default function UpdateBanner() {
             {busy ? (
               <span style={{ fontSize: 13, opacity: 0.6, alignSelf: 'center' }}>Please keep the app open…</span>
             ) : staged ? (
-              <button onClick={() => relaunchApp()} style={{ ...btnBase, background: 'var(--sketch-text)', color: 'var(--sketch-bg)' }}>
+              <button
+                onClick={() => relaunchApp()}
+                style={{ ...btnBase, background: 'var(--sketch-text)', color: 'var(--sketch-bg)' }}
+              >
                 Restart now
               </button>
             ) : (

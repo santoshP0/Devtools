@@ -3,7 +3,7 @@ import { appVersion, checkForUpdate, inDesktopApp, AvailableUpdate } from '../li
 import { useIsDark } from '../hooks/useIsDark'
 
 const REPO_URL = 'https://github.com/santoshP0/Devtools'
-const SITE_URL = 'https://devtoolbox.dev'
+const SITE_URL = 'https://devtools-9fsp.onrender.com'
 
 type CheckState =
   | { kind: 'idle' }
