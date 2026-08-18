@@ -1358,6 +1358,8 @@ pub fn run() {
 
   builder = builder
     .plugin(tauri_plugin_dialog::init())
+    // external links: the webview can't open a browser on its own
+    .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_process::init())
     .plugin(tauri_plugin_notification::init());
 

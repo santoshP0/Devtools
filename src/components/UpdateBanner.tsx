@@ -3,34 +3,39 @@ import { AnimatePresence, motion } from 'motion/react'
 import { checkForUpdate, AvailableUpdate, RELEASES_URL, relaunchApp } from '../lib/updater'
 import { useSettings } from '../lib/settings'
 
-const actionStyle: React.CSSProperties = {
-  padding: '6px 14px', borderRadius: 5, cursor: 'pointer',
-  background: 'var(--sketch-text)', color: 'var(--sketch-bg)',
-  border: '2px solid var(--sketch-text)', fontSize: 13, fontWeight: 700,
-  fontFamily: "'Architects Daughter', var(--font-sans)", whiteSpace: 'nowrap',
-  display: 'inline-block', textAlign: 'center',
-}
-
-const quietStyle: React.CSSProperties = {
-  background: 'transparent', border: 'none', cursor: 'pointer',
-  fontSize: 13, opacity: 0.65, color: 'var(--sketch-text)',
-  fontFamily: "'Architects Daughter', var(--font-sans)", padding: '6px 10px',
-}
-
 /**
- * Update prompt, bottom-right so it never sits over the content you're reading.
+ * Update dialog, in the shape people already know from desktop apps: a centred
+ * sheet with the version, what changed, and an explicit choice. A toast in the
+ * corner reads as an ad and gets ignored; a new binary is worth a real prompt.
  *
- * Checks on launch but never downloads on its own: an update is offered and only
- * starts once it's accepted, because pulling ~10 MB and swapping the binary
- * underneath someone is not a decision to make for them.
+ * It checks on launch but downloads nothing until it's accepted — then it
+ * installs in the background and restarts into the new version.
  */
+
+/** Turn a GitHub release body into plain lines worth showing. */
+function readNotes(body?: string): string[] {
+  if (!body) return []
+  return body
+    .split('\n')
+    .map(l => l.trim())
+    .filter(l => l && !l.startsWith('#') && !l.startsWith('---'))
+    .map(l => l.replace(/^[-*]\s+/, '').replace(/\*\*(.+?)\*\*/g, '$1').replace(/`(.+?)`/g, '$1'))
+    .filter(l => !/^see all downloads/i.test(l))
+    .slice(0, 8)
+}
+
+const btnBase: React.CSSProperties = {
+  padding: '9px 18px', borderRadius: 6, cursor: 'pointer',
+  border: '2px solid var(--sketch-text)', fontSize: 14, fontWeight: 700,
+  fontFamily: "'Architects Daughter', var(--font-sans)", whiteSpace: 'nowrap',
+}
+
 export default function UpdateBanner() {
   const [update, setUpdate] = useState<AvailableUpdate | null>(null)
   const [dismissed, setDismissed] = useState(false)
   const [busy, setBusy] = useState(false)
   const [progress, setProgress] = useState(0)
   const [failed, setFailed] = useState(false)
-  /** Downloaded and staged — it applies on the next restart. */
   const [staged, setStaged] = useState(false)
   const { settings } = useSettings()
 
@@ -41,18 +46,26 @@ export default function UpdateBanner() {
     return () => { alive = false }
   }, [settings.autoUpdate])
 
+  // Esc postpones, like any dialog — but not mid-download.
+  useEffect(() => {
+    if (!update || busy) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setDismissed(true) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [update, busy])
+
   if (!update || dismissed) return null
 
-  // Releases without updater artifacts can't self-install — link to the download.
   const canInstall = typeof update.install === 'function'
+  const notes = readNotes(update.notes)
 
   const run = async () => {
     setBusy(true)
     setFailed(false)
     try {
-      // Install without relaunching: finishing is the user's call, so a download
-      // can never interrupt whatever they were doing.
-      await update.install!(setProgress, false)
+      // Accepting is the consent — download, install, and restart into the new
+      // version without asking a second time.
+      await update.install!(setProgress, true)
       setStaged(true)
     } catch {
       setFailed(true)
@@ -61,71 +74,130 @@ export default function UpdateBanner() {
     }
   }
 
-  const title = staged
-    ? `v${update.version} is ready`
-    : busy
-      ? `Downloading v${update.version}`
-      : `Update available — v${update.version}`
-
-  const detail = busy
-    ? `${Math.round(progress * 100)}% of the way there`
-    : staged
-      ? 'Restart to finish, whenever suits you.'
-      : failed
-        ? 'That did not work — try again, or download it manually.'
-        : canInstall
-          ? `You're on v${update.currentVersion}. Update now, or later from Settings.`
-          : `You're on v${update.currentVersion}. Grab it from GitHub.`
-
   return (
     <AnimatePresence>
       <motion.div
-        initial={{ x: 40, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        exit={{ x: 40, opacity: 0 }}
-        transition={{ type: 'spring', stiffness: 320, damping: 30 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.15 }}
+        onClick={() => { if (!busy) setDismissed(true) }}
         style={{
-          position: 'fixed', bottom: 20, right: 20,
-          zIndex: 90, width: 320, maxWidth: 'calc(100vw - 40px)',
-          background: 'var(--surface)', border: '2px solid var(--sketch-text)',
-          boxShadow: '5px 5px 0px var(--sketch-text)', borderRadius: 10,
-          padding: '14px 16px', color: 'var(--sketch-text)',
-          fontFamily: "'Architects Daughter', var(--font-sans)",
+          position: 'fixed', inset: 0, zIndex: 200,
+          background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(3px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-          <span style={{ fontSize: 20, lineHeight: 1.1 }}>{staged ? '✅' : '✨'}</span>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 15, fontWeight: 700 }}>{title}</div>
-            <div style={{ fontSize: 12, opacity: 0.7, marginTop: 2, lineHeight: 1.45 }}>{detail}</div>
-          </div>
-        </div>
-
-        {busy && (
-          <div style={{ height: 4, background: 'var(--surface2)', borderRadius: 2, marginTop: 10, overflow: 'hidden' }}>
+        <motion.div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Software update"
+          initial={{ y: 14, scale: 0.98, opacity: 0 }}
+          animate={{ y: 0, scale: 1, opacity: 1 }}
+          exit={{ y: 10, opacity: 0 }}
+          transition={{ type: 'spring', stiffness: 340, damping: 28 }}
+          onClick={e => e.stopPropagation()}
+          style={{
+            width: '100%', maxWidth: 440,
+            background: 'var(--surface)',
+            border: '2px solid var(--sketch-text)',
+            boxShadow: '7px 7px 0px var(--sketch-text)',
+            borderRadius: 12, overflow: 'hidden',
+            color: 'var(--sketch-text)',
+            fontFamily: "'Architects Daughter', var(--font-sans)",
+          }}
+        >
+          {/* Header */}
+          <div style={{ display: 'flex', gap: 14, alignItems: 'center', padding: '20px 22px 0' }}>
             <div style={{
-              height: '100%', width: `${Math.round(progress * 100)}%`,
-              background: 'var(--sketch-text)', transition: 'width 0.2s',
-            }} />
+              width: 46, height: 46, flexShrink: 0, borderRadius: 11,
+              border: '2px solid var(--sketch-text)', background: 'var(--sketch-bg)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24,
+            }}>{staged ? '✅' : '✨'}</div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 19, fontWeight: 700, lineHeight: 1.2 }}>
+                {staged ? 'Update installed' : 'A new version is available'}
+              </div>
+              <div style={{ fontSize: 13, opacity: 0.7, marginTop: 3, fontFamily: 'var(--font-mono)' }}>
+                {update.currentVersion} → {update.version}
+              </div>
+            </div>
           </div>
-        )}
 
-        {!busy && (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 4, marginTop: 12 }}>
-            <button onClick={() => setDismissed(true)} style={quietStyle}>
-              {staged ? 'Not now' : 'Later'}
-            </button>
-            {staged ? (
-              <button onClick={() => relaunchApp()} style={actionStyle}>Restart now</button>
-            ) : canInstall ? (
-              <button onClick={run} style={actionStyle}>{failed ? 'Try again' : 'Update now'}</button>
+          {/* What changed */}
+          {notes.length > 0 && !busy && !staged && (
+            <div style={{
+              margin: '16px 22px 0', padding: '12px 14px',
+              background: 'var(--sketch-bg)', border: '1px solid var(--border)', borderRadius: 8,
+              maxHeight: 190, overflowY: 'auto',
+            }}>
+              <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 7, letterSpacing: 0.3 }}>WHAT'S NEW</div>
+              <ul style={{ margin: 0, paddingLeft: 16, fontFamily: 'var(--font-sans)' }}>
+                {notes.map((n, i) => (
+                  <li key={i} style={{ fontSize: 13, lineHeight: 1.55, opacity: 0.85, marginBottom: 4 }}>{n}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Progress */}
+          {busy && (
+            <div style={{ margin: '18px 22px 0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
+                <span>{progress >= 1 ? 'Installing…' : 'Downloading…'}</span>
+                <span style={{ fontFamily: 'var(--font-mono)', opacity: 0.75 }}>{Math.round(progress * 100)}%</span>
+              </div>
+              <div style={{ height: 8, background: 'var(--sketch-bg)', border: '2px solid var(--sketch-text)', borderRadius: 999, overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%', width: `${Math.max(3, Math.round(progress * 100))}%`,
+                  background: 'var(--sketch-text)', transition: 'width 0.25s ease-out',
+                }} />
+              </div>
+              <div style={{ fontSize: 12, opacity: 0.65, marginTop: 8, fontFamily: 'var(--font-sans)' }}>
+                The app restarts into the new version when this finishes.
+              </div>
+            </div>
+          )}
+
+          {failed && !busy && (
+            <div style={{ margin: '16px 22px 0', fontSize: 13, color: 'var(--cat-sec)', fontFamily: 'var(--font-sans)' }}>
+              The update could not be installed. Try again, or download it manually.
+            </div>
+          )}
+
+          {/* Actions */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '20px 22px 20px' }}>
+            {busy ? (
+              <span style={{ fontSize: 13, opacity: 0.6, alignSelf: 'center' }}>Please keep the app open…</span>
+            ) : staged ? (
+              <button onClick={() => relaunchApp()} style={{ ...btnBase, background: 'var(--sketch-text)', color: 'var(--sketch-bg)' }}>
+                Restart now
+              </button>
             ) : (
-              <a href={RELEASES_URL} target="_blank" rel="noreferrer" style={{ ...actionStyle, textDecoration: 'none' }}>
-                Download
-              </a>
+              <>
+                <button
+                  onClick={() => setDismissed(true)}
+                  style={{ ...btnBase, background: 'transparent', color: 'var(--sketch-text)', borderColor: 'transparent' }}
+                >
+                  Remind me later
+                </button>
+                {canInstall ? (
+                  <button onClick={run} style={{ ...btnBase, background: 'var(--sketch-text)', color: 'var(--sketch-bg)', boxShadow: '3px 3px 0px var(--sketch-text)' }}>
+                    {failed ? 'Try again' : 'Install update'}
+                  </button>
+                ) : (
+                  <a
+                    href={RELEASES_URL} target="_blank" rel="noreferrer"
+                    onClick={() => setDismissed(true)}
+                    style={{ ...btnBase, background: 'var(--sketch-text)', color: 'var(--sketch-bg)', textDecoration: 'none', boxShadow: '3px 3px 0px var(--sketch-text)' }}
+                  >
+                    Download
+                  </a>
+                )}
+              </>
             )}
           </div>
-        )}
+        </motion.div>
       </motion.div>
     </AnimatePresence>
   )

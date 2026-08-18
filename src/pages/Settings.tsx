@@ -117,8 +117,8 @@ export default function Settings() {
               <span style={{ fontSize: 13, fontFamily: 'var(--font-mono)', opacity: 0.8 }}>{version || '…'}</span>
             </Row>
             <ToggleRow
-              title="Update automatically"
-              desc="Download new versions on launch and install them on the next restart."
+              title="Check for updates"
+              desc="Look for a new version on launch and offer it. Nothing downloads until you accept."
               checked={settings.autoUpdate}
               onChange={v => setSetting('autoUpdate', v)}
             />
