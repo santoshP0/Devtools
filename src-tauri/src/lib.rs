@@ -1621,4 +1621,122 @@ mod tests {
     assert!(joined.contains("fps=15"));
     assert!(joined.contains("scale='min(500,iw)'"));
   }
+
+  // ── native command tests ──────────────────────────────────────────────────
+  // These cover the desktop-only commands, which had no coverage: a bad hash or
+  // a corrupt image conversion would otherwise only surface in the app.
+
+  fn tmp(name: &str) -> std::path::PathBuf {
+    let mut p = std::env::temp_dir();
+    p.push(format!("devtoolbox-test-{}-{}", std::process::id(), name));
+    p
+  }
+
+  /// A small solid-colour PNG to feed the image commands.
+  fn sample_png(w: u32, h: u32) -> Vec<u8> {
+    use image::{ImageFormat, Rgba, RgbaImage};
+    let mut img = RgbaImage::new(w, h);
+    for (x, y, px) in img.enumerate_pixels_mut() {
+      *px = Rgba([(x % 256) as u8, (y % 256) as u8, 128, 255]);
+    }
+    let mut out = std::io::Cursor::new(Vec::new());
+    image::DynamicImage::ImageRgba8(img).write_to(&mut out, ImageFormat::Png).unwrap();
+    out.into_inner()
+  }
+
+  #[test]
+  fn hashes_a_file_against_known_digests() {
+    let path = tmp("hash.txt");
+    std::fs::write(&path, b"abc").unwrap();
+    let out = tauri::async_runtime::block_on(hash_file(path.to_string_lossy().into())).unwrap();
+    let _ = std::fs::remove_file(&path);
+    // published digests for "abc"
+    assert_eq!(out["MD5"], "900150983cd24fb0d6963f7d28e17f72");
+    assert_eq!(out["SHA-1"], "a9993e364706816aba3e25717850c26c9cd0d89d");
+    assert_eq!(out["SHA-256"], "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+  }
+
+  #[test]
+  fn hashing_a_missing_file_errors_instead_of_panicking() {
+    let res = tauri::async_runtime::block_on(hash_file("/no/such/file".into()));
+    assert!(res.is_err());
+  }
+
+  #[test]
+  fn saves_appends_and_reads_bytes_back() {
+    let path = tmp("io.bin");
+    let p = path.to_string_lossy().to_string();
+    save_bytes(p.clone(), b"hello".to_vec()).unwrap();
+    append_bytes(p.clone(), b" world".to_vec()).unwrap();
+    assert_eq!(std::fs::read(&path).unwrap(), b"hello world");
+    // save_bytes truncates rather than appending, which the streamed export relies on
+    save_bytes(p.clone(), b"fresh".to_vec()).unwrap();
+    assert_eq!(std::fs::read(&path).unwrap(), b"fresh");
+    let _ = std::fs::remove_file(&path);
+  }
+
+  #[test]
+  fn converts_and_resizes_an_image() {
+    use base64::Engine;
+    let png = sample_png(40, 20);
+    for fmt in ["png", "jpeg", "webp"] {
+      let out = tauri::async_runtime::block_on(
+        image_convert(png.clone(), fmt.into(), 80, Some(20), Some(10)),
+      )
+      .unwrap();
+      assert_eq!((out.width, out.height), (20, 10), "{fmt} should honour the resize");
+      let bytes = base64::engine::general_purpose::STANDARD.decode(&out.data).unwrap();
+      assert_eq!(bytes.len() as u64, out.size);
+      // the result must be a real image of the requested size
+      let decoded = image::load_from_memory(&bytes).unwrap();
+      assert_eq!((decoded.width(), decoded.height()), (20, 10), "{fmt} round-trip");
+    }
+  }
+
+  #[test]
+  fn conversion_without_dimensions_keeps_the_original_size() {
+    let out = tauri::async_runtime::block_on(
+      image_convert(sample_png(33, 17), "png".into(), 90, None, None),
+    )
+    .unwrap();
+    assert_eq!((out.width, out.height), (33, 17));
+  }
+
+  #[test]
+  fn rejects_data_that_is_not_an_image() {
+    let res = tauri::async_runtime::block_on(
+      image_convert(b"definitely not an image".to_vec(), "png".into(), 80, None, None),
+    );
+    assert!(res.is_err());
+  }
+
+  #[test]
+  fn optimizing_a_png_keeps_the_pixels_and_never_grows_it() {
+    use base64::Engine;
+    let png = sample_png(64, 64);
+    let out = tauri::async_runtime::block_on(optimize_png(png.clone(), None)).unwrap();
+    assert_eq!((out.width, out.height), (64, 64));
+    let bytes = base64::engine::general_purpose::STANDARD.decode(&out.data).unwrap();
+    assert!(out.size as usize <= png.len(), "optimize must not inflate the file");
+    let decoded = image::load_from_memory(&bytes).unwrap();
+    assert_eq!((decoded.width(), decoded.height()), (64, 64));
+  }
+
+  #[test]
+  fn optimizing_downscales_only_past_the_limit() {
+    let png = sample_png(100, 50);
+    let big = tauri::async_runtime::block_on(optimize_png(png.clone(), Some(40))).unwrap();
+    assert_eq!((big.width, big.height), (40, 20), "longer side clamped, aspect kept");
+    let untouched = tauri::async_runtime::block_on(optimize_png(png, Some(500))).unwrap();
+    assert_eq!((untouched.width, untouched.height), (100, 50));
+  }
+
+  #[test]
+  fn expand_url_refuses_non_http_schemes() {
+    // guards against the command being pointed at file:// or similar
+    for bad in ["file:///etc/passwd", "ftp://example.com", "javascript:alert(1)"] {
+      let res = tauri::async_runtime::block_on(expand_url(bad.into()));
+      assert!(res.is_err(), "{bad} must be rejected");
+    }
+  }
 }

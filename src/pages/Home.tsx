@@ -1,5 +1,6 @@
 import { useRef, useEffect, useMemo, useState } from 'react'
 import ToolCard from '../components/ToolCard'
+import FirstRunHint from '../components/FirstRunHint'
 import ToolIcon from '../components/ToolIcon'
 import { tools, categories } from '../lib/tools'
 import { searchTools } from '../lib/toolSearch'
@@ -324,6 +325,9 @@ export default function Home({ search, setSearch, activeCat, setActiveCat, editM
           margin: '0 auto 32px',
           maxWidth: '100%',
         }} />
+
+        {/* One-time orientation, only on the unfiltered default view */}
+        {search === '' && activeCat === 'All' && !editMode && <FirstRunHint />}
 
         {/* Favourites first */}
         {showFav && (
