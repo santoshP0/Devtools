@@ -13,6 +13,13 @@ export default defineConfig({
       registerType: 'autoUpdate',
       workbox: {
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        // Without these a new service worker installs but sits in "waiting"
+        // until every tab of the site is closed, so returning visitors kept
+        // being served the previous build. Take over straight away instead, and
+        // drop the precache from older versions.
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
       },
       includeAssets: ['AppIconLightTheme.png', 'AppIconDarkTheme.png'],
       manifest: {

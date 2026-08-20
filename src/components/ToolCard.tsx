@@ -111,7 +111,10 @@ export default function ToolCard({ tool, index, sortable, overlay, editing }: To
           width: 54,
           height: 14,
           background: 'rgba(0, 0, 0, 0.08)',
-          backdropFilter: 'blur(1px)',
+          // No backdrop-filter here: it forces a GPU layer and a framebuffer
+          // read-back per card, and with the whole grid on screen that was ~70
+          // of them compositing non-stop. A 1px blur on a translucent strip is
+          // not worth it.
           borderLeft: '1px dashed rgba(0, 0, 0, 0.15)',
           borderRight: '1px dashed rgba(0, 0, 0, 0.15)',
           borderRadius: 1,

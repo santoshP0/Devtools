@@ -1,4 +1,4 @@
-import { useSyncExternalStore, useEffect, useState } from 'react'
+import { useSyncExternalStore, useEffect, useRef, useState } from 'react'
 import { isTauri, invoke } from '@tauri-apps/api/core'
 
 /**
@@ -104,12 +104,24 @@ export function useSessions() {
   return useSyncExternalStore(subscribe, getSessions, () => EMPTY)
 }
 
-/** Re-render on an interval while `active`, for the ticking clock display. */
+/**
+ * Re-render the ticking clock while `active`.
+ *
+ * Polls often so the display never lags behind the wall clock, but only forces
+ * a render when the second it shows actually changes — at 250ms, three of every
+ * four renders produced identical output and were pure waste.
+ */
 export function useTick(active: boolean, intervalMs = 250) {
   const [, force] = useState(0)
+  const lastSecond = useRef(-1)
   useEffect(() => {
     if (!active) return
-    const id = setInterval(() => force(n => n + 1), intervalMs)
+    const id = setInterval(() => {
+      const second = Math.floor(Date.now() / 1000)
+      if (second === lastSecond.current) return
+      lastSecond.current = second
+      force(n => n + 1)
+    }, intervalMs)
     return () => clearInterval(id)
   }, [active, intervalMs])
 }

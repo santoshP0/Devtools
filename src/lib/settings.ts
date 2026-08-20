@@ -11,6 +11,8 @@ export interface Settings {
   favoritesQuickAccess: boolean
   /** Where a running timer is shown: the top progress bar, the menu-bar tray, or both. */
   timerIndicator: 'both' | 'bar' | 'tray'
+  /** Show a desktop notification when a countdown finishes. */
+  timerNotify: boolean
   /** Play a beep when a countdown finishes. */
   timerBeep: boolean
   /** Beep loudness, 0..1. */
@@ -22,6 +24,7 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   favoritesQuickAccess: true,
   timerIndicator: 'both',
+  timerNotify: true,
   timerBeep: true,
   timerVolume: 0.6,
   autoUpdate: true,

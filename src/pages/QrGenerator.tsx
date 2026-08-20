@@ -12,7 +12,7 @@ interface BarcodeType {
 }
 
 const BARCODE_TYPES: BarcodeType[] = [
-  { id: 'qrcode', name: 'QR Code', category: '2D', placeholder: 'https://devtoolbox.dev', description: 'Universal 2D matrix code for URLs and text' },
+  { id: 'qrcode', name: 'QR Code', category: '2D', placeholder: 'https://example.com', description: 'Universal 2D matrix code for URLs and text' },
   { id: 'pdf417', name: 'PDF417', category: '2D', placeholder: 'ANSI 636000080002DL00000278DLDAASANTOSH...', description: 'Stacked linear 2D barcode used in IDs and shipping' },
   { id: 'datamatrix', name: 'Data Matrix', category: '2D', placeholder: 'PART-1234-XYZ', description: 'High-density 2D code for small industrial items' },
   { id: 'code128', name: 'Code 128', category: '1D', placeholder: 'SKU-987654321', description: 'High-density alphanumeric 1D barcode' },
@@ -39,9 +39,11 @@ export default function QrGenerator() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout>>()
 
-  // Set default text on barcode type change to keep it valid
+  // Clear on type change rather than pre-filling: each symbology has different
+  // rules, so carrying text across is usually invalid, and a sample value people
+  // have to delete first is friction. The placeholder still shows the format.
   useEffect(() => {
-    setText(selectedType.placeholder)
+    setText('')
   }, [selectedType])
 
   useEffect(() => {

@@ -45,3 +45,12 @@ tauri-plugin-updater = "2"
 tauri-plugin-window-state = "2"
 tauri-plugin-global-shortcut = "2"
 tauri-plugin-single-instance = "2"
+
+# Release build tuning. Cargo's defaults leave symbols in and optimise each
+# crate separately; the binary was 15 MB of mostly dead weight. Speed is kept at
+# opt-level 3 because hashing and image work run here.
+[profile.release]
+opt-level = 3
+lto = "fat"          # inline and drop unused code across crate boundaries
+codegen-units = 1    # one unit optimises better, at the cost of build time
+strip = true         # debug symbols are not shipped to users

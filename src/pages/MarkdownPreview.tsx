@@ -27,6 +27,8 @@ marked.use(
   markedHighlight({
     langPrefix: 'hljs language-',
     highlight(code, lang) {
+      // mermaid is a diagram, not code — leave it exactly as written
+      if (lang === 'mermaid') return code
       if (lang && hljs.getLanguage(lang)) {
         return hljs.highlight(code, { language: lang }).value
       }
@@ -38,11 +40,18 @@ marked.use(
 // Custom renderer for mermaid blocks + callouts
 const renderer = new Renderer()
 let mermaidCounter = 0
+/** Diagram source by block id — the DOM copy passes through escaping first. */
+const mermaidSource = new Map<string, string>()
+const escapeHtml = (t: string) =>
+  t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 
 renderer.code = function (code: string, lang: string | undefined, _escaped: boolean): string {
   if (lang === 'mermaid') {
     const id = `mermaid-${mermaidCounter++}`
-    return `<div class="mermaid-block" data-mermaid-id="${id}">${code}</div>`
+    mermaidSource.set(id, code)
+    // Falls back to the readable source if rendering never happens; the effect
+    // replaces this with the SVG.
+    return `<div class="mermaid-block" data-mermaid-id="${id}"><pre>${escapeHtml(code)}</pre></div>`
   }
   const langClass = lang ? ` class="hljs language-${lang}"` : ''
   return `<pre><code${langClass}>${code}</code></pre>\n`
@@ -306,6 +315,7 @@ export default function MarkdownPreview() {
 
   useEffect(() => {
     mermaidCounter = 0
+    mermaidSource.clear()
     const { frontmatter, body } = stripFrontmatter(markdown)
 
     let raw = marked(body) as string
@@ -325,14 +335,19 @@ export default function MarkdownPreview() {
     if (!previewRef.current) return
     const blocks = previewRef.current.querySelectorAll('.mermaid-block')
     blocks.forEach(async (el) => {
-      const id = el.getAttribute('data-mermaid-id') || `mermaid-${Date.now()}`
-      const code = el.textContent || ''
+      const id = el.getAttribute('data-mermaid-id') || ''
+      const code = mermaidSource.get(id) ?? el.textContent ?? ''
       if (!code.trim() || el.querySelector('svg')) return
       try {
-        const { svg } = await mermaid.render(id, code)
+        const { svg } = await mermaid.render(`${id}-svg`, code)
         el.innerHTML = svg
-      } catch {
-        el.innerHTML = `<pre style="color:#f87171;font-size:12px">Mermaid syntax error</pre>`
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err)
+        el.textContent = ''
+        const pre = document.createElement('pre')
+        pre.style.cssText = 'color:#f87171;font-size:12px;white-space:pre-wrap'
+        pre.textContent = `Mermaid error: ${msg}`
+        el.appendChild(pre)
       }
     })
   }, [sanitizedHtml])

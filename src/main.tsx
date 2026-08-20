@@ -7,7 +7,23 @@ import { syncWindowTheme } from './lib/windowTheme'
 import { isTauri } from '@tauri-apps/api/core'
 import { installExternalLinkHandler } from './lib/externalLinks'
 
-registerSW({ immediate: true })
+// autoUpdate + skipWaiting means a new build takes over as soon as it's found.
+// The reload below applies it to the page that's already open, once.
+let reloading = false
+registerSW({
+  immediate: true,
+  onRegisteredSW(_url, registration) {
+    // Long-lived tabs would otherwise never notice a deploy.
+    if (registration) setInterval(() => registration.update(), 60 * 60 * 1000)
+  },
+})
+if (typeof navigator !== 'undefined' && navigator.serviceWorker) {
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (reloading) return
+    reloading = true
+    window.location.reload()
+  })
+}
 
 // Desktop: lock the window and let only the content pane scroll (see .app-shell
 // in index.css). Set before first paint so there's no scrollbar flash.

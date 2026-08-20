@@ -65,6 +65,13 @@ export default function SessionBar() {
     }
   }, [indicator])
 
+  // desktop: tell the native side whether to post the finished notification
+  useEffect(() => {
+    if (typeof isTauri === 'function' && isTauri()) {
+      invoke('timer_set_notify', { enabled: settings.timerNotify }).catch(() => {})
+    }
+  }, [settings.timerNotify])
+
   if (!countdown && !timer) return null
 
   const cdProgress = cdTarget ? cdElapsed / cdTarget : null

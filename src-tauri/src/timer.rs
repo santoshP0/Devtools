@@ -59,6 +59,7 @@ pub struct Inner {
   cd: Slot,
   sw: Slot,
   tray_off: bool, // user disabled the tray (top-bar-only indicator)
+  notify_off: bool, // user turned off the countdown-finished notification
 }
 pub struct TimerState(pub Arc<Mutex<Inner>>);
 
@@ -267,7 +268,8 @@ fn refresh(app: &AppHandle) {
       i.cd.notified = true;
       !was
     };
-    if first { notify_done(app); }
+    let notify_off = { app.state::<TimerState>().0.lock().unwrap().notify_off };
+    if first && !notify_off { notify_done(app); }
   }
 
   update_tray(app, TRAY_CD, Which::Cd, &cd, tray_off);
@@ -367,6 +369,14 @@ pub fn timer_set_tray(app: AppHandle, state: State<'_, TimerState>, enabled: boo
   refresh(&app);
 }
 
+// Toggle the desktop notification shown when a countdown reaches its target.
+#[tauri::command]
+pub fn timer_set_notify(app: AppHandle, state: State<'_, TimerState>, enabled: bool) {
+  let mut i = state.0.lock().unwrap();
+  i.notify_off = !enabled;
+  let _ = app;
+}
+
 fn on_menu(app: &AppHandle, id: &str) {
   match id {
     "dt-open" => { if let Some(w) = app.get_webview_window("main") { let _ = w.show(); let _ = w.unminimize(); let _ = w.set_focus(); } }
@@ -420,12 +430,21 @@ pub fn setup(app: &tauri::App) -> tauri::Result<()> {
   // ~4 Hz redraw so the tray tracks the app closely (updates are cache-guarded,
   // so the OS tray is only touched when a displayed value actually changes).
   let handle = app.handle().clone();
-  std::thread::spawn(move || loop {
-    std::thread::sleep(std::time::Duration::from_millis(250));
-    let tick = handle.state::<TimerState>().0.lock()
-      .map(|i| (i.cd.active && i.cd.running) || (i.sw.active && i.sw.running))
-      .unwrap_or(false);
-    if tick { refresh(&handle); }
+  std::thread::spawn(move || {
+    // Sleep in proportion to what's actually happening. Waking 4x a second with
+    // no timer running kept the process busy round the clock for nothing; idle
+    // now costs one wake-up every two seconds.
+    const ACTIVE: std::time::Duration = std::time::Duration::from_millis(250);
+    const IDLE: std::time::Duration = std::time::Duration::from_secs(2);
+    let mut nap = IDLE;
+    loop {
+      std::thread::sleep(nap);
+      let running = handle.state::<TimerState>().0.lock()
+        .map(|i| (i.cd.active && i.cd.running) || (i.sw.active && i.sw.running))
+        .unwrap_or(false);
+      nap = if running { ACTIVE } else { IDLE };
+      if running { refresh(&handle); }
+    }
   });
 
   Ok(())

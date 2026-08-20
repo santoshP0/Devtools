@@ -699,7 +699,8 @@
   padding: 0 32px; height: 58px;
   display: flex; align-items: center; gap: 16px;
   background: var(--bg2); position: sticky; top: 0; z-index: 10;
-  backdrop-filter: blur(12px);
+  /* The background is opaque, so a backdrop blur changes nothing visually while
+     still keeping the compositor busy on every tool page. */
 }
 .tool-topbar-left { display: flex; align-items: center; gap: 14px; flex: 1; }
 .back-btn {

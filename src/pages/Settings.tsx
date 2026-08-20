@@ -85,6 +85,12 @@ export default function Settings() {
             />
           </Row>
           <ToggleRow
+            title="Notify when a countdown ends"
+            desc="Show a desktop notification the moment a countdown reaches its target, even if the app is in the background."
+            checked={settings.timerNotify}
+            onChange={v => setSetting('timerNotify', v)}
+          />
+          <ToggleRow
             title="Beep when a countdown ends"
             desc="Play a short sound the moment a countdown reaches its target."
             checked={settings.timerBeep}
