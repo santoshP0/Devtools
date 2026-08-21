@@ -34,7 +34,8 @@ export default function UpdateBanner() {
   const [update, setUpdate] = useState<AvailableUpdate | null>(null)
   const [dismissed, setDismissed] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [progress, setProgress] = useState(0)
+  const [progress, setProgress] = useState<number | null>(0)
+  const [received, setReceived] = useState(0)
   const [failed, setFailed] = useState(false)
   const [staged, setStaged] = useState(false)
   const { settings } = useSettings()
@@ -67,7 +68,7 @@ export default function UpdateBanner() {
     try {
       // Accepting is the consent — download, install, and restart into the new
       // version without asking a second time.
-      await update.install!(setProgress, true)
+      await update.install!((fraction, bytes) => { setProgress(fraction); setReceived(bytes) }, true)
       setStaged(true)
     } catch {
       setFailed(true)
@@ -146,14 +147,23 @@ export default function UpdateBanner() {
           {busy && (
             <div style={{ margin: '18px 22px 0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
-                <span>{progress >= 1 ? 'Installing…' : 'Downloading…'}</span>
-                <span style={{ fontFamily: 'var(--font-mono)', opacity: 0.75 }}>{Math.round(progress * 100)}%</span>
+                <span>{progress === 1 ? 'Installing…' : 'Downloading…'}</span>
+                <span style={{ fontFamily: 'var(--font-mono)', opacity: 0.75 }}>
+                  {progress === null
+                    ? `${(received / 1048576).toFixed(1)} MB`
+                    : `${Math.round(progress * 100)}%`}
+                </span>
               </div>
               <div style={{ height: 8, background: 'var(--sketch-bg)', border: '2px solid var(--sketch-text)', borderRadius: 999, overflow: 'hidden' }}>
-                <div style={{
-                  height: '100%', width: `${Math.max(3, Math.round(progress * 100))}%`,
-                  background: 'var(--sketch-text)', transition: 'width 0.25s ease-out',
-                }} />
+                <div
+                  className={progress === null ? 'bar-indeterminate' : undefined}
+                  style={progress === null
+                    ? { height: '100%', width: '35%', background: 'var(--sketch-text)' }
+                    : {
+                        height: '100%', width: `${Math.max(3, Math.round(progress * 100))}%`,
+                        background: 'var(--sketch-text)', transition: 'width 0.25s ease-out',
+                      }}
+                />
               </div>
               <div style={{ fontSize: 12, opacity: 0.65, marginTop: 8, fontFamily: 'var(--font-sans)' }}>
                 The app restarts into the new version when this finishes.

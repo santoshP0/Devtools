@@ -9,7 +9,6 @@ import { installExternalLinkHandler } from './lib/externalLinks'
 
 // autoUpdate + skipWaiting means a new build takes over as soon as it's found.
 // The reload below applies it to the page that's already open, once.
-let reloading = false
 registerSW({
   immediate: true,
   onRegisteredSW(_url, registration) {
@@ -18,8 +17,14 @@ registerSW({
   },
 })
 if (typeof navigator !== 'undefined' && navigator.serviceWorker) {
+  // Whether this page was already being served by a worker. On a first visit it
+  // isn't: clientsClaim hands the page to the brand-new worker and fires
+  // controllerchange, and reloading on that would bounce every new visitor for
+  // no reason. Only an actual swap — one worker replacing another — matters.
+  const hadController = Boolean(navigator.serviceWorker.controller)
+  let reloading = false
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (reloading) return
+    if (!hadController || reloading) return
     reloading = true
     window.location.reload()
   })

@@ -11,12 +11,18 @@ export interface AvailableUpdate {
   currentVersion: string
   notes?: string
   /**
-   * Download + install. onProgress gets 0..1. Pass relaunchAfter=false to stage
+   * Download + install. onProgress reports a 0..1 fraction, or null when the
+   * server never sent a Content-Length and the total is unknown — the bytes
+   * received are always given, so the UI can still show movement.
+   * Pass relaunchAfter=false to stage
    * the update without restarting, so a background auto-update never interrupts
    * whatever the user is in the middle of. Undefined when the release ships
    * without updater artifacts — then the user downloads manually.
    */
-  install?: (onProgress?: (fraction: number) => void, relaunchAfter?: boolean) => Promise<void>
+  install?: (
+    onProgress?: (fraction: number | null, receivedBytes: number) => void,
+    relaunchAfter?: boolean,
+  ) => Promise<void>
 }
 
 /** Restart into the version that was just installed. */
@@ -72,9 +78,17 @@ export async function checkForUpdate(): Promise<AvailableUpdate | null> {
         let total = 0
         let got = 0
         await update.downloadAndInstall(e => {
-          if (e.event === 'Started') total = e.data.contentLength ?? 0
-          else if (e.event === 'Progress') { got += e.data.chunkLength; if (total) onProgress?.(got / total) }
-          else if (e.event === 'Finished') onProgress?.(1)
+          if (e.event === 'Started') {
+            total = e.data.contentLength ?? 0
+          } else if (e.event === 'Progress') {
+            got += e.data.chunkLength
+            // Report every chunk. Guarding on a known total meant the callback
+            // never fired when the download had no Content-Length, so the bar
+            // sat at 0% for the whole download and then the app just restarted.
+            onProgress?.(total ? got / total : null, got)
+          } else if (e.event === 'Finished') {
+            onProgress?.(1, got)
+          }
         })
         if (relaunchAfter) await relaunchApp()
       },

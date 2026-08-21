@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!--
+    Opt out of App Nap. With no active window macOS stretches background timers,
+    which froze the menu-bar countdown: the timer kept running, but the tray
+    stopped redrawing until the app was brought forward, then jumped ahead.
+    Tauri merges this file into the generated Info.plist.
+  -->
+  <key>NSAppSleepDisabled</key>
+  <true/>
+</dict>
+</plist>

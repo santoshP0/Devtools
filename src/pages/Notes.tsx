@@ -47,7 +47,13 @@ function loadNotes(): Note[] {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]') } catch { return [] }
 }
 function saveNotes(notes: Note[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(notes))
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(notes))
+  } catch (e) {
+    // Browser storage is capped (~5 MB). Don't let hitting that throw out of
+    // the save path and take the editor down with it.
+    console.error('Could not save notes — storage is full or unavailable', e)
+  }
 }
 function newNote(): Note {
   return { id: crypto.randomUUID(), title: '', content: '', color: 'default', createdAt: Date.now(), updatedAt: Date.now() }

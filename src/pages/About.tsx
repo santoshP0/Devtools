@@ -10,7 +10,7 @@ type CheckState =
   | { kind: 'checking' }
   | { kind: 'uptodate' }
   | { kind: 'available'; update: AvailableUpdate }
-  | { kind: 'installing'; pct: number }
+  | { kind: 'installing'; pct: number | null }
   | { kind: 'error' }
 
 export default function About() {
@@ -92,7 +92,9 @@ export default function About() {
               </>
             )}
             {state.kind === 'installing' && (
-              <p style={{ margin: 0, fontSize: 14 }}>Installing… {Math.round(state.pct * 100)}%</p>
+              <p style={{ margin: 0, fontSize: 14 }}>
+                {state.pct === null ? 'Downloading…' : `Installing… ${Math.round(state.pct * 100)}%`}
+              </p>
             )}
           </div>
         )}

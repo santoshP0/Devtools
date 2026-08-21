@@ -1364,6 +1364,15 @@ pre, code, kbd, samp,
   user-select: text;
 }
 
+/* Update download with no Content-Length: show motion rather than a bar frozen
+   at zero, since there is no percentage to report. */
+@keyframes barSlide {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(300%); }
+}
+.bar-indeterminate { animation: barSlide 1.1s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .bar-indeterminate { animation: none; } }
+
 /* Edit mode: tiles wobble the way home-screen icons do, so it's obvious the grid
    is rearrangeable. The animation sits on the card itself, never the sortable
    wrapper — dnd-kit drives that element's transform while dragging. */
