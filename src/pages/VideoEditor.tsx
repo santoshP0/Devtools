@@ -671,12 +671,12 @@ function Editor() {
   const tickStep = pps < 45 ? 5 : pps < 90 ? 2 : 1
 
   const ELEMENTS = [
-    { label: 'Text', icon: Type, fn: () => addOverlay('text') },
-    { label: 'Box', icon: Square, fn: () => addOverlay('box') },
-    { label: 'Circle', icon: Circle, fn: () => addOverlay('circle') },
-    { label: 'Line', icon: Minus, fn: () => addOverlay('line') },
-    { label: 'Arrow', icon: ArrowRight, fn: () => addOverlay('arrow') },
-    { label: 'Blur', icon: Droplets, fn: () => addOverlay('blur') },
+    { label: 'Text', tip: 'Add text title or caption', icon: Type, fn: () => addOverlay('text') },
+    { label: 'Box', tip: 'Add rectangle overlay', icon: Square, fn: () => addOverlay('box') },
+    { label: 'Circle', tip: 'Add circle highlight', icon: Circle, fn: () => addOverlay('circle') },
+    { label: 'Line', tip: 'Add line element', icon: Minus, fn: () => addOverlay('line') },
+    { label: 'Arrow', tip: 'Add arrow pointer', icon: ArrowRight, fn: () => addOverlay('arrow') },
+    { label: 'Blur', tip: 'Add privacy blur box', icon: Droplets, fn: () => addOverlay('blur') },
   ]
 
   return (
@@ -691,8 +691,14 @@ function Editor() {
 
         {/* top bar */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button aria-label="Undo (⌘Z)" onClick={undo} disabled={!undoStack.length} style={iconBtn}><Undo2 size={18} /></button>
-          <button aria-label="Redo (⌘⇧Z)" onClick={redo} disabled={!redoStack.length} style={iconBtn}><Redo2 size={18} /></button>
+          <div className="ve-group">
+            <button className="ve-btn" title="Undo (⌘Z)" data-tip="Undo (⌘Z)" onClick={undo} disabled={!undoStack.length}>
+              <Undo2 size={16} />
+            </button>
+            <button className="ve-btn" title="Redo (⌘⇧Z)" data-tip="Redo (⌘⇧Z)" onClick={redo} disabled={!redoStack.length}>
+              <Redo2 size={16} />
+            </button>
+          </div>
           <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-muted)' }}>{items.length}/{MAX_LAYERS} layers · {proj.w}×{proj.h}</span>
           <button className="btn-primary" onClick={exportVideo} disabled={busy || items.length === 0} style={{ padding: '8px 20px', display: 'flex', alignItems: 'center', gap: 8 }}>
             <Upload size={16} /> {busy ? 'Rendering…' : 'Export'}
@@ -705,13 +711,13 @@ function Editor() {
           {/* media bin */}
           <div ref={mediaPanelRef} className="panel" style={{ width: mediaW, flexShrink: 0, padding: 12, display: 'flex', flexDirection: 'column', gap: 10, minHeight: 0 }}>
             <div style={sectionLabel}>Media</div>
-            <button onClick={importMedia} disabled={items.length >= MAX_LAYERS} aria-label="Import video or images (or drop anywhere)" style={importZone}>
+            <button onClick={importMedia} disabled={items.length >= MAX_LAYERS} title="Import video or images" data-tip="Import video or images" className="ve-import-btn" style={importZone}>
               <Upload size={15} />
               <span style={{ fontWeight: 700, fontSize: 12 }}>Import</span>
             </button>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, overflowY: 'auto', overflowX: 'hidden', minHeight: 0, flex: 1 }}>
               {media.map(a => (
-                <button key={a.id} onClick={() => addFromMedia(a)} disabled={items.length >= MAX_LAYERS} aria-label={`Add ${a.name}`} style={mediaCard}>
+                <button key={a.id} onClick={() => addFromMedia(a)} disabled={items.length >= MAX_LAYERS} title={`Add ${a.name} to timeline`} data-tip={`Add ${a.name}`} className="ve-media-card" style={mediaCard}>
                   <div style={{ width: '100%', aspectRatio: '16 / 9', borderRadius: 4, background: a.thumb ? `#000 url(${a.thumb}) center/cover` : '#222' }} />
                   <span style={{ fontSize: 10.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>{a.name}</span>
                 </button>
@@ -818,7 +824,7 @@ function Editor() {
                       <input type="checkbox" checked={!sel.mute} onChange={e => { snapshot(); patch(sel.id, { mute: !e.target.checked }) }} /> Keep audio
                     </label>
                     {(() => { const done = items.some(i => i.kind === 'audio' && i.srcId === sel.id); return (
-                    <button onClick={() => detachAudio(sel)} disabled={done || items.length >= MAX_LAYERS} style={{ ...iconBtn, width: 'auto', padding: '0 12px', gap: 6 }}>
+                    <button onClick={() => detachAudio(sel)} disabled={done || items.length >= MAX_LAYERS} className="btn-ghost" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 12 }}>
                       <AudioLines size={15} /> {done ? 'Audio detached' : 'Detach audio'}
                     </button>
                     ) })()}
@@ -842,33 +848,125 @@ function Editor() {
 
         {/* timeline */}
         <div className="panel" style={{ padding: 0, flexShrink: 0, height: timelineH, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-            {/* left: edit + add-element tools */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0, overflowX: 'auto' }}>
-              <button style={iconBtn} aria-label="Split at playhead" onClick={splitAtPlayhead} disabled={!sel || sel.kind !== 'video'}><Scissors size={16} /></button>
-              <button style={iconBtn} aria-label="Duplicate" onClick={duplicateSel} disabled={!sel}><Copy size={16} /></button>
-              <button style={iconBtn} aria-label="Delete" onClick={removeSel} disabled={!sel}><Trash2 size={16} /></button>
-              <span style={{ width: 1, height: 22, background: 'var(--border)', margin: '0 4px', flexShrink: 0 }} />
-              {ELEMENTS.map(el => (
-                <button key={el.label} onClick={el.fn} disabled={items.length >= MAX_LAYERS} aria-label={`Add ${el.label}`} style={iconBtn}>
-                  <el.icon size={16} />
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+            padding: '6px 12px',
+            borderBottom: '1px solid var(--border)',
+            background: 'var(--surface)',
+            flexShrink: 0,
+          }}>
+            {/* left: edit tools + add-element tools */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0 }}>
+              {/* Editing tools group */}
+              <div className="ve-group">
+                <button
+                  className="ve-btn"
+                  title="Split clip at playhead (S)"
+                  data-tip="Split clip (S)"
+                  onClick={splitAtPlayhead}
+                  disabled={!sel || sel.kind !== 'video'}
+                >
+                  <Scissors size={15} />
                 </button>
-              ))}
+                <button
+                  className="ve-btn"
+                  title="Duplicate selected layer (⌘D)"
+                  data-tip="Duplicate layer"
+                  onClick={duplicateSel}
+                  disabled={!sel}
+                >
+                  <Copy size={15} />
+                </button>
+                <button
+                  className="ve-btn"
+                  title="Delete selected layer (⌫)"
+                  data-tip="Delete layer (⌫)"
+                  onClick={removeSel}
+                  disabled={!sel}
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
+
+              {/* Add Layer / Overlays group */}
+              <div className="ve-group">
+                {ELEMENTS.map(el => (
+                  <button
+                    key={el.label}
+                    className="ve-btn"
+                    onClick={el.fn}
+                    disabled={items.length >= MAX_LAYERS}
+                    title={el.tip}
+                    data-tip={el.tip}
+                  >
+                    <el.icon size={15} />
+                  </button>
+                ))}
+              </div>
             </div>
-            {/* center: transport */}
+
+            {/* center: transport controls */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-              <button style={iconBtn} aria-label="Start" onClick={() => seek(0)}><SkipBack size={16} /></button>
-              <button style={iconBtn} aria-label="Previous frame (←)" onClick={() => stepFrame(-1)}><ChevronLeft size={18} /></button>
-              <button className="btn-primary" onClick={() => setPlaying(p => !p)} aria-label={playing ? 'Pause (space)' : 'Play (space)'} style={{ width: 40, height: 34, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>{playing ? <Pause size={17} /> : <Play size={17} />}</button>
-              <button style={iconBtn} aria-label="Next frame (→)" onClick={() => stepFrame(1)}><ChevronRight size={18} /></button>
-              <button style={iconBtn} aria-label="End" onClick={() => seek(duration)}><SkipForward size={16} /></button>
-              <span ref={timeReadRef} style={{ fontSize: 12.5, color: 'var(--text-dim)', fontVariantNumeric: 'tabular-nums', minWidth: 120, textAlign: 'center' }}>{fmtTime(time)} / {fmtTime(duration)}</span>
+              <div className="ve-group" style={{ padding: '2px 6px' }}>
+                <button className="ve-btn" title="Jump to start (Home)" data-tip="Jump to start" onClick={() => seek(0)}>
+                  <SkipBack size={15} />
+                </button>
+                <button className="ve-btn" title="Previous frame (←)" data-tip="Previous frame (←)" onClick={() => stepFrame(-1)}>
+                  <ChevronLeft size={16} />
+                </button>
+
+                <button
+                  className="ve-btn-primary"
+                  onClick={() => setPlaying(p => !p)}
+                  title={playing ? 'Pause (Space)' : 'Play (Space)'}
+                  data-tip={playing ? 'Pause (Space)' : 'Play (Space)'}
+                >
+                  {playing ? <Pause size={15} /> : <Play size={15} style={{ marginLeft: 2 }} />}
+                </button>
+
+                <button className="ve-btn" title="Next frame (→)" data-tip="Next frame (→)" onClick={() => stepFrame(1)}>
+                  <ChevronRight size={16} />
+                </button>
+                <button className="ve-btn" title="Jump to end (End)" data-tip="Jump to end" onClick={() => seek(duration)}>
+                  <SkipForward size={15} />
+                </button>
+              </div>
+
+              <span
+                ref={timeReadRef}
+                style={{
+                  fontSize: 12,
+                  fontFamily: 'var(--font-mono)',
+                  color: 'var(--text-dim)',
+                  fontVariantNumeric: 'tabular-nums',
+                  padding: '3px 8px',
+                  borderRadius: 6,
+                  background: 'var(--surface2)',
+                  minWidth: 125,
+                  textAlign: 'center',
+                  border: '1px solid color-mix(in srgb, var(--border) 35%, transparent)',
+                }}
+              >
+                {fmtTime(time)} / {fmtTime(duration)}
+              </span>
             </div>
-            {/* right: zoom */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1, justifyContent: 'flex-end' }}>
-              <button style={iconBtn} aria-label="Zoom out" onClick={() => zoom(1 / 1.3)}><ZoomOut size={17} /></button>
-              <button style={iconBtn} aria-label="Zoom in" onClick={() => zoom(1.3)}><ZoomIn size={17} /></button>
-              <button style={iconBtn} aria-label="Fit" onClick={zoomFit}><Maximize2 size={16} /></button>
+
+            {/* right: timeline zoom & fit */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, justifyContent: 'flex-end' }}>
+              <div className="ve-group">
+                <button className="ve-btn" title="Zoom out timeline (-)" data-tip="Zoom out (-)" onClick={() => zoom(1 / 1.3)}>
+                  <ZoomOut size={15} />
+                </button>
+                <button className="ve-btn" title="Zoom in timeline (+)" data-tip="Zoom in (+)" onClick={() => zoom(1.3)}>
+                  <ZoomIn size={15} />
+                </button>
+                <button className="ve-btn" title="Fit timeline to view (0)" data-tip="Fit to view (0)" onClick={zoomFit}>
+                  <Maximize2 size={14} />
+                </button>
+              </div>
             </div>
           </div>
           <div ref={tlRef} style={{ overflow: 'auto', flex: 1, minHeight: 0 }}>

@@ -32,7 +32,36 @@ if (typeof navigator !== 'undefined' && navigator.serviceWorker) {
 
 // Desktop: lock the window and let only the content pane scroll (see .app-shell
 // in index.css). Set before first paint so there's no scrollbar flash.
-if (isTauri()) document.documentElement.classList.add('app-shell')
+if (isTauri()) {
+  document.documentElement.classList.add('app-shell')
+  // Native desktop app experience: disable default browser context menu (Inspect Element, etc.)
+  window.addEventListener('contextmenu', (e) => {
+    e.preventDefault()
+  })
+
+  // Prevent mouse back/forward buttons (button 3 & 4) from navigating back to home
+  ;['mousedown', 'mouseup', 'click', 'auxclick'].forEach(evt => {
+    window.addEventListener(evt, (e: Event) => {
+      const me = e as MouseEvent
+      if (me.button === 3 || me.button === 4) {
+        e.preventDefault()
+        e.stopPropagation()
+      }
+    }, true)
+  })
+
+  // Prevent keyboard back shortcuts from kicking user to home
+  window.addEventListener('keydown', (e: KeyboardEvent) => {
+    if (e.key === 'Backspace') {
+      const target = e.target as HTMLElement | null
+      const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
+      if (!isInput) e.preventDefault()
+    }
+    if ((e.altKey && e.key === 'ArrowLeft') || ((e.metaKey || e.ctrlKey) && e.key === '[')) {
+      e.preventDefault()
+    }
+  }, true)
+}
 
 // Route external links to the system browser (they do nothing in a webview).
 installExternalLinkHandler()

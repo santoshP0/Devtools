@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import ToolLayout from '../components/ToolLayout'
 import CodeEditor from '../components/CodeEditor'
+import SearchInput from '../components/SearchInput'
 import { monaco } from '../lib/monacoSetup'
 import type { OnMount } from '@monaco-editor/react'
 import { useClipboardCopy } from '../hooks/useClipboardCopy'
 import { useIsDark } from '../hooks/useIsDark'
 import { useNativeDrop } from '../hooks/useNativeDrop'
 import { useOpenedFile } from '../lib/openWith'
+import { ChevronRight, FolderTree, Code, Copy, Check, Search, Minimize2, Maximize2, Download } from 'lucide-react'
 
 // ─── Persistence ──────────────────────────────────────────────────────────────
 const STORAGE_KEY = 'devtools:json-formatter:input'
@@ -100,28 +102,29 @@ const PALETTES = {
 
 function ToggleArrow({ collapsed, onClick, colors }: { collapsed: boolean; onClick: () => void; colors: ColorTheme }) {
   return (
-    <button
+    <span
+      role="button"
+      tabIndex={0}
       onClick={e => { e.stopPropagation(); onClick() }}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); onClick() } }}
+      className="json-tree-toggle"
       style={{
-        background: 'none',
-        border: 'none',
-        padding: 0,
-        width: 16,
-        height: 16,
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        cursor: 'pointer',
+        width: 18,
+        height: 18,
         color: colors.muted,
-        fontSize: 9,
-        transition: 'transform 0.15s ease',
-        transform: collapsed ? 'rotate(0deg)' : 'rotate(90deg)',
         userSelect: 'none',
-        outline: 'none',
       }}
+      title={collapsed ? 'Expand' : 'Collapse'}
     >
-      ▶
-    </button>
+      <ChevronRight
+        size={13}
+        strokeWidth={2.5}
+        style={{
+          transition: 'transform 0.15s ease',
+          transform: collapsed ? 'rotate(0deg)' : 'rotate(90deg)',
+        }}
+      />
+    </span>
   )
 }
 
@@ -129,167 +132,334 @@ type JsonPrim = string | number | boolean | null
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type JsonVal = JsonPrim | JsonVal[] | { [k: string]: any }
 
-function JsonNode({ k, val, depth, last, colors }: {
-  k?: string; val: JsonVal; depth: number; last: boolean; colors: ColorTheme
+function JsonNode({
+  k, val, depth, last, colors, filterQuery
+}: {
+  k?: string
+  val: JsonVal
+  depth: number
+  last: boolean
+  colors: ColorTheme
+  filterQuery: string
 }) {
   const [collapsed, setCollapsed] = useState(false)
-  const lineIndent = depth * 16
+  const [copied, setCopied] = useState(false)
+  const [isHovered, setIsHovered] = useState(false)
+
+  // Check if this node or subtree matches filterQuery
+  const isMatch = filterQuery && (
+    (k && k.toLowerCase().includes(filterQuery.toLowerCase())) ||
+    (typeof val === 'string' && val.toLowerCase().includes(filterQuery.toLowerCase())) ||
+    (typeof val === 'number' && String(val).includes(filterQuery)) ||
+    (typeof val === 'boolean' && String(val).includes(filterQuery))
+  )
+
+  useEffect(() => {
+    if (filterQuery && isMatch) setCollapsed(false)
+  }, [filterQuery, isMatch])
+
+  const copyVal = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    const str = typeof val === 'object' ? JSON.stringify(val, null, 2) : String(val)
+    navigator.clipboard.writeText(str)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
   const comma = last ? '' : ','
-  
   const isExpandable = val !== null && typeof val === 'object'
-  const hasChildren = isExpandable && (Array.isArray(val) ? val.length > 0 : Object.keys(val as object).length > 0)
+  const isArr = Array.isArray(val)
+  const childKeys = isExpandable ? (isArr ? [] : Object.keys(val as object)) : []
+  const childCount = isExpandable ? (isArr ? (val as JsonVal[]).length : childKeys.length) : 0
+  const hasChildren = childCount > 0
 
   const toggleSlot = hasChildren ? (
     <ToggleArrow collapsed={collapsed} onClick={() => setCollapsed(!collapsed)} colors={colors} />
   ) : (
-    <div style={{ width: 16 }} />
+    <span style={{ width: 18, height: 18, display: 'inline-block' }} />
   )
 
-  const keyEl = k !== undefined
-    ? <span style={{ marginRight: 4 }}><span style={{ color: colors.key }}>"{ k }"</span><span style={{ color: colors.punct }}>:</span></span>
-    : null
+  const highlightText = (text: string) => {
+    if (!filterQuery) return text
+    const idx = text.toLowerCase().indexOf(filterQuery.toLowerCase())
+    if (idx === -1) return text
+    return (
+      <>
+        {text.slice(0, idx)}
+        <mark style={{ background: 'var(--accent-bg)', color: 'var(--text)', borderRadius: 2, padding: '0 1px' }}>
+          {text.slice(idx, idx + filterQuery.length)}
+        </mark>
+        {text.slice(idx + filterQuery.length)}
+      </>
+    )
+  }
+
+  const keyEl = k !== undefined ? (
+    <span style={{ marginRight: 6 }}>
+      <span style={{ color: colors.key, fontWeight: 500 }}>"{highlightText(k)}"</span>
+      <span style={{ color: colors.punct }}>:</span>
+    </span>
+  ) : null
+
+  const copyBtn = (
+    <span
+      role="button"
+      tabIndex={0}
+      onClick={copyVal}
+      title={copied ? 'Copied!' : isExpandable ? 'Copy JSON' : 'Copy value'}
+      style={{
+        marginLeft: 8,
+        cursor: 'pointer',
+        color: copied ? 'var(--accent)' : colors.muted,
+        display: 'inline-flex',
+        alignItems: 'center',
+        padding: '1px 4px',
+        borderRadius: 3,
+        opacity: isHovered || copied ? 1 : 0.45,
+        transition: 'opacity 0.15s, color 0.15s',
+      }}
+    >
+      {copied ? <Check size={11} /> : <Copy size={11} />}
+    </span>
+  )
 
   // Primitive Values
   if (val === null || typeof val !== 'object') {
     let valEl: React.ReactNode = null
-    if (val === null) valEl = <span style={{ color: colors.null }}>null</span>
-    else if (typeof val === 'boolean') valEl = <span style={{ color: colors.bool }}>{String(val)}</span>
-    else if (typeof val === 'number') valEl = <span style={{ color: colors.num }}>{val}</span>
-    else if (typeof val === 'string') valEl = <span style={{ color: colors.str }}>"{val}"</span>
+    if (val === null) valEl = <span style={{ color: colors.null, fontStyle: 'italic' }}>null</span>
+    else if (typeof val === 'boolean') valEl = <span style={{ color: colors.bool, fontWeight: 600 }}>{String(val)}</span>
+    else if (typeof val === 'number') valEl = <span style={{ color: colors.num, fontWeight: 500 }}>{val}</span>
+    else if (typeof val === 'string') valEl = <span style={{ color: colors.str }}>"{highlightText(val)}"</span>
 
     return (
-      <div style={{
-        display: 'flex', alignItems: 'center', lineHeight: '22px',
-        paddingLeft: lineIndent, fontFamily: 'var(--font-mono)'
-      }}>
+      <div
+        className="json-tree-row"
+        style={{ paddingLeft: depth * 18 }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        {Array.from({ length: depth }).map((_, i) => (
+          <div key={i} className="json-tree-guide" style={{ left: i * 18 + 9 }} />
+        ))}
         {toggleSlot}
-        <div style={{ display: 'flex', alignItems: 'center' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', flexWrap: 'wrap' }}>
           {keyEl}
           {valEl}
           <span style={{ color: colors.punct }}>{comma}</span>
+          {copyBtn}
         </div>
       </div>
     )
   }
 
-  // Arrays
-  if (Array.isArray(val)) {
-    const empty = val.length === 0
-    if (collapsed || empty) {
-      return (
-        <div style={{
-          display: 'flex', alignItems: 'center', lineHeight: '22px',
-          paddingLeft: lineIndent, fontFamily: 'var(--font-mono)'
-        }}>
-          {toggleSlot}
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            {keyEl}
-            <span style={{ color: colors.punct }}>[</span>
-            <span style={{ color: colors.muted, fontSize: 11, fontStyle: 'italic', margin: '0 4px' }}>
-              {empty ? '' : `${val.length} item${val.length !== 1 ? 's' : ''}`}
-            </span>
-            <span style={{ color: colors.punct }}>]{comma}</span>
-          </div>
-        </div>
-      )
-    }
+  // Arrays and Objects
+  const openBrace = isArr ? '[' : '{'
+  const closeBrace = isArr ? ']' : '}'
+  const badgeLabel = isArr
+    ? `${childCount} item${childCount !== 1 ? 's' : ''}`
+    : `${childCount} key${childCount !== 1 ? 's' : ''}`
 
+  if (collapsed || !hasChildren) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-mono)' }}>
-        {/* Opening line */}
-        <div style={{ display: 'flex', alignItems: 'center', lineHeight: '22px', paddingLeft: lineIndent }}>
-          {toggleSlot}
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            {keyEl}
-            <span style={{ color: colors.punct }}>[</span>
-          </div>
-        </div>
-        
-        {/* Children list */}
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          {val.map((item, i) => (
-            <JsonNode
-              key={i}
-              val={item as JsonVal}
-              depth={depth + 1}
-              last={i === val.length - 1}
-              colors={colors}
-            />
-          ))}
-        </div>
-
-        {/* Closing line */}
-        <div style={{ display: 'flex', alignItems: 'center', lineHeight: '22px', paddingLeft: lineIndent }}>
-          <div style={{ width: 16 }} />
-          <span style={{ color: colors.punct }}>]{comma}</span>
-        </div>
-      </div>
-    )
-  }
-
-  // Objects
-  const entries = Object.entries(val as Record<string, JsonVal>)
-  const empty = entries.length === 0
-  if (collapsed || empty) {
-    return (
-      <div style={{
-        display: 'flex', alignItems: 'center', lineHeight: '22px',
-        paddingLeft: lineIndent, fontFamily: 'var(--font-mono)'
-      }}>
+      <div
+        className="json-tree-row"
+        style={{ paddingLeft: depth * 18, cursor: hasChildren ? 'pointer' : 'default' }}
+        onClick={hasChildren ? () => setCollapsed(false) : undefined}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        {Array.from({ length: depth }).map((_, i) => (
+          <div key={i} className="json-tree-guide" style={{ left: i * 18 + 9 }} />
+        ))}
         {toggleSlot}
-        <div style={{ display: 'flex', alignItems: 'center' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center' }}>
           {keyEl}
-          <span style={{ color: colors.punct }}>{'{'}</span>
-          <span style={{ color: colors.muted, fontSize: 11, fontStyle: 'italic', margin: '0 4px' }}>
-            {empty ? '' : `${entries.length} key${entries.length !== 1 ? 's' : ''}`}
-          </span>
-          <span style={{ color: colors.punct }}>{'}'}{comma}</span>
+          <span style={{ color: colors.punct }}>{openBrace}</span>
+          {hasChildren && (
+            <span className="json-tree-badge">
+              {badgeLabel}
+            </span>
+          )}
+          <span style={{ color: colors.punct }}>{closeBrace}{comma}</span>
+          {copyBtn}
         </div>
       </div>
     )
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', fontFamily: 'var(--font-mono)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
       {/* Opening line */}
-      <div style={{ display: 'flex', alignItems: 'center', lineHeight: '22px', paddingLeft: lineIndent }}>
+      <div
+        className="json-tree-row"
+        style={{ paddingLeft: depth * 18 }}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+      >
+        {Array.from({ length: depth }).map((_, i) => (
+          <div key={i} className="json-tree-guide" style={{ left: i * 18 + 9 }} />
+        ))}
         {toggleSlot}
-        <div style={{ display: 'flex', alignItems: 'center' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center' }}>
           {keyEl}
-          <span style={{ color: colors.punct }}>{'{'}</span>
+          <span style={{ color: colors.punct }}>{openBrace}</span>
+          <span className="json-tree-badge" style={{ opacity: 0.6 }}>{badgeLabel}</span>
+          {copyBtn}
         </div>
       </div>
-      
-      {/* Children list */}
+
+      {/* Children */}
       <div style={{ display: 'flex', flexDirection: 'column' }}>
-        {entries.map(([ek, ev], i) => (
-          <JsonNode
-            key={ek}
-            k={ek}
-            val={ev as JsonVal}
-            depth={depth + 1}
-            last={i === entries.length - 1}
-            colors={colors}
-          />
-        ))}
+        {isArr
+          ? (val as JsonVal[]).map((item, i) => (
+              <JsonNode
+                key={i}
+                val={item}
+                depth={depth + 1}
+                last={i === (val as JsonVal[]).length - 1}
+                colors={colors}
+                filterQuery={filterQuery}
+              />
+            ))
+          : Object.entries(val as Record<string, JsonVal>).map(([ek, ev], i, arr) => (
+              <JsonNode
+                key={ek}
+                k={ek}
+                val={ev}
+                depth={depth + 1}
+                last={i === arr.length - 1}
+                colors={colors}
+                filterQuery={filterQuery}
+              />
+            ))}
       </div>
 
       {/* Closing line */}
-      <div style={{ display: 'flex', alignItems: 'center', lineHeight: '22px', paddingLeft: lineIndent }}>
-        <div style={{ width: 16 }} />
-        <span style={{ color: colors.punct }}>{'}'}{comma}</span>
+      <div className="json-tree-row" style={{ paddingLeft: depth * 18 }}>
+        {Array.from({ length: depth }).map((_, i) => (
+          <div key={i} className="json-tree-guide" style={{ left: i * 18 + 9 }} />
+        ))}
+        <span style={{ width: 18, height: 18, display: 'inline-block' }} />
+        <span style={{ color: colors.punct }}>{closeBrace}{comma}</span>
       </div>
     </div>
   )
 }
 
-function JsonTree({ parsed, colors }: { parsed: JsonVal; colors: ColorTheme }) {
+function JsonTree({
+  parsed,
+  colors,
+  showSearch,
+  setShowSearch,
+}: {
+  parsed: JsonVal
+  colors: ColorTheme
+  showSearch: boolean
+  setShowSearch: React.Dispatch<React.SetStateAction<boolean>>
+}) {
+  const [filterQuery, setFilterQuery] = useState('')
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (showSearch) {
+      setTimeout(() => {
+        searchInputRef.current?.focus()
+        searchInputRef.current?.select()
+      }, 50)
+    } else {
+      setFilterQuery('')
+    }
+  }, [showSearch])
+
+  // Cmd+F toggles search in tree view
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      // Don't intercept if user is typing in Monaco editor on the input pane
+      const target = e.target as HTMLElement | null
+      if (target && target.closest('.monaco-editor')) {
+        return
+      }
+
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'f' || e.key === 'F')) {
+        e.preventDefault()
+        setShowSearch(prev => !prev)
+      } else if (e.key === 'Escape' && showSearch) {
+        e.preventDefault()
+        setShowSearch(false)
+        setFilterQuery('')
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [showSearch, setShowSearch])
+
   return (
-    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13, lineHeight: 1.6, overflowX: 'auto' }}>
-      <JsonNode val={parsed} depth={0} last={true} colors={colors} />
+    <div className="json-tree-container" style={{ position: 'relative' }}>
+      {/* Toggle Search Bar on Cmd+F */}
+      {showSearch && (
+        <div style={{
+          position: 'sticky',
+          top: 0,
+          zIndex: 20,
+          marginBottom: 10,
+        }}>
+          <SearchInput
+            ref={searchInputRef}
+            autoFocus
+            value={filterQuery}
+            onChange={setFilterQuery}
+            onClear={() => setFilterQuery('')}
+            placeholder="Search keys & values in tree… (Esc to close)"
+            onKeyDown={e => {
+              if (e.key === 'Escape') {
+                e.preventDefault()
+                setShowSearch(false)
+                setFilterQuery('')
+              }
+            }}
+            containerStyle={{
+              background: 'var(--surface2)',
+              borderRadius: 8,
+              padding: '6px 10px',
+              boxShadow: '0 4px 14px rgba(0, 0, 0, 0.1)',
+            }}
+            rightSlot={
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={() => { setShowSearch(false); setFilterQuery('') }}
+                style={{
+                  cursor: 'pointer',
+                  fontSize: 11,
+                  color: 'var(--text-muted)',
+                  borderLeft: '1px solid var(--border)',
+                  paddingLeft: 8,
+                  marginLeft: 4,
+                  userSelect: 'none',
+                }}
+                title="Close (Esc)"
+              >
+                Close
+              </span>
+            }
+          />
+        </div>
+      )}
+
+      <div style={{ overflowX: 'auto', paddingLeft: 4 }}>
+        <JsonNode
+          val={parsed}
+          depth={0}
+          last={true}
+          colors={colors}
+          filterQuery={filterQuery}
+        />
+      </div>
     </div>
   )
 }
+
+
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function JsonFormatter() {
@@ -305,7 +475,8 @@ export default function JsonFormatter() {
   const loadFile = async (file: File) => setInput(await file.text())
   useNativeDrop(items => { if (items[0]) loadFile(items[0].file) })
   useOpenedFile('/json-formatter', loadFile)
-  const [viewMode, setViewMode] = useState<'tree' | 'raw'>('tree')
+  const [viewMode, setViewMode] = useState<'tree' | 'code'>('tree')
+  const [showTreeSearch, setShowTreeSearch] = useState(false)
   const isDark = useIsDark()
 
   const colors = isDark ? PALETTES.dark : PALETTES.light
@@ -387,8 +558,18 @@ export default function JsonFormatter() {
 
   const clear = () => { setInput(''); setOutput(''); setErrors(null); setParsed(null); setStatus('idle'); saveToDisk(''); markErrors(null) }
 
-  // stale position once the user edits — drop the highlight
   const onInputChange = (v: string) => { setInput(v); errDecos.current?.clear() }
+
+  const downloadJson = () => {
+    if (!output) return
+    const blob = new Blob([output], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'formatted.json'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   const isValid = status === 'valid' && output && output !== '✓ Valid JSON'
 
@@ -428,15 +609,72 @@ export default function JsonFormatter() {
               {/* Tree / Raw toggle */}
               {isValid && parsed && (
                 <div style={{ display: 'flex', borderRadius: 6, overflow: 'hidden', border: '1px solid var(--border)' }}>
-                  {(['tree', 'raw'] as const).map(m => (
-                    <button key={m} onClick={() => setViewMode(m)} style={{
-                      padding: '2px 10px', fontSize: 11, fontWeight: 600, cursor: 'pointer', border: 'none',
-                      background: viewMode === m ? 'var(--accent)' : 'transparent',
-                      color: viewMode === m ? '#fff' : 'var(--text-dim)',
-                      transition: 'all 0.12s',
-                    }}>{m === 'tree' ? '🌲 Tree' : '</> Raw'}</button>
+                  {(['tree', 'code'] as const).map(m => (
+                    <span
+                      key={m}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setViewMode(m)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        padding: '3px 10px',
+                        fontSize: 11,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        background: viewMode === m ? 'var(--accent)' : 'transparent',
+                        color: viewMode === m ? '#fff' : 'var(--text-dim)',
+                        transition: 'all 0.12s',
+                        userSelect: 'none',
+                      }}
+                    >
+                      {m === 'tree' ? <><FolderTree size={12} /> Tree</> : <><Code size={12} /> Code</>}
+                    </span>
                   ))}
                 </div>
+              )}
+              {isValid && parsed && viewMode === 'tree' && (
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setShowTreeSearch(s => !s)}
+                  title="Find in tree (⌘F)"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    padding: '3px 8px',
+                    fontSize: 11,
+                    fontWeight: 500,
+                    borderRadius: 6,
+                    border: '1px solid var(--border)',
+                    background: showTreeSearch ? 'var(--accent-bg)' : 'transparent',
+                    color: showTreeSearch ? 'var(--accent)' : 'var(--text-muted)',
+                    cursor: 'pointer',
+                    userSelect: 'none',
+                    transition: 'all 0.12s',
+                  }}
+                >
+                  <Search size={11} />
+                  <span>Find</span>
+                  <kbd style={{
+                    fontSize: 9,
+                    fontFamily: 'inherit',
+                    padding: '1px 3px',
+                    borderRadius: 3,
+                    background: 'var(--surface2)',
+                    border: '1px solid var(--border)',
+                    lineHeight: 1,
+                  }}>⌘F</kbd>
+                </span>
+              )}
+              {isValid && output && (
+                <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                  {new Blob([output]).size < 1024
+                    ? `${new Blob([output]).size} B`
+                    : `${(new Blob([output]).size / 1024).toFixed(1)} KB`}
+                </span>
               )}
             </div>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -451,7 +689,15 @@ export default function JsonFormatter() {
                 </span>
               )}
               {isValid && (
-                <button onClick={() => copy(output)} className="copy-btn">{copied ? '✓ Copied' : 'Copy'}</button>
+                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <button onClick={downloadJson} className="copy-btn" title="Download formatted JSON">
+                    <Download size={12} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
+                    Download
+                  </button>
+                  <button onClick={() => copy(output)} className="copy-btn">
+                    {copied ? '✓ Copied' : 'Copy'}
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -522,18 +768,32 @@ export default function JsonFormatter() {
 
           {/* Tree / Raw output */}
           {isValid && (
-            <div style={{
-              flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'auto',
-              border: isDark ? '1px solid rgba(74,222,128,0.25)' : '1px solid var(--border)',
-              borderRadius: 10, padding: 16,
-              background: 'var(--surface)',
-            }}>
-              {viewMode === 'tree' && parsed
-                ? <JsonTree parsed={parsed} colors={colors} />
-                : <code style={{ display: 'block', whiteSpace: 'pre', fontFamily: 'var(--font-mono)', fontSize: 13, lineHeight: 1.7, color: colors.str }}>{output}</code>
-              }
-            </div>
+            viewMode === 'tree' && parsed ? (
+              <div style={{
+                flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'auto',
+                border: isDark ? '1px solid rgba(74,222,128,0.25)' : '1px solid var(--border)',
+                borderRadius: 10, padding: 14,
+                background: 'var(--surface)',
+              }}>
+                <JsonTree parsed={parsed} colors={colors} showSearch={showTreeSearch} setShowSearch={setShowTreeSearch} />
+              </div>
+            ) : (
+              <CodeEditor
+                language="json"
+                value={output}
+                onChange={() => {}}
+                options={{
+                  readOnly: true,
+                  lineNumbers: 'on',
+                  folding: true,
+                  minimap: { enabled: false },
+                  scrollBeyondLastLine: false,
+                  wordWrap: 'on',
+                }}
+              />
+            )
           )}
+
 
           {/* Idle empty state */}
           {status === 'idle' && (

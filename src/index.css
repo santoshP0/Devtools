@@ -1191,6 +1191,93 @@ button:disabled, .btn:disabled {
     border: none;
     color: #abb2bf;
   }
+
+  /* ── JSON Tree Viewer ── */
+  .json-tree-container {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.65;
+    user-select: text;
+  }
+  .json-tree-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+    border-radius: 4px;
+    padding: 1px 4px;
+    transition: background 0.1s ease;
+  }
+  .json-tree-row:hover {
+    background: rgba(0, 0, 0, 0.04);
+  }
+  [data-theme="dark"] .json-tree-row:hover {
+    background: rgba(255, 255, 255, 0.06);
+  }
+  .json-tree-toggle {
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    outline: none !important;
+    transform: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    border-radius: 3px !important;
+    transition: background 0.12s ease !important;
+  }
+  .json-tree-toggle:hover {
+    background: rgba(0, 0, 0, 0.08) !important;
+    transform: none !important;
+    box-shadow: none !important;
+  }
+  [data-theme="dark"] .json-tree-toggle:hover {
+    background: rgba(255, 255, 255, 0.12) !important;
+  }
+  .json-tree-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 11px;
+    padding: 0 6px;
+    border-radius: 4px;
+    margin: 0 4px;
+    background: rgba(100, 116, 139, 0.12);
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    font-weight: 500;
+  }
+  .json-tree-guide {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--sketch-text);
+    opacity: 0.15;
+    pointer-events: none;
+  }
+  .json-tree-action-btn {
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    padding: 2px 6px !important;
+    border-radius: 4px !important;
+    cursor: pointer !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    font-size: 11px !important;
+    color: var(--text-muted) !important;
+    transition: background 0.12s ease, color 0.12s ease !important;
+    transform: none !important;
+  }
+  .json-tree-action-btn:hover {
+    background: var(--surface2) !important;
+    color: var(--text) !important;
+    transform: none !important;
+    box-shadow: none !important;
+  }
 }
 
 /* ── Ad rails ──────────────────────────────────────────────────────────
@@ -1238,27 +1325,254 @@ button:disabled, .btn:disabled {
 .notes-editor .notes-title::placeholder,
 .notes-editor .notes-content::placeholder { color: var(--note-ink) !important; opacity: 0.38; }
 .notes-editor .notes-find-input {
-  border: 1.5px solid var(--note-border) !important;
+  border: 1px solid var(--border) !important;
   box-shadow: none !important;
-  background: var(--note-bg) !important;
-  color: var(--note-ink) !important;
+  background: var(--surface) !important;
+  color: var(--text) !important;
   transform: none !important;
   border-radius: 6px !important;
-  padding: 6px 10px !important;
-  font-size: 13px !important;
+  padding: 5px 8px !important;
+  font-size: 12px !important;
   font-family: var(--font-mono) !important;
+  outline: none !important;
+}
+.notes-editor .notes-find-input:focus {
+  border-color: var(--accent) !important;
 }
 
-/* Themed tooltips for the video editor icon buttons — driven by aria-label so
-   they stay accessible; scoped to the editor so nothing else gets them. */
-.editor-tips [aria-label] { position: relative; }
-.editor-tips [aria-label]:hover::after {
-  content: attr(aria-label);
-  position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
-  background: var(--sketch-text); color: var(--sketch-bg);
-  font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 6px;
-  white-space: nowrap; pointer-events: none; z-index: 3000;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+/* ── Common Search Input UI ────────────────────────────────────────────── */
+.search-input-wrapper {
+  border: 1px solid var(--border) !important;
+  box-shadow: none !important;
+  background: var(--surface) !important;
+  border-radius: 8px !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+  transform: none !important;
+}
+.search-input-wrapper:focus-within {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 2px var(--accent-bg) !important;
+  transform: none !important;
+}
+input.search-input-control,
+input[type="text"].search-input-control,
+input.search-input-control:focus,
+input[type="text"].search-input-control:focus,
+input.search-input-control:active,
+input[type="text"].search-input-control:active {
+  border: none !important;
+  box-shadow: none !important;
+  transform: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  outline: none !important;
+  border-radius: 0 !important;
+}
+.notes-find-btn {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  transform: none !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 4px !important;
+  padding: 4px !important;
+  color: var(--text-muted) !important;
+  transition: all 0.1s ease !important;
+}
+.notes-find-btn:hover {
+  background: var(--surface2) !important;
+  color: var(--text) !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+.notes-find-btn.active {
+  background: var(--accent-bg) !important;
+  color: var(--accent) !important;
+}
+
+.notes-find-icon-btn {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  transform: none !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 4px !important;
+  border-radius: 5px !important;
+  opacity: 0.7 !important;
+  transition: all 0.12s ease !important;
+}
+.notes-find-icon-btn:hover {
+  opacity: 1 !important;
+  background: rgba(125, 125, 125, 0.16) !important;
+}
+.notes-find-icon-btn.active {
+  opacity: 1 !important;
+  background: rgba(125, 125, 125, 0.28) !important;
+}
+
+.notes-find-action-btn {
+  border: 1px solid var(--border) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  background: var(--surface2) !important;
+  color: var(--text) !important;
+  transform: none !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 4px 10px !important;
+  border-radius: 6px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  font-family: var(--font-sans) !important;
+  white-space: nowrap !important;
+  line-height: 1.3 !important;
+  user-select: none !important;
+  transition: all 0.12s ease !important;
+}
+.notes-find-action-btn:hover:not(:disabled) {
+  background: var(--accent) !important;
+  border-color: var(--accent) !important;
+  color: #fff !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12) !important;
+}
+.notes-find-action-btn:active:not(:disabled) {
+  transform: translateY(1px) scale(0.97) !important;
+  box-shadow: none !important;
+}
+.notes-find-action-btn:disabled {
+  opacity: 0.45 !important;
+  cursor: not-allowed !important;
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text-muted) !important;
+  box-shadow: none !important;
+}
+
+/* ── Professional Video Editor Styles ── */
+.ve-btn {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  transform: none !important;
+  width: 30px !important;
+  height: 30px !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 6px !important;
+  color: var(--text-dim) !important;
+  cursor: pointer !important;
+  transition: all 0.12s ease !important;
+  flex-shrink: 0 !important;
+  position: relative !important;
+}
+.ve-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--text) 10%, transparent) !important;
+  color: var(--text) !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+.ve-btn:active:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 18%, transparent) !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+.ve-btn:disabled {
+  opacity: 0.3 !important;
+  cursor: not-allowed !important;
+  background: transparent !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.ve-btn-primary {
+  background: var(--text) !important;
+  color: var(--bg) !important;
+  border: none !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
+  border-radius: 50% !important;
+  width: 32px !important;
+  height: 32px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: all 0.12s ease !important;
+  transform: none !important;
+  flex-shrink: 0 !important;
+  position: relative !important;
+}
+.ve-btn-primary:hover {
+  opacity: 0.92 !important;
+  transform: scale(1.05) !important;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.22) !important;
+}
+.ve-btn-primary:active {
+  transform: scale(0.96) !important;
+}
+
+.ve-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--surface2);
+  padding: 3px 4px;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--border) 35%, transparent);
+}
+
+.ve-import-btn {
+  border: 1.5px dashed color-mix(in srgb, var(--border) 70%, transparent) !important;
+  box-shadow: none !important;
+  background: var(--surface) !important;
+  transform: none !important;
+  transition: all 0.15s ease !important;
+}
+.ve-import-btn:hover:not(:disabled) {
+  border-color: var(--accent) !important;
+  background: var(--surface2) !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.ve-media-card {
+  border: 1px solid color-mix(in srgb, var(--border) 40%, transparent) !important;
+  box-shadow: none !important;
+  background: var(--surface) !important;
+  transform: none !important;
+  transition: all 0.12s ease !important;
+}
+.ve-media-card:hover {
+  border-color: var(--accent) !important;
+  background: var(--surface2) !important;
+  transform: none !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important;
+}
+
+/* Video editor tooltips on hover */
+.editor-tips [data-tip] { position: relative; }
+.editor-tips [data-tip]:hover::after {
+  content: attr(data-tip);
+  position: absolute; bottom: calc(100% + 7px); left: 50%; transform: translateX(-50%);
+  background: #18181b; color: #f4f4f5;
+  font-size: 11px; font-weight: 500; font-family: var(--font-sans);
+  padding: 4px 8px; border-radius: 6px;
+  white-space: nowrap; pointer-events: none; z-index: 4000;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  letter-spacing: 0.01em;
+}
+[data-theme="dark"] .editor-tips [data-tip]:hover::after {
+  background: #27272a; color: #fafafa;
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 /* keep text fields selectable even though the editor disables selection */
