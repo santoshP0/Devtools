@@ -1156,6 +1156,18 @@ button:disabled, .btn:disabled {
   .md-preview .mermaid-block svg {
     max-width: 100%;
     height: auto;
+    display: inline-block;
+    margin: 0 auto;
+  }
+  .md-preview .mermaid-block .label {
+    display: inline;
+    margin-bottom: 0;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    letter-spacing: normal;
+    text-transform: none;
+    color: inherit;
   }
 
   /* KaTeX overrides */

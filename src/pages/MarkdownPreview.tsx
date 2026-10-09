@@ -18,6 +18,11 @@ mermaid.initialize({
   theme: 'neutral',
   securityLevel: 'loose',
   fontFamily: 'var(--font-sans)',
+  htmlLabels: false,
+  flowchart: {
+    htmlLabels: false,
+    useMaxWidth: true,
+  },
 })
 
 /* ─── Marked config ─── */
@@ -333,23 +338,38 @@ export default function MarkdownPreview() {
   // Render mermaid diagrams after HTML update
   useEffect(() => {
     if (!previewRef.current) return
-    const blocks = previewRef.current.querySelectorAll('.mermaid-block')
-    blocks.forEach(async (el) => {
-      const id = el.getAttribute('data-mermaid-id') || ''
-      const code = mermaidSource.get(id) ?? el.textContent ?? ''
-      if (!code.trim() || el.querySelector('svg')) return
-      try {
-        const { svg } = await mermaid.render(`${id}-svg`, code)
-        el.innerHTML = svg
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err)
-        el.textContent = ''
-        const pre = document.createElement('pre')
-        pre.style.cssText = 'color:#f87171;font-size:12px;white-space:pre-wrap'
-        pre.textContent = `Mermaid error: ${msg}`
-        el.appendChild(pre)
+    let isCancelled = false
+    const blocks = Array.from(previewRef.current.querySelectorAll('.mermaid-block'))
+
+    const renderDiagrams = async () => {
+      for (const el of blocks) {
+        if (isCancelled) break
+        const id = el.getAttribute('data-mermaid-id') || ''
+        const code = mermaidSource.get(id) ?? el.textContent ?? ''
+        if (!code.trim() || el.querySelector('svg')) continue
+        try {
+          const renderId = `m-${Math.random().toString(36).slice(2, 9)}`
+          const { svg } = await mermaid.render(renderId, code)
+          if (!isCancelled) {
+            el.innerHTML = svg
+          }
+        } catch (err) {
+          if (!isCancelled) {
+            const msg = err instanceof Error ? err.message : String(err)
+            el.textContent = ''
+            const pre = document.createElement('pre')
+            pre.style.cssText = 'color:#f87171;font-size:12px;white-space:pre-wrap'
+            pre.textContent = `Mermaid error: ${msg}`
+            el.appendChild(pre)
+          }
+        }
       }
-    })
+    }
+
+    renderDiagrams()
+    return () => {
+      isCancelled = true
+    }
   }, [sanitizedHtml])
 
   const fileInputRef = useRef<HTMLInputElement>(null)
