@@ -8,7 +8,9 @@ import { useClipboardCopy } from '../hooks/useClipboardCopy'
 import { useIsDark } from '../hooks/useIsDark'
 import { useNativeDrop } from '../hooks/useNativeDrop'
 import { useOpenedFile } from '../lib/openWith'
-import { ChevronRight, FolderTree, Code, Copy, Check, Search, Minimize2, Maximize2, Download } from 'lucide-react'
+import { useToast } from '../components/Toast'
+import { isJsonFile, isTextFile } from '../lib/fileValidation'
+import { ChevronRight, FolderTree, Code, Copy, Check, Search, Minimize2, Maximize2, Download, Route } from 'lucide-react'
 
 // ─── Persistence ──────────────────────────────────────────────────────────────
 const STORAGE_KEY = 'devtools:json-formatter:input'
@@ -133,7 +135,7 @@ type JsonPrim = string | number | boolean | null
 type JsonVal = JsonPrim | JsonVal[] | { [k: string]: any }
 
 function JsonNode({
-  k, val, depth, last, colors, filterQuery
+  k, val, depth, last, colors, filterQuery, path = '',
 }: {
   k?: string
   val: JsonVal
@@ -141,10 +143,15 @@ function JsonNode({
   last: boolean
   colors: ColorTheme
   filterQuery: string
+  path?: string
 }) {
   const [collapsed, setCollapsed] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [copiedPath, setCopiedPath] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
+
+  // Current JSON path representation
+  const currentPath = path || (k !== undefined ? k : '$')
 
   // Check if this node or subtree matches filterQuery
   const isMatch = filterQuery && (
@@ -164,6 +171,13 @@ function JsonNode({
     navigator.clipboard.writeText(str)
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
+  }
+
+  const copyPath = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    navigator.clipboard.writeText(currentPath)
+    setCopiedPath(true)
+    setTimeout(() => setCopiedPath(false), 1500)
   }
 
   const comma = last ? '' : ','
@@ -223,6 +237,28 @@ function JsonNode({
     </span>
   )
 
+  const copyPathBtn = (
+    <span
+      role="button"
+      tabIndex={0}
+      onClick={copyPath}
+      title={copiedPath ? `Copied: ${currentPath}` : `Copy path: ${currentPath}`}
+      style={{
+        marginLeft: 2,
+        cursor: 'pointer',
+        color: copiedPath ? 'var(--accent)' : colors.muted,
+        display: 'inline-flex',
+        alignItems: 'center',
+        padding: '1px 4px',
+        borderRadius: 3,
+        opacity: isHovered || copiedPath ? 1 : 0.45,
+        transition: 'opacity 0.15s, color 0.15s',
+      }}
+    >
+      {copiedPath ? <Check size={11} /> : <Route size={11} />}
+    </span>
+  )
+
   // Primitive Values
   if (val === null || typeof val !== 'object') {
     let valEl: React.ReactNode = null
@@ -247,6 +283,7 @@ function JsonNode({
           {valEl}
           <span style={{ color: colors.punct }}>{comma}</span>
           {copyBtn}
+          {copyPathBtn}
         </div>
       </div>
     )
@@ -282,6 +319,7 @@ function JsonNode({
           )}
           <span style={{ color: colors.punct }}>{closeBrace}{comma}</span>
           {copyBtn}
+          {copyPathBtn}
         </div>
       </div>
     )
@@ -305,6 +343,7 @@ function JsonNode({
           <span style={{ color: colors.punct }}>{openBrace}</span>
           <span className="json-tree-badge" style={{ opacity: 0.6 }}>{badgeLabel}</span>
           {copyBtn}
+          {copyPathBtn}
         </div>
       </div>
 
@@ -319,6 +358,7 @@ function JsonNode({
                 last={i === (val as JsonVal[]).length - 1}
                 colors={colors}
                 filterQuery={filterQuery}
+                path={currentPath ? `${currentPath}[${i}]` : `[${i}]`}
               />
             ))
           : Object.entries(val as Record<string, JsonVal>).map(([ek, ev], i, arr) => (
@@ -330,6 +370,7 @@ function JsonNode({
                 last={i === arr.length - 1}
                 colors={colors}
                 filterQuery={filterQuery}
+                path={currentPath ? `${currentPath}${/^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(ek) ? `.${ek}` : `[${JSON.stringify(ek)}]`}` : ek}
               />
             ))}
       </div>
@@ -349,103 +390,14 @@ function JsonNode({
 function JsonTree({
   parsed,
   colors,
-  showSearch,
-  setShowSearch,
+  filterQuery = '',
 }: {
   parsed: JsonVal
   colors: ColorTheme
-  showSearch: boolean
-  setShowSearch: React.Dispatch<React.SetStateAction<boolean>>
+  filterQuery?: string
 }) {
-  const [filterQuery, setFilterQuery] = useState('')
-  const searchInputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    if (showSearch) {
-      setTimeout(() => {
-        searchInputRef.current?.focus()
-        searchInputRef.current?.select()
-      }, 50)
-    } else {
-      setFilterQuery('')
-    }
-  }, [showSearch])
-
-  // Cmd+F toggles search in tree view
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      // Don't intercept if user is typing in Monaco editor on the input pane
-      const target = e.target as HTMLElement | null
-      if (target && target.closest('.monaco-editor')) {
-        return
-      }
-
-      if ((e.metaKey || e.ctrlKey) && (e.key === 'f' || e.key === 'F')) {
-        e.preventDefault()
-        setShowSearch(prev => !prev)
-      } else if (e.key === 'Escape' && showSearch) {
-        e.preventDefault()
-        setShowSearch(false)
-        setFilterQuery('')
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [showSearch, setShowSearch])
-
   return (
     <div className="json-tree-container" style={{ position: 'relative' }}>
-      {/* Toggle Search Bar on Cmd+F */}
-      {showSearch && (
-        <div style={{
-          position: 'sticky',
-          top: 0,
-          zIndex: 20,
-          marginBottom: 10,
-        }}>
-          <SearchInput
-            ref={searchInputRef}
-            autoFocus
-            value={filterQuery}
-            onChange={setFilterQuery}
-            onClear={() => setFilterQuery('')}
-            placeholder="Search keys & values in tree… (Esc to close)"
-            onKeyDown={e => {
-              if (e.key === 'Escape') {
-                e.preventDefault()
-                setShowSearch(false)
-                setFilterQuery('')
-              }
-            }}
-            containerStyle={{
-              background: 'var(--surface2)',
-              borderRadius: 8,
-              padding: '6px 10px',
-              boxShadow: '0 4px 14px rgba(0, 0, 0, 0.1)',
-            }}
-            rightSlot={
-              <span
-                role="button"
-                tabIndex={0}
-                onClick={() => { setShowSearch(false); setFilterQuery('') }}
-                style={{
-                  cursor: 'pointer',
-                  fontSize: 11,
-                  color: 'var(--text-muted)',
-                  borderLeft: '1px solid var(--border)',
-                  paddingLeft: 8,
-                  marginLeft: 4,
-                  userSelect: 'none',
-                }}
-                title="Close (Esc)"
-              >
-                Close
-              </span>
-            }
-          />
-        </div>
-      )}
-
       <div style={{ overflowX: 'auto', paddingLeft: 4 }}>
         <JsonNode
           val={parsed}
@@ -471,12 +423,22 @@ export default function JsonFormatter() {
   const [indent, setIndent] = useState<number | string>(2)
   const { copied, copy } = useClipboardCopy()
 
+  const { show } = useToast()
+
   // Desktop: Finder drag-drop and "Open with DevToolbox" on a .json file.
-  const loadFile = async (file: File) => setInput(await file.text())
+  const loadFile = async (file: File) => {
+    if (!isJsonFile(file) && !isTextFile(file)) {
+      show(`Cannot open ${file.name} — JSON Formatter only supports JSON and text files.`)
+      return
+    }
+    setInput(await file.text())
+  }
   useNativeDrop(items => { if (items[0]) loadFile(items[0].file) })
   useOpenedFile('/json-formatter', loadFile)
   const [viewMode, setViewMode] = useState<'tree' | 'code'>('tree')
-  const [showTreeSearch, setShowTreeSearch] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const outputEditorRef = useRef<Parameters<OnMount>[0] | null>(null)
   const isDark = useIsDark()
 
   const colors = isDark ? PALETTES.dark : PALETTES.light
@@ -516,6 +478,39 @@ export default function JsonFormatter() {
     const id = setTimeout(() => saveToDisk(input), 300)
     return () => clearTimeout(id)
   }, [input])
+
+  // Cmd+F shortcut to focus search input in output pane
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null
+      if (target && target.closest('.monaco-editor') && target.closest('.monaco-editor') === editorRef.current?.getDomNode()) {
+        return
+      }
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'f' || e.key === 'F')) {
+        e.preventDefault()
+        searchInputRef.current?.focus()
+        searchInputRef.current?.select()
+      } else if (e.key === 'Escape' && searchQuery) {
+        setSearchQuery('')
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [searchQuery])
+
+  // Sync search query in Code view to Monaco find/selection
+  useEffect(() => {
+    if (viewMode === 'code' && outputEditorRef.current && searchQuery) {
+      const model = outputEditorRef.current.getModel()
+      if (model) {
+        const matches = model.findMatches(searchQuery, false, false, false, null, true)
+        if (matches.length > 0) {
+          outputEditorRef.current.setSelection(matches[0].range)
+          outputEditorRef.current.revealRangeInCenter(matches[0].range)
+        }
+      }
+    }
+  }, [searchQuery, viewMode])
 
   const process = useCallback((minify: boolean) => {
     if (!input.trim()) return
@@ -634,41 +629,6 @@ export default function JsonFormatter() {
                   ))}
                 </div>
               )}
-              {isValid && parsed && viewMode === 'tree' && (
-                <span
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setShowTreeSearch(s => !s)}
-                  title="Find in tree (⌘F)"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 4,
-                    padding: '3px 8px',
-                    fontSize: 11,
-                    fontWeight: 500,
-                    borderRadius: 6,
-                    border: '1px solid var(--border)',
-                    background: showTreeSearch ? 'var(--accent-bg)' : 'transparent',
-                    color: showTreeSearch ? 'var(--accent)' : 'var(--text-muted)',
-                    cursor: 'pointer',
-                    userSelect: 'none',
-                    transition: 'all 0.12s',
-                  }}
-                >
-                  <Search size={11} />
-                  <span>Find</span>
-                  <kbd style={{
-                    fontSize: 9,
-                    fontFamily: 'inherit',
-                    padding: '1px 3px',
-                    borderRadius: 3,
-                    background: 'var(--surface2)',
-                    border: '1px solid var(--border)',
-                    lineHeight: 1,
-                  }}>⌘F</kbd>
-                </span>
-              )}
               {isValid && output && (
                 <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
                   {new Blob([output]).size < 1024
@@ -690,6 +650,20 @@ export default function JsonFormatter() {
               )}
               {isValid && (
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <SearchInput
+                    ref={searchInputRef}
+                    value={searchQuery}
+                    onChange={setSearchQuery}
+                    onClear={() => setSearchQuery('')}
+                    placeholder="Search…"
+                    containerStyle={{
+                      height: 28,
+                      width: 170,
+                      padding: '0 8px',
+                      fontSize: 12,
+                      borderRadius: 6,
+                    }}
+                  />
                   <button onClick={downloadJson} className="copy-btn" title="Download formatted JSON">
                     <Download size={12} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
                     Download
@@ -775,13 +749,14 @@ export default function JsonFormatter() {
                 borderRadius: 10, padding: 14,
                 background: 'var(--surface)',
               }}>
-                <JsonTree parsed={parsed} colors={colors} showSearch={showTreeSearch} setShowSearch={setShowTreeSearch} />
+                <JsonTree parsed={parsed} colors={colors} filterQuery={searchQuery} />
               </div>
             ) : (
               <CodeEditor
                 language="json"
                 value={output}
                 onChange={() => {}}
+                onMount={ed => { outputEditorRef.current = ed }}
                 options={{
                   readOnly: true,
                   lineNumbers: 'on',

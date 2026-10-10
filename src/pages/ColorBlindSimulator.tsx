@@ -1,6 +1,9 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import ToolLayout from '../components/ToolLayout'
-import { useFileDrop } from '../hooks/useFileDrop'
+import FileDropZone from '../components/FileDropZone'
+import { useNativeDrop } from '../hooks/useNativeDrop'
+import { useToast } from '../components/Toast'
+import { isImageFile } from '../lib/fileValidation'
 
 type SimType =
   | 'protanopia' | 'deuteranopia' | 'tritanopia'
@@ -124,9 +127,12 @@ const SIM_TYPES: SimType[] = [
 
 export default function ColorBlindSimulator() {
   const [imageSrc, setImageSrc] = useState<string | null>(null)
+  const [fileName, setFileName] = useState<string | null>(null)
+  const [fileSize, setFileSize] = useState<number | undefined>(undefined)
   const [simType, setSimType] = useState<SimType>('deuteranopia')
   const [severity, setSeverity] = useState(100)
   const [processing, setProcessing] = useState(false)
+  const { show } = useToast()
 
   const originalCanvasRef = useRef<HTMLCanvasElement>(null)
   const simCanvasRef = useRef<HTMLCanvasElement>(null)
@@ -135,15 +141,20 @@ export default function ColorBlindSimulator() {
   const sim = SIMS[simType]
 
   const loadImage = useCallback((file: File) => {
-    if (!file.type.startsWith('image/')) return
+    if (!isImageFile(file)) {
+      show(`Cannot open ${file.name} — Color Blindness Simulator only supports image files.`)
+      return
+    }
+    setFileName(file.name)
+    setFileSize(file.size)
     const reader = new FileReader()
     reader.onload = (e) => {
       setImageSrc(e.target?.result as string)
     }
     reader.readAsDataURL(file)
-  }, [])
+  }, [show])
 
-  const { dragging, inputRef, dragProps, openPicker, onInputChange } = useFileDrop(loadImage, 'image/*')
+  useNativeDrop(items => { if (items[0]) loadImage(items[0].file) })
 
   // Draw original and simulated when image, type, or severity changes
   useEffect(() => {
@@ -238,42 +249,16 @@ export default function ColorBlindSimulator() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
         {/* Drop zone */}
-        <div
-          {...dragProps}
-          onClick={openPicker}
-          style={{
-            border: `2px dashed ${dragging ? 'var(--accent)' : 'var(--border)'}`,
-            borderRadius: 12,
-            padding: imageSrc ? '16px' : '48px 24px',
-            textAlign: 'center',
-            cursor: 'pointer',
-            background: dragging ? 'var(--surface2)' : 'var(--surface)',
-            transition: 'all 0.2s ease',
-          }}
-        >
-          {!imageSrc ? (
-            <div>
-              <div style={{ fontSize: 32, marginBottom: 8, opacity: 0.5 }}>&#128444;</div>
-              <div style={{ fontWeight: 600, color: 'var(--text)', fontSize: 15 }}>
-                Drop an image here or click to select
-              </div>
-              <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>
-                JPEG, PNG, WebP, GIF
-              </div>
-            </div>
-          ) : (
-            <div style={{ fontSize: 13, color: 'var(--text-dim)' }}>
-              Click or drop to replace image
-            </div>
-          )}
-          <input
-            ref={inputRef}
-            type="file"
-            accept="image/*"
-            onChange={onInputChange}
-            style={{ display: 'none' }}
-          />
-        </div>
+        <FileDropZone
+          value={fileName}
+          fileSize={fileSize}
+          onFileSelect={loadImage}
+          onClear={() => { setImageSrc(null); setFileName(null); setFileSize(undefined) }}
+          accept={['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp']}
+          acceptMime="image/*"
+          title="Drop image here or click to select"
+          subtitle="Supports JPEG, PNG, WebP, GIF · Simulates CVD in real-time"
+        />
 
         {imageSrc && (
           <>

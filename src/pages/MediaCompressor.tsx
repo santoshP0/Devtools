@@ -2,7 +2,10 @@ import { useState, useEffect } from 'react'
 import ToolLayout from '../components/ToolLayout'
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { open, save } from '@tauri-apps/plugin-dialog'
-import { useTauriFileDrop } from '../hooks/useTauriFileDrop'
+import { useNativeDrop } from '../hooks/useNativeDrop'
+import { useToast } from '../components/Toast'
+import { isImageFile, isVideoFile } from '../lib/fileValidation'
+import FileDropZone from '../components/FileDropZone'
 
 const RELEASES_URL = 'https://github.com/santoshP0/Devtools/releases/latest'
 
@@ -91,6 +94,7 @@ function DesktopCompressor() {
 
   // shared
   const [stripMeta, setStripMeta] = useState(true)
+  const { show } = useToast()
 
   useEffect(() => {
     invoke<{ available: boolean; version: string }>('ffmpeg_check').then(setFfmpeg).catch(() => setFfmpeg({ available: false, version: '' }))
@@ -102,19 +106,27 @@ function DesktopCompressor() {
     ? (imgFormat === 'same' ? ext(input) : imgFormat)
     : (vFormat === 'same' ? ext(input) : vFormat)
 
+  const loadMedia = (path: string) => {
+    if (!isImageFile(path) && !isVideoFile(path)) {
+      show(`Cannot open ${baseName(path)} — Media Compressor only supports images and videos.`)
+      return
+    }
+    setInput(path)
+    setResult(null)
+    setOutName(baseName(path))
+  }
+
   const pick = async () => {
     const p = await open({
       multiple: false,
       filters: [{ name: 'Media', extensions: [...IMAGE_EXTS, ...VIDEO_EXTS] }],
     })
-    if (typeof p === 'string') { setInput(p); setResult(null); setOutName(baseName(p)) }
+    if (typeof p === 'string') loadMedia(p)
   }
 
-  // Drag a file straight onto the window (native path, ready for ffmpeg).
-  const { dragging } = useTauriFileDrop(
-    p => { setInput(p); setResult(null); setOutName(baseName(p)) },
-    [...IMAGE_EXTS, ...VIDEO_EXTS],
-  )
+  useNativeDrop(items => {
+    if (items[0]) loadMedia(items[0].path)
+  })
 
   const run = async () => {
     if (!input || !kind) return
@@ -176,39 +188,36 @@ Linux:    sudo apt install ffmpeg`}</pre>
 
         {ffmpeg?.available && (
           <>
-            <div className="panel" style={{
-              padding: 20, display: 'flex', flexDirection: 'column', gap: 14,
-              borderStyle: dragging ? 'dashed' : undefined,
-              outline: dragging ? '2px dashed var(--accent)' : 'none',
-              outlineOffset: 3,
-              background: dragging ? 'var(--surface2)' : undefined,
-              transition: 'background 0.15s',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-                <button onClick={pick} className="btn-primary">Choose file…</button>
-                <span style={{ fontSize: 13, fontFamily: 'var(--font-mono)', color: 'var(--text-dim)', wordBreak: 'break-all' }}>
-                  {dragging ? 'Drop to load…' : (input || 'No file selected — or drag one in')}
-                </span>
-              </div>
+            <FileDropZone
+              value={input}
+              onPick={pick}
+              onFileSelect={(_f, path) => {
+                const p = path || _f.name
+                if (p) { setInput(p); setResult(null); setOutName(baseName(p)) }
+              }}
+              onClear={() => { setInput(''); setResult(null); setOutName('') }}
+              accept={[...IMAGE_EXTS, ...VIDEO_EXTS]}
+              title="Choose image or video to compress"
+              subtitle="Drop MP4, MOV, MKV, WebP, PNG, JPG here or click to browse"
+            />
 
-              {input && (
-                <div>
-                  <label className="label" title="The name of the saved file. Change it to whatever you like — it won't append “-compressed” unless you type it.">Output file name</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                    <input
-                      type="text"
-                      value={outName}
-                      onChange={e => setOutName(e.target.value)}
-                      placeholder={baseName(input)}
-                      spellCheck={false}
-                      style={{ flex: 1, minWidth: 180 }}
-                    />
-                    <span style={{ fontSize: 13, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>.{targetExt}</span>
-                  </div>
-                  <Hint>You'll still get the native save dialog to confirm the location — this just sets the starting name.</Hint>
+            {input && (
+              <div className="panel" style={{ padding: 20, marginTop: 14 }}>
+                <label className="label" title="The name of the saved file. Change it to whatever you like — it won't append “-compressed” unless you type it.">Output file name</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <input
+                    type="text"
+                    value={outName}
+                    onChange={e => setOutName(e.target.value)}
+                    placeholder={baseName(input)}
+                    spellCheck={false}
+                    style={{ flex: 1, minWidth: 180 }}
+                  />
+                  <span style={{ fontSize: 13, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>.{targetExt}</span>
                 </div>
-              )}
-            </div>
+                <Hint>You'll still get the native save dialog to confirm the location — this just sets the starting name.</Hint>
+              </div>
+            )}
 
             {/* ── Minimal settings ── */}
             {kind === 'image' && (

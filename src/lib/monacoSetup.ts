@@ -27,5 +27,25 @@ export const EDITOR_DEFAULTS = {
   padding: { top: 10, bottom: 10 },
   tabSize: 2,
   wordWrap: 'on',
-  diffWordWrap: 'on',
+  diffWordWrap: 'off',
+  hover: {
+    delay: 500,
+    above: false,
+  },
 } as const
+
+// Suppress native browser tooltips on find widget buttons
+if (typeof window !== 'undefined') {
+  window.addEventListener(
+    'mouseover',
+    (e) => {
+      const target = e.target as HTMLElement | null
+      const btn = target?.closest('.find-widget .button, .find-widget .codicon-find-selection') as HTMLElement | null
+      if (btn && btn.getAttribute('title')) {
+        btn.removeAttribute('title')
+      }
+    },
+    true
+  )
+}
+

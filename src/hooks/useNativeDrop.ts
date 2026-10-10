@@ -9,7 +9,10 @@ const MIME: Record<string, string> = {
   png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp',
   gif: 'image/gif', bmp: 'image/bmp', svg: 'image/svg+xml', avif: 'image/avif',
   heic: 'image/heic', heif: 'image/heif', tif: 'image/tiff', tiff: 'image/tiff',
+  mp4: 'video/mp4', mov: 'video/quicktime', mkv: 'video/x-matroska', webm: 'video/webm', avi: 'video/x-msvideo', m4v: 'video/x-m4v',
   csv: 'text/csv', tsv: 'text/tab-separated-values', json: 'application/json', txt: 'text/plain',
+  md: 'text/markdown', markdown: 'text/markdown', xml: 'application/xml', yaml: 'text/yaml', yml: 'text/yaml',
+  toml: 'text/plain', sql: 'text/x-sql', html: 'text/html', htm: 'text/html', log: 'text/plain',
 }
 const mimeOf = (name: string) => MIME[(name.split('.').pop() || '').toLowerCase()] || ''
 
@@ -20,7 +23,11 @@ const mimeOf = (name: string) => MIME[(name.split('.').pop() || '').toLowerCase(
  * dropped path's bytes and wraps them in a File, so the tools' existing
  * File-based handlers work unchanged. No-op on web (HTML drag-drop works there).
  */
-export function useNativeDrop(onDrop: (items: DroppedFile[]) => void, active = true) {
+export function useNativeDrop(
+  onDrop: (items: DroppedFile[]) => void,
+  active = true,
+  acceptExts?: string[],
+) {
   const cb = useRef(onDrop)
   cb.current = onDrop
   useEffect(() => {
@@ -31,12 +38,24 @@ export function useNativeDrop(onDrop: (items: DroppedFile[]) => void, active = t
       getCurrentWebview()
         .onDragDropEvent(async e => {
           if (e.payload.type !== 'drop' || e.payload.paths.length === 0) return
+          let paths = e.payload.paths
+          if (acceptExts && acceptExts.length > 0) {
+            paths = paths.filter(path => {
+              const ext = (path.split('.').pop() || '').toLowerCase()
+              return acceptExts.includes(ext)
+            })
+            if (paths.length === 0) return
+          }
           const { invoke } = await import('@tauri-apps/api/core')
           const items = await Promise.all(
-            e.payload.paths.map(async path => {
-              const buf = await invoke<ArrayBuffer>('read_file', { path })
+            paths.map(async path => {
               const name = path.split(/[\\/]/).pop() || 'file'
-              return { path, file: new File([buf as BlobPart], name, { type: mimeOf(name) }) }
+              const ext = (name.split('.').pop() || '').toLowerCase()
+              let buf: ArrayBuffer | null = null
+              if (!['mp4', 'mov', 'mkv', 'webm', 'avi', 'm4v'].includes(ext)) {
+                buf = await invoke<ArrayBuffer>('read_file', { path })
+              }
+              return { path, file: new File(buf ? [buf as BlobPart] : [], name, { type: mimeOf(name) }) }
             }),
           )
           cb.current(items)

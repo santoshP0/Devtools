@@ -2,7 +2,10 @@ import { useState, useEffect } from 'react'
 import ToolLayout from '../components/ToolLayout'
 import { invoke, isTauri } from '@tauri-apps/api/core'
 import { open, save } from '@tauri-apps/plugin-dialog'
-import { useTauriFileDrop } from '../hooks/useTauriFileDrop'
+import { useNativeDrop } from '../hooks/useNativeDrop'
+import { useToast } from '../components/Toast'
+import { isVideoFile } from '../lib/fileValidation'
+import FileDropZone from '../components/FileDropZone'
 
 const RELEASES_URL = 'https://github.com/santoshP0/Devtools/releases/latest'
 const VIDEO_EXTS = ['mp4', 'mov', 'mkv', 'webm', 'avi', 'm4v']
@@ -58,6 +61,7 @@ function DesktopVideoGif() {
   const [fps, setFps] = useState(15)
   const [width, setWidth] = useState('480')
   const [quality, setQuality] = useState(80)
+  const { show } = useToast()
 
   useEffect(() => {
     invoke<{ available: boolean; version: string }>('ffmpeg_check').then(setFfmpeg).catch(() => setFfmpeg({ available: false, version: '' }))
@@ -65,13 +69,23 @@ function DesktopVideoGif() {
 
   const isVideo = VIDEO_EXTS.includes(ext(input))
 
-  const pick = async () => {
-    const p = await open({ multiple: false, filters: [{ name: 'Video', extensions: VIDEO_EXTS }] })
-    if (typeof p === 'string') { setInput(p); setResult(null) }
+  const loadVideo = (path: string) => {
+    if (!isVideoFile(path)) {
+      show(`Cannot open ${path.split(/[/\\]/).pop()} — Video → GIF only supports video files (${VIDEO_EXTS.join(', ')}).`)
+      return
+    }
+    setInput(path)
+    setResult(null)
   }
 
-  // Drag a video onto the window to load it.
-  const { dragging } = useTauriFileDrop(p => { setInput(p); setResult(null) }, VIDEO_EXTS)
+  const pick = async () => {
+    const p = await open({ multiple: false, filters: [{ name: 'Video', extensions: VIDEO_EXTS }] })
+    if (typeof p === 'string') loadVideo(p)
+  }
+
+  useNativeDrop(items => {
+    if (items[0]) loadVideo(items[0].path)
+  })
 
   const run = async () => {
     if (!input || !isVideo) return
@@ -111,22 +125,20 @@ function DesktopVideoGif() {
         )}
 
         {/* Source */}
-        <div className="panel" style={{
-          padding: 20,
-          outline: dragging ? '2px dashed var(--accent)' : 'none',
-          outlineOffset: 3,
-          background: dragging ? 'var(--surface2)' : undefined,
-          transition: 'background 0.15s',
-        }}>
-          <label className="label">Video file</label>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <button className="btn-secondary" onClick={pick}>Choose video…</button>
-            <span style={{ fontSize: 12, color: 'var(--text-dim)', wordBreak: 'break-all' }}>
-              {dragging ? 'Drop to load…' : (input ? input.split(/[\\/]/).pop() : 'No file selected — or drag one in')}
-            </span>
-          </div>
-          {input && !isVideo && <Hint>Not a supported video. Use {VIDEO_EXTS.join(', ')}.</Hint>}
-        </div>
+        <FileDropZone
+          value={input}
+          onPick={pick}
+          onFileSelect={(_f, path) => {
+            const p = path || _f.name
+            if (p) { setInput(p); setResult(null) }
+          }}
+          onClear={() => { setInput(''); setResult(null) }}
+          accept={VIDEO_EXTS}
+          title="Choose video to convert to GIF"
+          subtitle="Drop MP4, MOV, MKV, WebM here or click to browse"
+          style={{ marginBottom: 16 }}
+        />
+        {input && !isVideo && <Hint>Not a supported video. Use {VIDEO_EXTS.join(', ')}.</Hint>}
 
         {/* Settings */}
         <div className="panel" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>

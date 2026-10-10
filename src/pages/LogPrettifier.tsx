@@ -4,6 +4,8 @@ import { invoke, isTauri } from '@tauri-apps/api/core'
 import { open as openDialog } from '@tauri-apps/plugin-dialog'
 import { useNativeDrop } from '../hooks/useNativeDrop'
 import { useOpenedFile } from '../lib/openWith'
+import { useToast } from '../components/Toast'
+import { isTextFile } from '../lib/fileValidation'
 
 // ── Persistence ───────────────────────────────────────────────────────────────
 const STORAGE_KEY = 'devtools:log-prettifier:input'
@@ -357,6 +359,7 @@ export default function LogPrettifierPage() {
   const [fileLines, setFileLines] = useState<LogLine[] | null>(null)
   const [fileName, setFileName] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
+  const { show } = useToast()
 
   // don't persist while a big file is loaded (input stays empty then anyway)
   useEffect(() => { const id = setTimeout(() => saveToDisk(input), 300); return () => clearTimeout(id) }, [input])
@@ -382,6 +385,10 @@ export default function LogPrettifierPage() {
   const toggleFilter = (l: string) => setFilter(f => f.includes(l) ? f.filter(x => x !== l) : [...f, l])
 
   const readFile = (file: File) => {
+    if (!isTextFile(file)) {
+      show(`Cannot open binary file (${file.name}) — Log Viewer only supports log and text files.`)
+      return
+    }
     setIsLoading(true)
     const r = new FileReader()
     r.onload = ev => { editInput((ev.target?.result as string) ?? ''); setIsLoading(false) }
@@ -400,6 +407,10 @@ export default function LogPrettifierPage() {
   // Desktop: Finder drag-drop and "Open with DevToolbox" — both go through the
   // native parser by path, so a 100 MB log never touches the UI thread.
   const openPath = async (path: string) => {
+    if (!isTextFile(path)) {
+      show(`Cannot open binary file (${path.split(/[/\\]/).pop()}) — Log Viewer only supports log and text files.`)
+      return
+    }
     setIsLoading(true)
     try {
       const parsed = await invoke<LogLine[]>('parse_log_file', { path })

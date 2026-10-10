@@ -2,21 +2,26 @@ import { useState } from 'react'
 import ToolLayout from '../components/ToolLayout'
 import { XMLParser, XMLBuilder } from 'fast-xml-parser'
 import { useNativeDrop } from '../hooks/useNativeDrop'
-import { useOpenedFile } from '../lib/openWith'
+import { useToast } from '../components/Toast'
+import { isJsonFile, isTextFile } from '../lib/fileValidation'
 
 export default function JsonXml() {
   const [json, setJson] = useState('')
   const [xml, setXml] = useState('')
   const [error, setError] = useState('')
+  const { show } = useToast()
 
-  // Desktop: drop a file from Finder, or "Open with DevToolbox" — .xml lands in
-  // the XML box, else JSON.
+  // Desktop: drop a file from Finder into this tool — .xml lands in XML box, else JSON.
   const loadFile = async (file: File) => {
+    const isXml = /\.(xml|svg|rss|atom)$/i.test(file.name) || file.type.includes('xml')
+    if (!isXml && !isJsonFile(file) && !isTextFile(file)) {
+      show(`Cannot open ${file.name} — JSON ↔ XML only supports JSON and XML files.`)
+      return
+    }
     const text = await file.text()
-    if (/\.(xml|svg|rss|atom)$/i.test(file.name)) setXml(text); else setJson(text)
+    if (isXml) setXml(text); else setJson(text)
   }
   useNativeDrop(items => { if (items[0]) loadFile(items[0].file) })
-  useOpenedFile('/json-xml', loadFile)
 
   const jsonToXml = () => {
     setError('')

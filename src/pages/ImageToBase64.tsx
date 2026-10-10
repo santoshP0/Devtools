@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import ToolLayout from '../components/ToolLayout'
 import CopyBtn from '../components/CopyBtn'
-import { useFileDrop } from '../hooks/useFileDrop'
+import FileDropZone from '../components/FileDropZone'
 import { useNativeDrop, usePasteImage } from '../hooks/useNativeDrop'
+import { useToast } from '../components/Toast'
+import { isImageFile } from '../lib/fileValidation'
 
 interface Result {
   dataUrl: string; base64: string; type: string; name: string
@@ -12,9 +14,14 @@ interface Result {
 
 export default function ImageToBase64Page() {
   const [result, setResult] = useState<Result | null>(null)
+  const { show } = useToast()
 
   const handleFile = (file: File) => {
-    if (!file || !file.type.startsWith('image/')) return
+    if (!file) return
+    if (!isImageFile(file)) {
+      show(`Cannot open ${file.name} — Image → Base64 only supports image files.`)
+      return
+    }
     const reader = new FileReader()
     reader.onload = (e) => {
       const dataUrl = e.target!.result as string
@@ -32,10 +39,8 @@ export default function ImageToBase64Page() {
     reader.readAsDataURL(file)
   }
 
-  const { dragging, inputRef, dragProps, openPicker, onInputChange } = useFileDrop(handleFile, 'image/*')
-  // Desktop Finder drag-drop + paste a screenshot.
-  useNativeDrop(items => { if (items[0]) handleFile(items[0].file) })
   usePasteImage(handleFile)
+  useNativeDrop(items => { if (items[0]) handleFile(items[0].file) })
 
   const formats = result ? [
     { label:'Data URI',    val: result.dataUrl },
@@ -48,21 +53,13 @@ export default function ImageToBase64Page() {
     <ToolLayout title="Image → Base64" description="Convert images to Base64 data URIs for use in CSS or HTML">
       <div className="one-col">
         {!result ? (
-          <div
-            {...dragProps}
-            onClick={openPicker}
-            style={{
-              border:`2px dashed ${dragging ? 'var(--accent)' : 'var(--border)'}`,
-              borderRadius:16, padding:'64px 32px', textAlign:'center',
-              cursor:'pointer', transition:'all 0.2s',
-              background: dragging ? 'var(--accent-bg)' : 'var(--surface)',
-            }}
-          >
-            <div style={{ fontSize:48, marginBottom:16, opacity:0.5 }}>IMG</div>
-            <div style={{ fontSize:16, fontWeight:600, marginBottom:8 }}>Drop an image here</div>
-            <div style={{ fontSize:14, color:'var(--text-muted)' }}>or click to browse · PNG, JPG, GIF, SVG, WebP</div>
-            <input ref={inputRef} type="file" accept="image/*" style={{ display:'none' }} onChange={onInputChange} />
-          </div>
+          <FileDropZone
+            onFileSelect={handleFile}
+            accept={['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp']}
+            acceptMime="image/*"
+            title="Drop an image here or click to browse"
+            subtitle="Supports PNG, JPG, GIF, SVG, WebP · Converts directly to Base64"
+          />
         ) : (
           <>
             <div style={{ display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>

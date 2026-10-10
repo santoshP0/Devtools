@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react'
 import ToolLayout from '../components/ToolLayout'
 import { useNativeDrop } from '../hooks/useNativeDrop'
+import { useToast } from '../components/Toast'
+import { isJsonFile, isTextFile } from '../lib/fileValidation'
 
 const SAMPLE_DB = `{
   "users": [
@@ -65,9 +67,19 @@ function JsonNode({ data, depth = 0, keyName }: { data: unknown; depth?: number;
 export default function NoSqlViewerPage() {
   const [input, setInput] = useState(SAMPLE_DB)
   const [search, setSearch] = useState('')
+  const { show } = useToast()
+
+  const loadFile = async (file: File) => {
+    if (!isJsonFile(file) && !isTextFile(file)) {
+      show(`Cannot open ${file.name} — NoSQL Viewer only supports JSON and text files.`)
+      return
+    }
+    const text = await file.text()
+    if (text) setInput(text)
+  }
 
   // Desktop: drop a JSON dump from Finder.
-  useNativeDrop(async items => { if (items[0]) setInput(await items[0].file.text()) })
+  useNativeDrop(items => { if (items[0]) loadFile(items[0].file) })
   const [activeCol, setActiveCol] = useState<string | null>(null)
 
   const parsed = useMemo(() => {

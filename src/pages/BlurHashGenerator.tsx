@@ -1,8 +1,11 @@
 import { useState, useCallback, useEffect } from 'react'
 import { encode, decode } from 'blurhash'
 import ToolLayout from '../components/ToolLayout'
+import FileDropZone from '../components/FileDropZone'
 import { useClipboardCopy } from '../hooks/useClipboardCopy'
-import { useFileDrop } from '../hooks/useFileDrop'
+import { useNativeDrop } from '../hooks/useNativeDrop'
+import { useToast } from '../components/Toast'
+import { isImageFile } from '../lib/fileValidation'
 
 /* ─── Helpers ─── */
 
@@ -38,10 +41,13 @@ function renderToDataURL(
 
 export default function BlurHashGenerator() {
   const [imgSrc, setImgSrc] = useState<string | null>(null)
+  const [fileName, setFileName] = useState<string | null>(null)
+  const [fileSize, setFileSize] = useState<number | undefined>(undefined)
   const [hash, setHash] = useState('')
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const { copied, copy: copyToClipboard } = useClipboardCopy()
   const [imgDimensions, setImgDimensions] = useState({ w: 0, h: 0 })
+  const { show } = useToast()
 
   // Decode mode
   const [decodeInput, setDecodeInput] = useState('')
@@ -82,7 +88,12 @@ export default function BlurHashGenerator() {
   }, [hash, imgDimensions])
 
   const handleFile = useCallback((file: File) => {
-    if (!file.type.startsWith('image/')) return
+    if (!isImageFile(file)) {
+      show(`Cannot open ${file.name} — BlurHash Generator only supports image files.`)
+      return
+    }
+    setFileName(file.name)
+    setFileSize(file.size)
     const reader = new FileReader()
     reader.onload = () => {
       setImgSrc(reader.result as string)
@@ -90,9 +101,9 @@ export default function BlurHashGenerator() {
       setPreviewUrl(null)
     }
     reader.readAsDataURL(file)
-  }, [])
+  }, [show])
 
-  const { dragging, inputRef, dragProps, openPicker, onInputChange } = useFileDrop(handleFile, 'image/*')
+  useNativeDrop(items => { if (items[0]) handleFile(items[0].file) })
 
   const copyHash = useCallback(() => {
     if (!hash) return
@@ -136,41 +147,16 @@ export default function BlurHashGenerator() {
       <div style={{ maxWidth: 720, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
 
         {/* Upload area */}
-        <div
-          {...dragProps}
-          onClick={openPicker}
-          style={{
-            ...cardStyle,
-            border: dragging ? '2px dashed var(--accent)' : '2px dashed var(--border)',
-            textAlign: 'center',
-            cursor: 'pointer',
-            padding: imgSrc ? 16 : 40,
-            transition: 'border-color 0.15s',
-          }}
-        >
-          <input
-            ref={inputRef}
-            type="file"
-            accept="image/*"
-            style={{ display: 'none' }}
-            onChange={onInputChange}
-          />
-          {!imgSrc ? (
-            <>
-              <div style={{ fontSize: 28, marginBottom: 8, opacity: 0.5 }}>&#128444;</div>
-              <div style={{ color: 'var(--text)', fontFamily: 'var(--font-sans)', fontSize: 14, fontWeight: 600 }}>
-                Drop an image here or click to upload
-              </div>
-              <div style={{ color: 'var(--text-muted)', fontFamily: 'var(--font-sans)', fontSize: 12, marginTop: 4 }}>
-                PNG, JPG, WebP — hash generated automatically
-              </div>
-            </>
-          ) : (
-            <div style={{ fontSize: 13, color: 'var(--text-dim)', fontFamily: 'var(--font-sans)' }}>
-              Click or drop to replace image
-            </div>
-          )}
-        </div>
+        <FileDropZone
+          value={fileName}
+          fileSize={fileSize}
+          onFileSelect={handleFile}
+          onClear={() => { setImgSrc(null); setHash(''); setPreviewUrl(null); setFileName(null); setFileSize(undefined) }}
+          accept={['png', 'jpg', 'jpeg', 'webp', 'bmp', 'gif']}
+          acceptMime="image/*"
+          title="Drop image here or click to browse"
+          subtitle="Supports PNG, JPG, WebP — BlurHash generated instantly"
+        />
 
         {/* Result: hash + preview side by side */}
         {imgSrc && hash && previewUrl && (

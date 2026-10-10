@@ -2,6 +2,9 @@ import { useState } from 'react'
 import ToolLayout from '../components/ToolLayout'
 import CopyBtn from '../components/CopyBtn'
 import { useFileDrop } from '../hooks/useFileDrop'
+import { useNativeDrop } from '../hooks/useNativeDrop'
+import { useToast } from '../components/Toast'
+import { isSvgFile } from '../lib/fileValidation'
 
 function optimizeSVG(svg: string): string {
   return svg
@@ -26,6 +29,7 @@ const SAMPLE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100
 export default function SvgPreviewPage() {
   const [svg, setSvg] = useState(SAMPLE_SVG)
   const [bgStyle, setBgStyle] = useState<'dark'|'light'|'checker'>('dark')
+  const { show } = useToast()
 
   const optimized = (() => { try { return optimizeSVG(svg) } catch { return svg } })()
   const savings = svg.length > 0 ? Math.round((1 - optimized.length / svg.length) * 100) : 0
@@ -54,9 +58,14 @@ export default function SvgPreviewPage() {
   const previewUri = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(previewSvg)}`
 
   const handleFile = (file: File) => {
-    if (!file.name.endsWith('.svg') && file.type !== 'image/svg+xml') return
+    if (!isSvgFile(file)) {
+      show(`Cannot open ${file.name} — SVG Preview only supports .svg vector files.`)
+      return
+    }
     file.text().then(setSvg)
   }
+
+  useNativeDrop(items => { if (items[0]) handleFile(items[0].file) })
 
   const { dragging, inputRef, dragProps, openPicker, onInputChange } = useFileDrop(handleFile, '.svg,image/svg+xml')
 

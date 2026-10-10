@@ -4,6 +4,8 @@ import ToolLayout from '../components/ToolLayout'
 import imageCompression from 'browser-image-compression'
 import { saveFile, saveFilesToDir, urlToBlob } from '../lib/saveFile'
 import { useNativeDrop } from '../hooks/useNativeDrop'
+import { useToast } from '../components/Toast'
+import FileDropZone from '../components/FileDropZone'
 
 interface FileInfo { name: string; original: number; compressed: number; url: string }
 interface ImageOut { data: string; width: number; height: number; size: number }
@@ -35,8 +37,17 @@ export default function ImageCompressor() {
     return () => { results.forEach(r => { if (r.url) URL.revokeObjectURL(r.url) }) }
   }, [results])
 
+  const { show } = useToast()
+
+  const isImageFile = (f: File) =>
+    f.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|avif|heic|bmp|svg)$/i.test(f.name)
+
   const compress = useCallback(async (files: File[]) => {
-    const images = files.filter(f => f.type.startsWith('image/'))
+    const images = files.filter(isImageFile)
+    const rejected = files.filter(f => !isImageFile(f))
+    if (rejected.length > 0) {
+      show(`Cannot compress ${rejected.map(f => f.name).join(', ')} — Image Compressor only supports images.`)
+    }
     if (!images.length) return
     // Revoke old URLs before replacing results
     setResults(prev => { prev.forEach(r => { if (r.url) URL.revokeObjectURL(r.url) }); return [] })
@@ -49,7 +60,7 @@ export default function ImageCompressor() {
       try {
         // Desktop: PNGs go through native oxipng — losslessly far smaller than a
         // canvas re-encode. Everything else stays on the browser compressor.
-        if (isTauri() && file.type === 'image/png') {
+        if (isTauri() && (file.type === 'image/png' || file.name.toLowerCase().endsWith('.png'))) {
           const { invoke } = await import('@tauri-apps/api/core')
           const bytes = new Uint8Array(await file.arrayBuffer())
           const res = await invoke<ImageOut>('optimize_png', { bytes, maxDim })
@@ -139,30 +150,14 @@ export default function ImageCompressor() {
         </div>
 
         {/* Drop zone */}
-        <div
-          onDrop={onDrop}
-          onDragOver={e => { e.preventDefault(); setDragging(true) }}
-          onDragLeave={() => setDragging(false)}
-          onClick={() => inputRef.current?.click()}
-          className={`border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all duration-200 select-none
-            ${dragging
-              ? 'border-blue-400 bg-blue-50 scale-[1.01]'
-              : 'border-slate-200 bg-white hover:border-blue-400 hover:bg-blue-50/40'
-            }`}
-        >
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400">
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3 9.75h18M3 6.75A2.25 2.25 0 015.25 4.5h13.5A2.25 2.25 0 0121 6.75v10.5A2.25 2.25 0 0118.75 19.5H5.25A2.25 2.25 0 013 17.25V6.75z" />
-              </svg>
-            </div>
-            <div>
-              <p className="font-semibold text-slate-700">Drop images here or click to select</p>
-              <p className="text-sm text-slate-400 mt-0.5">JPEG, PNG, WebP, GIF · Multiple files supported</p>
-            </div>
-          </div>
-          <input ref={inputRef} type="file" multiple accept="image/*" className="hidden" onChange={e => onFiles(e.target.files)} />
-        </div>
+        <FileDropZone
+          multiple
+          acceptMime="image/*"
+          accept={['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'heic']}
+          onFilesSelect={files => compress(files)}
+          title="Drop images here or click to select"
+          subtitle="JPEG, PNG, WebP, GIF, HEIC · Multiple files supported"
+        />
 
         {/* Progress */}
         {loading && (

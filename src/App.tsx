@@ -179,6 +179,66 @@ export default function App() {
     return () => clearTimeout(t)
   }, [])
 
+  // Native desktop behavior: reject OS file drags outside legitimate drop zones (e.g. on Home page).
+  // Shows the native macOS prohibited / not-allowed cursor (🚫) and cancels accidental drops.
+  useEffect(() => {
+    const isInsideDropTarget = (target: EventTarget | null): boolean => {
+      if (!(target instanceof Element)) return false
+      return !!target.closest(
+        '[data-drop-zone="true"], .file-drop-zone, [data-accept-drop="true"], textarea, input, .monaco-diff-editor, .monaco-editor, [data-allow-drop="true"]'
+      )
+    }
+
+    const handleDragEnter = (e: DragEvent) => {
+      const types = e.dataTransfer?.types
+      const isFileDrag = types ? Array.from(types).includes('Files') : false
+      if (!isFileDrag) return
+
+      if (!isInsideDropTarget(e.target)) {
+        if (e.dataTransfer) {
+          e.dataTransfer.dropEffect = 'none'
+        }
+      }
+    }
+
+    const handleDragOver = (e: DragEvent) => {
+      const types = e.dataTransfer?.types
+      const isFileDrag = types ? Array.from(types).includes('Files') : false
+      if (!isFileDrag) return
+
+      if (!isInsideDropTarget(e.target)) {
+        if (e.dataTransfer) {
+          e.dataTransfer.dropEffect = 'none'
+        }
+        // Do NOT call e.preventDefault() here. Calling preventDefault tells WebKit
+        // this is a valid drop target (showing the green '+' copy cursor). Omitting it
+        // keeps the native prohibited (🚫) cursor on Home screen and non-drop areas.
+      }
+    }
+
+    const handleDrop = (e: DragEvent) => {
+      const types = e.dataTransfer?.types
+      const isFileDrag = types ? Array.from(types).includes('Files') : false
+      if (!isFileDrag) return
+
+      if (!isInsideDropTarget(e.target)) {
+        // Stop browser from opening/navigating to the file when dropped on invalid zones
+        e.preventDefault()
+        e.stopPropagation()
+      }
+    }
+
+    window.addEventListener('dragenter', handleDragEnter)
+    window.addEventListener('dragover', handleDragOver)
+    window.addEventListener('drop', handleDrop)
+
+    return () => {
+      window.removeEventListener('dragenter', handleDragEnter)
+      window.removeEventListener('dragover', handleDragOver)
+      window.removeEventListener('drop', handleDrop)
+    }
+  }, [])
+
   return (
     <ToastProvider>
     <BrowserRouter>

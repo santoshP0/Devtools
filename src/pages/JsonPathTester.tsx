@@ -1,5 +1,8 @@
 import { useState, useCallback } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import { useNativeDrop } from '../hooks/useNativeDrop'
+import { useToast } from '../components/Toast'
+import { isJsonFile, isTextFile } from '../lib/fileValidation'
 
 // Minimal JSONPath evaluator — supports $, .key, [n], [*], ..key
 function jsonPath(obj: unknown, path: string): unknown[] {
@@ -108,6 +111,18 @@ export default function JsonPathTester() {
   const [results, setResults] = useState<unknown[]>([])
   const [error, setError] = useState('')
   const [parsed, setParsed] = useState<unknown>(null)
+  const { show } = useToast()
+
+  const loadFile = async (file: File) => {
+    if (!isJsonFile(file) && !isTextFile(file)) {
+      show(`Cannot open ${file.name} — JSON Path Tester only supports JSON and text files.`)
+      return
+    }
+    const text = await file.text()
+    if (text) setJson(text)
+  }
+
+  useNativeDrop(items => { if (items[0]) loadFile(items[0].file) })
 
   const evaluate = useCallback(() => {
     setError('')

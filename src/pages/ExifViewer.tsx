@@ -1,7 +1,10 @@
 import { useState, useCallback, useRef } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import FileDropZone from '../components/FileDropZone'
 import { useClipboardCopy } from '../hooks/useClipboardCopy'
 import { useNativeDrop } from '../hooks/useNativeDrop'
+import { useToast } from '../components/Toast'
+import { isExifSupportedFile, isImageFile } from '../lib/fileValidation'
 
 /* ── EXIF Tag Definitions ── */
 const EXIF_TAGS: Record<number, string> = {
@@ -554,8 +557,13 @@ export default function ExifViewer() {
   const { copied: copiedJson, copy: copyJson } = useClipboardCopy()
   const bufferRef = useRef<ArrayBuffer | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const { show } = useToast()
 
   const loadFile = useCallback((file: File) => {
+    if (!isExifSupportedFile(file) && !isImageFile(file)) {
+      show(`Cannot open ${file.name} — EXIF Viewer only supports photos and image files.`)
+      return
+    }
     setFileName(file.name)
     setFileSize(file.size)
     const reader = new FileReader()
@@ -647,46 +655,13 @@ export default function ExifViewer() {
 
         {/* ── Drop Zone ── */}
         {!hasFile && (
-          <div
-            onDragOver={e => { e.preventDefault(); setIsDragging(true) }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={onDrop}
-            onClick={() => fileInputRef.current?.click()}
-            style={{
-              display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center',
-              gap: 16, padding: '60px 24px',
-              border: `2px dashed ${isDragging ? 'var(--accent)' : 'var(--border)'}`,
-              borderRadius: 16,
-              background: isDragging ? 'var(--accent-bg)' : 'var(--surface)',
-              cursor: 'pointer', transition: 'all 0.2s', userSelect: 'none',
-            }}
-          >
-            <input
-              ref={fileInputRef} type="file"
-              accept="image/*"
-              style={{ display: 'none' }}
-              onChange={e => { const f = e.target.files?.[0]; if (f) loadFile(f); e.target.value = '' }}
-            />
-            <div style={{
-              width: 72, height: 72, borderRadius: 20,
-              background: 'var(--bg2)', border: '1px solid var(--border)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 34, transition: 'transform 0.2s',
-              transform: isDragging ? 'scale(1.1)' : 'scale(1)',
-            }}>🔍</div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text)', marginBottom: 8, fontFamily: 'var(--font-sans)' }}>
-                {isDragging ? 'Drop image here' : 'Open an Image'}
-              </div>
-              <div style={{ fontSize: 13, color: 'var(--text-muted)', fontFamily: 'var(--font-sans)' }}>
-                Drag & drop or click · JPEG, PNG, WebP, TIFF & more
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, fontFamily: 'var(--font-mono)' }}>
-                All processing is done locally — no upload
-              </div>
-            </div>
-          </div>
+          <FileDropZone
+            onFileSelect={loadFile}
+            accept={['jpg', 'jpeg', 'png', 'webp', 'tiff', 'heic', 'bmp']}
+            acceptMime="image/*"
+            title="Open an Image to Inspect EXIF"
+            subtitle="Drop photo here or browse · JPEG, PNG, WebP, TIFF & more"
+          />
         )}
 
         {/* ── Results ── */}

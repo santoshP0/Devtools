@@ -5,6 +5,8 @@ import { useFileDrop } from '../hooks/useFileDrop'
 import { useNativeDrop, usePasteImage } from '../hooks/useNativeDrop'
 import { saveFile } from '../lib/saveFile'
 import { useOpenedFile } from '../lib/openWith'
+import { useToast } from '../components/Toast'
+import FileDropZone from '../components/FileDropZone'
 
 // native image_convert result (desktop) — base64 of the encoded bytes
 interface ImageOut { data: string; width: number; height: number; size: number }
@@ -87,6 +89,7 @@ export default function ImageConverter() {
   const [sourceFile, setSourceFile] = useState<File | null>(null)
   const [sourceInfo, setSourceInfo] = useState<ImageInfo | null>(null)
   const [sourceUrl, setSourceUrl] = useState<string>('')
+  const { show } = useToast()
 
   const [outputFormat, setOutputFormat] = useState('webp')
   const [quality, setQuality] = useState(85)
@@ -180,7 +183,9 @@ export default function ImageConverter() {
       }
       return
     }
-    if (!file.type.startsWith('image/')) {
+    const isImg = file.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|avif|heic|tiff?|tga|dds|qoi|pnm|ppm|pgm|pbm|ff)$/i.test(file.name)
+    if (!isImg) {
+      show(`Cannot open ${file.name} — Image Converter only supports image files.`)
       setError('Unsupported file type.')
       return
     }
@@ -328,34 +333,15 @@ export default function ImageConverter() {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20, flex: 1 }}>
 
         {/* Upload Area */}
-        <div
-          {...dragProps}
-          onClick={openPicker}
-          style={{
-            ...cardStyle,
-            border: dragging ? '2px dashed var(--accent)' : '2px dashed var(--border)',
-            textAlign: 'center',
-            cursor: 'pointer',
-            padding: 40,
-            transition: 'border-color 0.15s',
-            background: dragging ? 'var(--surface2)' : 'var(--surface)',
-          }}
-        >
-          <input
-            ref={inputRef}
-            type="file"
-            accept={ACCEPT}
-            onChange={onInputChange}
-            style={{ display: 'none' }}
-          />
-          <div style={{ fontSize: 32, marginBottom: 8 }}>{decoding ? '⏳' : '🖼'}</div>
-          <div style={{ color: 'var(--text)', fontFamily: 'var(--font-sans)', fontWeight: 600, fontSize: 15 }}>
-            {decoding ? 'Decoding HEIC…' : 'Drop an image here or click to browse'}
-          </div>
-          <div style={{ color: 'var(--text-dim)', fontFamily: 'var(--font-sans)', fontSize: 13, marginTop: 4 }}>
-            PNG, JPEG, WebP, GIF, BMP — plus HEIC/HEIF from iPhone{isTauri() ? ', and TIFF/TGA/DDS/QOI natively' : ''}
-          </div>
-        </div>
+        <FileDropZone
+          value={sourceInfo ? sourceInfo.name : null}
+          fileSize={sourceInfo?.size}
+          onFileSelect={handleFile}
+          onClear={() => { setSourceInfo(null); setSourceImage(null); setSourceUrl(''); setResult(null) }}
+          accept={['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'heic', 'tiff']}
+          title={decoding ? 'Decoding image…' : 'Choose an image to convert'}
+          subtitle={`PNG, JPEG, WebP, GIF, BMP, HEIC${isTauri() ? ', TIFF/TGA natively' : ''}`}
+        />
 
         {error && (
           <div style={{

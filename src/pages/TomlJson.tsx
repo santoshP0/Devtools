@@ -2,7 +2,8 @@ import { useState } from 'react'
 import ToolLayout from '../components/ToolLayout'
 import { parse } from 'smol-toml'
 import { useNativeDrop } from '../hooks/useNativeDrop'
-import { useOpenedFile } from '../lib/openWith'
+import { useToast } from '../components/Toast'
+import { isTomlFile, isJsonFile } from '../lib/fileValidation'
 
 function jsonToToml(obj: unknown, indent = 0): string {
   if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) {
@@ -83,15 +84,19 @@ export default function TomlJson() {
   const [toml, setToml] = useState(SAMPLE_TOML)
   const [json, setJson] = useState('')
   const [error, setError] = useState('')
+  const { show } = useToast()
 
   // Desktop: drop a file from Finder, or "Open with DevToolbox" — .json lands in
   // the JSON box, else TOML.
   const loadFile = async (file: File) => {
+    if (!isTomlFile(file) && !isJsonFile(file)) {
+      show(`Cannot open ${file.name} — TOML ↔ JSON only supports TOML and JSON files.`)
+      return
+    }
     const text = await file.text()
     if (/\.json$/i.test(file.name)) setJson(text); else setToml(text)
   }
   useNativeDrop(items => { if (items[0]) loadFile(items[0].file) })
-  useOpenedFile('/toml-json', loadFile)
   const [copied, setCopied] = useState<'toml' | 'json' | null>(null)
 
   const tomlToJson = () => {

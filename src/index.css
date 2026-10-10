@@ -725,8 +725,13 @@
 .cat-Utils    { color: var(--cat-utl);  background: var(--cat-utl-bg); }
 
 /* Form elements — global (matching reference) */
-textarea, input[type="text"], input[type="number"], input[type="url"],
-input[type="email"], input[type="password"], select {
+textarea:not(.monaco-editor *),
+input[type="text"]:not(.monaco-editor *):not(.search-input-control),
+input[type="number"]:not(.monaco-editor *),
+input[type="url"]:not(.monaco-editor *),
+input[type="email"]:not(.monaco-editor *),
+input[type="password"]:not(.monaco-editor *),
+select:not(.monaco-editor *) {
   background: var(--surface) !important;
   color: var(--sketch-text) !important;
   border: 2px solid var(--sketch-text) !important;
@@ -740,8 +745,13 @@ input[type="email"], input[type="password"], select {
   resize: vertical;
   box-shadow: 2px 2px 0px var(--sketch-text) !important;
 }
-textarea:focus, input[type="text"]:focus, input[type="number"]:focus,
-input[type="url"]:focus, input[type="email"]:focus, input[type="password"]:focus, select:focus {
+textarea:not(.monaco-editor *):focus,
+input[type="text"]:not(.monaco-editor *):not(.search-input-control):focus,
+input[type="number"]:not(.monaco-editor *):focus,
+input[type="url"]:not(.monaco-editor *):focus,
+input[type="email"]:not(.monaco-editor *):focus,
+input[type="password"]:not(.monaco-editor *):focus,
+select:not(.monaco-editor *):focus {
   transform: translate(-1px, -1px) !important;
   box-shadow: 3px 3px 0px var(--sketch-text) !important;
 }
@@ -752,7 +762,151 @@ input.input-bare, input.input-bare:focus {
   background: transparent !important;
   transform: none !important;
 }
-textarea { min-height: 120px; line-height: 1.6; }
+textarea:not(.monaco-editor *) { min-height: 120px; line-height: 1.6; }
+
+/* ── Monaco Editor internal widgets isolation ───────────────────────────── */
+.monaco-editor textarea,
+.monaco-editor input {
+  min-height: 0 !important;
+  resize: none !important;
+  box-shadow: none !important;
+  transform: none !important;
+  border-radius: 0 !important;
+  transition: none !important;
+}
+
+.monaco-editor .find-widget {
+  line-height: normal !important;
+}
+
+.monaco-editor .find-widget .monaco-inputbox {
+  min-height: 0 !important;
+  height: 25px !important;
+  box-shadow: none !important;
+  transform: none !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 3px !important;
+  background: var(--surface) !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.monaco-editor .find-widget .monaco-inputbox input,
+.monaco-editor .find-widget .monaco-inputbox textarea {
+  padding: 2px 6px !important;
+  min-height: 0 !important;
+  height: 21px !important;
+  max-height: 21px !important;
+  line-height: 18px !important;
+  font-size: 12px !important;
+  border: none !important;
+  box-shadow: none !important;
+  transform: none !important;
+  box-sizing: border-box !important;
+  outline: none !important;
+  background: transparent !important;
+  color: var(--text) !important;
+  font-family: var(--font-mono) !important;
+}
+
+.monaco-editor .find-widget .monaco-inputbox input::placeholder,
+.monaco-editor .find-widget .monaco-inputbox textarea::placeholder {
+  color: var(--text-muted) !important;
+  opacity: 0.65 !important;
+  line-height: 18px !important;
+}
+
+/* Completely suppress Monaco widget hover tooltips so buttons can be clicked comfortably without any hover text appearing */
+.workbench-hover-container,
+.workbench-hover-pointer,
+.monaco-hover.workbench-hover,
+.monaco-hover[role="tooltip"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Ensure any floating editor hover never captures or intercepts button clicks */
+.monaco-hover:not(.interactive) {
+  pointer-events: none !important;
+}
+
+/* Align and normalize all 4 Find Widget action buttons (Previous, Next, Find in Selection, Close) */
+.monaco-editor .find-widget .find-actions {
+  height: 25px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 2px !important;
+}
+
+.monaco-editor .find-widget .button,
+.monaco-editor .find-widget .codicon-find-selection,
+.monaco-editor .find-widget > .button.codicon-widget-close {
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+  min-height: 20px !important;
+  max-width: 20px !important;
+  max-height: 20px !important;
+  padding: 0 !important;
+  margin: 0 1px !important;
+  border-radius: 4px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+  cursor: pointer !important;
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  transform: none !important;
+  background: transparent;
+  color: var(--text);
+  font-size: 14px !important;
+  line-height: 1 !important;
+  pointer-events: auto !important;
+  user-select: none !important;
+}
+
+/* Align close button (✕) to the exact vertical center line as the other action buttons */
+.monaco-editor .find-widget > .button.codicon-widget-close {
+  top: 5.5px !important;
+  right: 6px !important;
+}
+
+/* Normalise codicon icon sizing and centering inside all 4 buttons */
+.monaco-editor .find-widget .button::before,
+.monaco-editor .find-widget .codicon-find-selection::before,
+.monaco-editor .find-widget > .button.codicon-widget-close::before {
+  font-size: 14px !important;
+  line-height: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Hover and active feedback for all 4 buttons */
+.monaco-editor .find-widget .button:hover,
+.monaco-editor .find-widget .codicon-find-selection:hover,
+.monaco-editor .find-widget > .button.codicon-widget-close:hover {
+  background: var(--surface2) !important;
+  color: var(--text) !important;
+}
+
+.monaco-editor .find-widget .button:active,
+.monaco-editor .find-widget .codicon-find-selection:active,
+.monaco-editor .find-widget > .button.codicon-widget-close:active {
+  background: var(--border) !important;
+}
+
+/* Find-in-selection button active/checked state */
+.monaco-editor .find-widget .button.toggle.checked {
+  background: var(--accent-bg) !important;
+  color: var(--accent) !important;
+}
+
 select { 
   resize: none !important; 
   cursor: pointer !important;
@@ -1602,15 +1756,15 @@ input[type="text"].search-input-control:active {
    untouched (every rule below is [data-theme="dark"] scoped). */
 
 /* Buttons + form fields — border/shadow come from the unlayered global rules. */
-[data-theme="dark"] button,
+[data-theme="dark"] button:not(.monaco-editor *),
 [data-theme="dark"] .btn,
-[data-theme="dark"] textarea,
-[data-theme="dark"] input[type="text"],
-[data-theme="dark"] input[type="number"],
-[data-theme="dark"] input[type="url"],
-[data-theme="dark"] input[type="email"],
-[data-theme="dark"] input[type="password"],
-[data-theme="dark"] select {
+[data-theme="dark"] textarea:not(.monaco-editor *),
+[data-theme="dark"] input[type="text"]:not(.monaco-editor *),
+[data-theme="dark"] input[type="number"]:not(.monaco-editor *),
+[data-theme="dark"] input[type="url"]:not(.monaco-editor *),
+[data-theme="dark"] input[type="email"]:not(.monaco-editor *),
+[data-theme="dark"] input[type="password"]:not(.monaco-editor *),
+[data-theme="dark"] select:not(.monaco-editor *) {
   border-color: var(--border) !important;
   box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.4) !important;
 }

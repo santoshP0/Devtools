@@ -11,6 +11,10 @@ import katex from 'katex'
 import 'katex/dist/katex.min.css'
 import DOMPurify from 'dompurify'
 import mermaid from 'mermaid'
+import { isTauri } from '@tauri-apps/api/core'
+import { useToast } from '../components/Toast'
+import { isMarkdownFile } from '../lib/fileValidation'
+import { pickNativeFile, MARKDOWN_EXTENSIONS } from '../lib/fileDialog'
 
 /* ─── Mermaid init ─── */
 mermaid.initialize({
@@ -284,9 +288,17 @@ export default function MarkdownPreview() {
   const { copied: copiedMd, copy: copyMd } = useClipboardCopy(2000)
   const { copied: copiedHtml, copy: copyHtml } = useClipboardCopy(2000)
   const [fileName, setFileName] = useState<string | null>(null)
+  const { show } = useToast()
 
   // Desktop: Finder drag-drop and "Open with DevToolbox" on a .md file.
-  const loadFile = async (file: File) => { setMarkdown(await file.text()); setFileName(file.name) }
+  const loadFile = async (file: File) => {
+    if (!isMarkdownFile(file)) {
+      show(`Cannot open ${file.name} — Markdown Preview only supports markdown and text files.`)
+      return
+    }
+    setMarkdown(await file.text())
+    setFileName(file.name)
+  }
   useNativeDrop(items => { if (items[0]) loadFile(items[0].file) })
   useOpenedFile('/markdown-preview', loadFile)
 
@@ -375,7 +387,10 @@ export default function MarkdownPreview() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFile = useCallback((file: File) => {
-    if (!file.name.match(/\.(md|markdown|mdx|txt)$/i)) return
+    if (!isMarkdownFile(file)) {
+      show(`Cannot open ${file.name} — Markdown Preview only supports markdown and text files.`)
+      return
+    }
     setFileName(file.name)
     const reader = new FileReader()
     reader.onload = (e) => {
@@ -383,13 +398,29 @@ export default function MarkdownPreview() {
       if (typeof text === 'string') setMarkdown(text)
     }
     reader.readAsText(file)
-  }, [])
+  }, [show])
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     const file = e.dataTransfer.files[0]
     if (file) handleFile(file)
   }, [handleFile])
+
+  const openPicker = async () => {
+    const res = await pickNativeFile({
+      title: 'Open Markdown File',
+      filterName: 'Markdown & Text Files',
+      extensions: MARKDOWN_EXTENSIONS,
+    })
+    if (res) {
+      setMarkdown(res.text)
+      setFileName(res.name)
+      return
+    }
+    if (!isTauri()) {
+      fileInputRef.current?.click()
+    }
+  }
 
   const editorPanel = (
     <div style={{ display: 'flex', flexDirection: 'column', flex: view === 'split' ? 'none' : 1, minHeight: 0, width: view === 'split' ? `${splitPercent}%` : undefined }}>
@@ -403,7 +434,7 @@ export default function MarkdownPreview() {
           )}
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
-          <button onClick={() => fileInputRef.current?.click()} className="copy-btn">Open File</button>
+          <button onClick={openPicker} className="copy-btn">Open File</button>
           <button onClick={() => copyMd(markdown)} className="copy-btn">{copiedMd ? '✓ Copied' : 'Copy MD'}</button>
         </div>
       </div>

@@ -8,8 +8,13 @@ const CSV_SCROLL_STYLE = `
   .csv-scroll::-webkit-scrollbar-corner { background: var(--bg2); }
 `
 import ToolLayout from '../components/ToolLayout'
+import FileDropZone from '../components/FileDropZone'
 import { useNativeDrop } from '../hooks/useNativeDrop'
 import { useOpenedFile } from '../lib/openWith'
+import { isTauri } from '@tauri-apps/api/core'
+import { useToast } from '../components/Toast'
+import { isCsvFile } from '../lib/fileValidation'
+import { pickNativeFile } from '../lib/fileDialog'
 
 /* ─── CSV Parser ─────────────────────────────────────────── */
 function parseCSV(text: string): { headers: string[]; rows: string[][] } {
@@ -218,6 +223,7 @@ export default function CsvViewerPage() {
   const [colWidths, setColWidths] = useState<number[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const resizingRef = useRef<{ col: number; startX: number; startW: number } | null>(null)
+  const { show } = useToast()
 
   /* ── Parse ── */
   const { headers, rows } = useMemo(() => parseCSV(rawCsv), [rawCsv])
@@ -249,6 +255,10 @@ export default function CsvViewerPage() {
   /* ── Load file ── */
   const loadFile = useCallback((file: File) => {
     if (!file) return
+    if (!isCsvFile(file)) {
+      show(`Cannot open ${file.name} — CSV Viewer only supports CSV, TSV and tabular text files.`)
+      return
+    }
     setFileName(file.name)
     const reader = new FileReader()
     reader.onload = e => {
@@ -259,7 +269,7 @@ export default function CsvViewerPage() {
       setSortDir('asc')
     }
     reader.readAsText(file)
-  }, [])
+  }, [show])
 
   // Desktop: Finder drag-drop (HTML onDrop is dead in the Tauri webview), and
   // files opened with "Open with DevToolbox".
@@ -325,6 +335,21 @@ export default function CsvViewerPage() {
     URL.revokeObjectURL(url)
   }, [rawCsv, fileName])
 
+  const openPicker = async () => {
+    const res = await pickNativeFile({
+      title: 'Open CSV File',
+      filterName: 'CSV & Tabular Files',
+      extensions: ['csv', 'tsv', 'txt'],
+    })
+    if (res) {
+      loadFile(res.file)
+      return
+    }
+    if (!isTauri()) {
+      fileInputRef.current?.click()
+    }
+  }
+
   /* ─── Render ──────────────────────────────────────────────── */
   const hasData = headers.length > 0
 
@@ -342,9 +367,10 @@ export default function CsvViewerPage() {
             style={{ display: 'none' }}
             onChange={e => { const f = e.target.files?.[0]; if (f) loadFile(f); e.target.value = '' }}
           />
+
           <button
             className="btn btn-primary btn-sm"
-            onClick={() => fileInputRef.current?.click()}
+            onClick={openPicker}
             style={{ display: 'flex', alignItems: 'center', gap: 6 }}
           >
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
@@ -434,55 +460,14 @@ export default function CsvViewerPage() {
 
         {/* ── Drop Zone (shown when no data) ── */}
         {!hasData && (
-          <div
-            onDragOver={onDragOver}
-            onDragLeave={onDragLeave}
-            onDrop={onDrop}
-            onClick={() => fileInputRef.current?.click()}
-            style={{
-              flex: 1,
-              display: 'flex', flexDirection: 'column',
-              alignItems: 'center', justifyContent: 'center', gap: 20,
-              border: `2px dashed ${isDragging ? 'var(--accent)' : 'var(--border)'}`,
-              borderRadius: 16,
-              background: isDragging ? 'var(--accent-bg)' : 'var(--surface)',
-              cursor: 'pointer',
-              transition: 'all 0.2s',
-              userSelect: 'none',
-            }}
-          >
-            <div style={{
-              width: 72, height: 72, borderRadius: 20,
-              background: 'var(--bg2)', border: '1px solid var(--border)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 32,
-              boxShadow: '0 4px 24px var(--border)',
-              transition: 'transform 0.2s',
-              transform: isDragging ? 'scale(1.08)' : 'scale(1)',
-            }}>
-              📊
-            </div>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text)', marginBottom: 8, fontFamily: 'var(--font-sans)' }}>
-                {isDragging ? 'Drop your CSV here' : 'Open a CSV File'}
-              </div>
-              <div style={{ fontSize: 13, color: 'var(--text-muted)', fontFamily: 'var(--font-sans)' }}>
-                Drag &amp; drop, click to browse, or paste from clipboard
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6, fontFamily: 'var(--font-mono)' }}>
-                Handles millions of rows instantly with virtual scrolling
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {['.csv', '.tsv', '.txt'].map(ext => (
-                <span key={ext} style={{
-                  fontSize: 11, fontFamily: 'var(--font-mono)',
-                  background: 'var(--surface2)', border: '1px solid var(--border)',
-                  borderRadius: 6, padding: '3px 8px', color: 'var(--text-muted)',
-                }}>{ext}</span>
-              ))}
-            </div>
-          </div>
+          <FileDropZone
+            onFileSelect={loadFile}
+            accept={['csv', 'tsv', 'txt']}
+            acceptMime=".csv,text/csv,text/plain"
+            title="Open a CSV File"
+            subtitle="Drag & drop, click to browse · Handles millions of rows with virtual scrolling"
+            style={{ flex: 1, minHeight: 220 }}
+          />
         )}
 
         {/* ── Or paste area (fallback) ── */}

@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
 import ToolLayout from '../components/ToolLayout'
 import CopyBtn from '../components/CopyBtn'
+import { useNativeDrop } from '../hooks/useNativeDrop'
+import { useToast } from '../components/Toast'
+import { isSqlFile, isTextFile } from '../lib/fileValidation'
 
 const SQL_KEYWORDS = ['SELECT','FROM','WHERE','AND','OR','NOT','IN','BETWEEN','LIKE','IS','NULL','JOIN','LEFT','RIGHT','INNER','OUTER','FULL','CROSS','ON','AS','ORDER','BY','GROUP','HAVING','LIMIT','OFFSET','INSERT','INTO','VALUES','UPDATE','SET','DELETE','CREATE','TABLE','DROP','ALTER','ADD','COLUMN','PRIMARY','KEY','FOREIGN','REFERENCES','UNIQUE','INDEX','VIEW','CASE','WHEN','THEN','ELSE','END','UNION','ALL','DISTINCT','TOP','EXISTS','WITH']
 
@@ -28,6 +31,17 @@ export default function SqlFormatterPage() {
   const SAMPLE = `SELECT u.id, u.name, u.email, p.title, p.created_at FROM users u INNER JOIN posts p ON p.user_id = u.id WHERE u.active = 1 AND u.created_at > '2024-01-01' AND (p.status = 'published' OR p.status = 'featured') ORDER BY p.created_at DESC LIMIT 20 OFFSET 0`
   const [input, setInput] = useState(SAMPLE)
   const [output, setOutput] = useState('')
+  const { show } = useToast()
+
+  const loadFile = async (f: File) => {
+    if (!isSqlFile(f) && !isTextFile(f)) {
+      show(`Cannot open ${f.name} — SQL Formatter only supports SQL and text files.`)
+      return
+    }
+    setInput(await f.text())
+  }
+
+  useNativeDrop(items => { if (items[0]) loadFile(items[0].file) })
 
   useEffect(() => {
     try { setOutput(formatSQL(input)) } catch { setOutput(input) }

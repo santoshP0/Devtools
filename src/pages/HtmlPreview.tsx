@@ -1,5 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import { useNativeDrop } from '../hooks/useNativeDrop'
+import { useToast } from '../components/Toast'
+import { isHtmlFile, isTextFile } from '../lib/fileValidation'
 
 const DEFAULT_HTML = `<h1>Hello, DevToolbox!</h1>
 <p>Edit the HTML, CSS, and JS panels to see live preview.</p>
@@ -51,6 +54,17 @@ export default function HtmlPreview() {
   const [html, setHtml] = useState(DEFAULT_HTML)
   const [css, setCss] = useState(DEFAULT_CSS)
   const [js, setJs] = useState(DEFAULT_JS)
+  const { show } = useToast()
+
+  const loadFile = async (f: File) => {
+    if (!isHtmlFile(f) && !isTextFile(f)) {
+      show(`Cannot open ${f.name} — HTML Preview only supports HTML and text files.`)
+      return
+    }
+    setHtml(await f.text())
+  }
+
+  useNativeDrop(items => { if (items[0]) loadFile(items[0].file) })
   const [tab, setTab] = useState<Tab>('html')
   const [srcDoc, setSrcDoc] = useState('')
   const [autoRun, setAutoRun] = useState(true)

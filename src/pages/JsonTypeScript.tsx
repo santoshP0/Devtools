@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
 import ToolLayout from '../components/ToolLayout'
 import CopyBtn from '../components/CopyBtn'
+import { useNativeDrop } from '../hooks/useNativeDrop'
+import { useToast } from '../components/Toast'
+import { isJsonFile, isTextFile } from '../lib/fileValidation'
 
 function inferType(val: unknown, name: string): string {
   if (val === null) return 'null'
@@ -42,6 +45,18 @@ export default function JsonTypeScriptPage() {
   const [output, setOutput] = useState('')
   const [error, setError] = useState('')
   const [rootName, setRootName] = useState('Root')
+  const { show } = useToast()
+
+  const loadFile = async (file: File) => {
+    if (!isJsonFile(file) && !isTextFile(file)) {
+      show(`Cannot open ${file.name} — JSON → TypeScript only supports JSON and text files.`)
+      return
+    }
+    const text = await file.text()
+    if (text) setInput(text)
+  }
+
+  useNativeDrop(items => { if (items[0]) loadFile(items[0].file) })
 
   useEffect(() => {
     if (!input.trim()) { setOutput(''); setError(''); return }

@@ -2,6 +2,8 @@ import { useState, useMemo } from 'react'
 import ToolLayout from '../components/ToolLayout'
 import CopyBtn from '../components/CopyBtn'
 import { useNativeDrop } from '../hooks/useNativeDrop'
+import { useToast } from '../components/Toast'
+import { isJsonFile, isYamlFile, isTextFile } from '../lib/fileValidation'
 
 const SAMPLE_SPEC = `openapi: 3.0.0
 info:
@@ -75,9 +77,18 @@ interface PathItem { method: string; path: string; summary?: string; description
 export default function OpenApiViewerPage() {
   const [spec, setSpec] = useState(SAMPLE_SPEC)
   const [activeTag, setActiveTag] = useState('All')
+  const { show } = useToast()
 
   // Desktop: drop an OpenAPI file (json/yaml) from Finder.
-  useNativeDrop(async items => { if (items[0]) setSpec(await items[0].file.text()) })
+  useNativeDrop(async items => {
+    const it = items[0]
+    if (!it) return
+    if (!isJsonFile(it.file) && !isYamlFile(it.file) && !isTextFile(it.file)) {
+      show(`Cannot open ${it.file.name} — OpenAPI Viewer only supports JSON and YAML spec files.`)
+      return
+    }
+    setSpec(await it.file.text())
+  })
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
   const parsed = useMemo(() => {

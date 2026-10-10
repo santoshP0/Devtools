@@ -3,6 +3,7 @@ import ToolLayout from '../components/ToolLayout'
 import { invoke, isTauri, convertFileSrc } from '@tauri-apps/api/core'
 import { open, save } from '@tauri-apps/plugin-dialog'
 import { useToast } from '../components/Toast'
+import { useNativeDrop } from '../hooks/useNativeDrop'
 import {
   Scissors, Copy, Trash2, SkipBack, SkipForward, Play, Pause, ChevronLeft, ChevronRight,
   Undo2, Redo2, ZoomIn, ZoomOut, Maximize2,
@@ -86,18 +87,24 @@ type MediaAsset = { id: string; kind: 'video' | 'image'; name: string; src: stri
 
 function probeVideo(url: string): Promise<{ w: number; h: number; dur: number }> {
   return new Promise(res => {
+    let settled = false
+    const finish = (v: { w: number; h: number; dur: number }) => { if (!settled) { settled = true; res(v) } }
+    const timer = setTimeout(() => finish({ w: 1280, h: 720, dur: 5 }), 2000)
     const v = document.createElement('video')
     v.preload = 'metadata'
-    v.onloadedmetadata = () => res({ w: v.videoWidth || 1280, h: v.videoHeight || 720, dur: v.duration || 5 })
-    v.onerror = () => res({ w: 1280, h: 720, dur: 5 })
+    v.onloadedmetadata = () => { clearTimeout(timer); finish({ w: v.videoWidth || 1280, h: v.videoHeight || 720, dur: v.duration || 5 }) }
+    v.onerror = () => { clearTimeout(timer); finish({ w: 1280, h: 720, dur: 5 }) }
     v.src = url
   })
 }
 function probeImage(url: string): Promise<{ w: number; h: number }> {
   return new Promise(res => {
+    let settled = false
+    const finish = (v: { w: number; h: number }) => { if (!settled) { settled = true; res(v) } }
+    const timer = setTimeout(() => finish({ w: 640, h: 480 }), 2000)
     const i = new Image()
-    i.onload = () => res({ w: i.naturalWidth || 640, h: i.naturalHeight || 480 })
-    i.onerror = () => res({ w: 640, h: 480 })
+    i.onload = () => { clearTimeout(timer); finish({ w: i.naturalWidth || 640, h: i.naturalHeight || 480 }) }
+    i.onerror = () => { clearTimeout(timer); finish({ w: 640, h: 480 }) }
     i.src = url
   })
 }
@@ -105,17 +112,21 @@ function probeImage(url: string): Promise<{ w: number; h: number }> {
 // protocol, so fail soft to no-thumbnail rather than throwing.
 function grabThumb(url: string): Promise<string> {
   return new Promise(res => {
+    let settled = false
+    const finish = (s: string) => { if (!settled) { settled = true; res(s) } }
+    const timer = setTimeout(() => finish(''), 1500)
     const v = document.createElement('video')
     v.src = url; v.muted = true
-    v.onloadeddata = () => { try { v.currentTime = Math.min(0.1, v.duration || 0) } catch { res('') } }
+    v.onloadeddata = () => { try { v.currentTime = Math.min(0.1, v.duration || 0) } catch { finish('') } }
     v.onseeked = () => {
+      clearTimeout(timer)
       try {
         const c = document.createElement('canvas'); c.width = 160; c.height = 90
         c.getContext('2d')!.drawImage(v, 0, 0, 160, 90)
-        res(c.toDataURL('image/jpeg', 0.6))
-      } catch { res('') }
+        finish(c.toDataURL('image/jpeg', 0.6))
+      } catch { finish('') }
     }
-    v.onerror = () => res('')
+    v.onerror = () => { clearTimeout(timer); finish('') }
   })
 }
 
@@ -370,11 +381,12 @@ function Editor() {
     const add: Item[] = []
     for (const p of paths) {
       if (cur.length + add.length >= MAX_LAYERS) break
-      const url = convertFileSrc(p)
+      const url = isTauri() ? convertFileSrc(p) : p
       const meta = await probeVideo(url)
-      const thumb = await grabThumb(url)
       if (first) { setProj({ w: meta.w, h: meta.h, fps: 30 }); first = false }
-      add.push({ id: uid(), kind: 'video', name: p.split(/[/\\]/).pop() || 'clip', track, src: p, url, thumb, inPoint: 0, clipDur: meta.dur, tStart: cursor, tEnd: cursor + meta.dur, x: 0, y: 0, w: 1, h: 1, opacity: 1, volume: 1, mute: false })
+      const itemId = uid()
+      add.push({ id: itemId, kind: 'video', name: p.split(/[/\\]/).pop() || 'clip', track, src: p, url, thumb: '', inPoint: 0, clipDur: meta.dur, tStart: cursor, tEnd: cursor + meta.dur, x: 0, y: 0, w: 1, h: 1, opacity: 1, volume: 1, mute: false })
+      grabThumb(url).then(t => { if (t) patch(itemId, { thumb: t }) }).catch(() => {})
       cursor += meta.dur
     }
     if (!add.length) return
@@ -392,7 +404,7 @@ function Editor() {
     const add: Item[] = []
     for (const p of paths) {
       if (cur.length + add.length >= MAX_LAYERS) break
-      const url = convertFileSrc(p)
+      const url = isTauri() ? convertFileSrc(p) : p
       const meta = await probeImage(url)
       const arI = meta.w / meta.h
       const w = 0.4, h = clampN(0.4 / arI * (proj.w / proj.h), 0.05, 1)
@@ -414,6 +426,27 @@ function Editor() {
     if (vids.length) await addVideoPaths(vids)
     if (imgs.length) await addImagePaths(imgs)
   }
+
+  // Handle files routed via "Open With" or in-app drag-drop
+  const loadMediaItem = async (file?: File, path?: string) => {
+    const p = path || (file && file.size > 0 ? URL.createObjectURL(file) : '')
+    if (!p) return
+    const name = file?.name || path || ''
+    const ex = name.split('.').pop()?.toLowerCase() || ''
+    if (VIDEO_EXTS.includes(ex)) {
+      await addVideoPaths([p])
+    } else if (IMG_EXTS.includes(ex)) {
+      await addImagePaths([p])
+    } else {
+      toast.show(`Cannot open ${name.split(/[/\\]/).pop()} — Video Editor only supports video and image media files.`)
+    }
+  }
+
+  useNativeDrop(async items => {
+    for (const it of items) {
+      await loadMediaItem(it.file, it.path)
+    }
+  })
   const addOverlay = (kind: 'text' | 'box' | 'blur' | 'circle' | 'line' | 'arrow') => {
     if (items.length >= MAX_LAYERS) return
     snapshot()

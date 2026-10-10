@@ -133,7 +133,7 @@ export default function DarkLightConverter() {
   }, [])
 
   const loadFile = useCallback((file: File) => {
-    if (!file.type.startsWith('image/')) return
+    if (!file.type.startsWith('image/') && !/\.(png|jpe?g|webp|bmp|gif)$/i.test(file.name)) return
     if (sourceUrl) URL.revokeObjectURL(sourceUrl)
     if (resultUrl) URL.revokeObjectURL(resultUrl)
     setResultUrl('')

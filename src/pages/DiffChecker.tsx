@@ -1,27 +1,45 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import ToolLayout from '../components/ToolLayout'
 import { DiffEditor, type DiffOnMount } from '@monaco-editor/react'
 import { monaco, EDITOR_DEFAULTS } from '../lib/monacoSetup'
 import { useIsDark } from '../hooks/useIsDark'
 import { useNativeDrop } from '../hooks/useNativeDrop'
+import { useToast } from '../components/Toast'
+import { isTauri } from '@tauri-apps/api/core'
+import { isTextFile, ACCEPT_TEXT } from '../lib/fileValidation'
+import { pickNativeFile, TEXT_EXTENSIONS } from '../lib/fileDialog'
+
+const normalizeText = (t: string) => t.replace(/\r\n/g, '\n')
 
 export default function DiffChecker() {
   const [sideBySide, setSideBySide] = useState(true)
+  const [wordWrap, setWordWrap] = useState(false)
   const isDark = useIsDark()
+  const { show } = useToast()
   const [stats, setStats] = useState({ add: 0, del: 0 })
   const editorRef = useRef<monaco.editor.IStandaloneDiffEditor | null>(null)
   const fileLRef = useRef<HTMLInputElement>(null)
   const fileRRef = useRef<HTMLInputElement>(null)
   const [copied, setCopied] = useState<'left' | 'right' | null>(null)
 
+  const applyWrapOptions = (wrap: boolean) => {
+    if (!editorRef.current) return
+    const mode = wrap ? 'on' : 'off'
+    editorRef.current.updateOptions({ wordWrap: mode, diffWordWrap: mode })
+    editorRef.current.getOriginalEditor().updateOptions({ wordWrap: mode })
+    editorRef.current.getModifiedEditor().updateOptions({ wordWrap: mode })
+  }
+
+  useEffect(() => {
+    applyWrapOptions(wordWrap)
+  }, [wordWrap, sideBySide])
+
   const onMount: DiffOnMount = (editor) => {
     editorRef.current = editor
-    // Force BOTH panes to the same wrap. monaco-react doesn't reliably propagate
-    // options.wordWrap to both sub-editors, so one pane wrapped and the other
-    // didn't — misaligning lines and rendering identical files as a phantom diff.
-    // 'off' also avoids the 10k-line reflow that froze the tab.
-    editor.getOriginalEditor().updateOptions({ wordWrap: 'off' })
-    editor.getModifiedEditor().updateOptions({ wordWrap: 'off' })
+    const mode = wordWrap ? 'on' : 'off'
+    editor.updateOptions({ wordWrap: mode, diffWordWrap: mode })
+    editor.getOriginalEditor().updateOptions({ wordWrap: mode })
+    editor.getModifiedEditor().updateOptions({ wordWrap: mode })
     editor.onDidUpdateDiff(() => {
       let add = 0, del = 0
       for (const c of editor.getLineChanges() ?? []) {
@@ -51,12 +69,33 @@ export default function DiffChecker() {
     setTimeout(() => setCopied(null), 1500)
   }
 
+  const handlePick = async (side: 'left' | 'right') => {
+    const res = await pickNativeFile({
+      title: `Open ${side === 'left' ? 'Original (Left)' : 'Modified (Right)'} File`,
+      filterName: 'Text & Code files',
+      extensions: TEXT_EXTENSIONS,
+    })
+    if (res) {
+      const m = models(); if (!m) return
+      ;(side === 'left' ? m.orig : m.mod).setValue(normalizeText(res.text))
+      return
+    }
+    if (!isTauri()) {
+      ;(side === 'left' ? fileLRef : fileRRef).current?.click()
+    }
+  }
+
   const openFile = (side: 'left' | 'right') => (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]; if (!f) return
+    if (!isTextFile(f)) {
+      show(`Cannot open binary file (${f.name}) — Diff Checker only supports text and code files.`)
+      e.target.value = ''
+      return
+    }
     const r = new FileReader()
     r.onload = () => {
       const m = models(); if (!m) return
-      ;(side === 'left' ? m.orig : m.mod).setValue(r.result as string)
+      ;(side === 'left' ? m.orig : m.mod).setValue(normalizeText(r.result as string))
     }
     r.readAsText(f)
     e.target.value = ''
@@ -66,7 +105,13 @@ export default function DiffChecker() {
   // fills an empty pane. (HTML drag-drop is intercepted by Tauri, hence native.)
   useNativeDrop(async items => {
     const m = models(); if (!m || items.length === 0) return
-    const texts = await Promise.all(items.slice(0, 2).map(it => it.file.text()))
+    const valid = items.filter(it => isTextFile(it.file))
+    if (valid.length === 0) {
+      show('Cannot open binary files — Diff Checker only supports text and code files.')
+      return
+    }
+    const rawTexts = await Promise.all(valid.slice(0, 2).map(it => it.file.text()))
+    const texts = rawTexts.map(normalizeText)
     if (texts.length >= 2) { m.orig.setValue(texts[0]); m.mod.setValue(texts[1]); return }
     if (!m.orig.getValue().trim()) m.orig.setValue(texts[0])
     else if (!m.mod.getValue().trim()) m.mod.setValue(texts[0])
@@ -97,6 +142,20 @@ export default function DiffChecker() {
             ))}
           </div>
 
+          <button
+            onClick={() => setWordWrap(w => !w)}
+            style={{
+              ...pillBtn,
+              borderRadius: 8,
+              border: '1px solid var(--border)',
+              background: wordWrap ? 'var(--accent)' : 'var(--surface)',
+              color: wordWrap ? '#fff' : 'var(--text-muted)',
+            }}
+            title="Toggle word wrap (off prevents alignment gaps)"
+          >
+            Wrap: {wordWrap ? 'On' : 'Off'}
+          </button>
+
           <button onClick={swap} className="btn-ghost" style={{ fontSize: 13, padding: '4px 14px' }} title="Swap sides">⇄ Swap</button>
 
           {(stats.add > 0 || stats.del > 0) && (
@@ -107,18 +166,18 @@ export default function DiffChecker() {
           )}
 
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button onClick={() => fileLRef.current?.click()} className="btn-ghost" style={{ fontSize: 12, padding: '4px 12px' }}>Open Left…</button>
-            <button onClick={() => fileRRef.current?.click()} className="btn-ghost" style={{ fontSize: 12, padding: '4px 12px' }}>Open Right…</button>
+            <button onClick={() => handlePick('left')} className="btn-ghost" style={{ fontSize: 12, padding: '4px 12px' }}>Open Left…</button>
+            <button onClick={() => handlePick('right')} className="btn-ghost" style={{ fontSize: 12, padding: '4px 12px' }}>Open Right…</button>
             <button onClick={() => copySide('left')} className="btn-ghost" style={{ fontSize: 12, padding: '4px 12px' }}>{copied === 'left' ? '✓ Copied' : 'Copy Left'}</button>
             <button onClick={() => copySide('right')} className="btn-ghost" style={{ fontSize: 12, padding: '4px 12px' }}>{copied === 'right' ? '✓ Copied' : 'Copy Right'}</button>
             <button onClick={exportTxt} className="btn-ghost" style={{ fontSize: 13, padding: '4px 14px', color: 'var(--accent)' }}>↓ Export .txt</button>
           </div>
-          <input ref={fileLRef} type="file" style={{ display: 'none' }} onChange={openFile('left')} />
-          <input ref={fileRRef} type="file" style={{ display: 'none' }} onChange={openFile('right')} />
+          <input ref={fileLRef} type="file" accept={ACCEPT_TEXT} style={{ display: 'none' }} onChange={openFile('left')} />
+          <input ref={fileRRef} type="file" accept={ACCEPT_TEXT} style={{ display: 'none' }} onChange={openFile('right')} />
         </div>
 
         {/* ════ DIFF EDITOR ════ */}
-        <div style={{ flex: 1, minHeight: 'min(65dvh, 560px)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+        <div data-drop-zone="true" style={{ flex: 1, minHeight: 'min(65dvh, 560px)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
           <DiffEditor
             height="100%"
             language="plaintext"
@@ -136,7 +195,9 @@ export default function DiffChecker() {
               // Collapse unchanged regions — only changed lines render, so two big
               // mostly-similar files stay fast instead of laying out every line.
               hideUnchangedRegions: { enabled: true, contextLineCount: 3, minimumLineCount: 4 },
-              wordWrap: 'off',
+              wordWrap: wordWrap ? 'on' : 'off',
+              diffWordWrap: wordWrap ? 'on' : 'off',
+              ignoreTrimWhitespace: true,
               minimap: { enabled: false },
               placeholder: 'Paste or type original text…',
             }}

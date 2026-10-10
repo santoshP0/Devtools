@@ -1,6 +1,9 @@
 import { useState, useMemo } from 'react'
 import ToolLayout from '../components/ToolLayout'
 import CopyBtn from '../components/CopyBtn'
+import { useNativeDrop } from '../hooks/useNativeDrop'
+import { useToast } from '../components/Toast'
+import { isTextFile } from '../lib/fileValidation'
 
 const OPS = [
   { id:'sort-az',   label:'Sort A → Z',      fn: (lines: string[]) => [...lines].sort((a,b) => a.localeCompare(b)) },
@@ -20,6 +23,18 @@ export default function LineSorterPage() {
   const [input, setInput] = useState('banana\napple\ncherry\napple\ndate\nbanana\nempty line below\n\nfig')
   const [output, setOutput] = useState('')
   const [filter, setFilter] = useState('')
+  const { show } = useToast()
+
+  const loadFile = async (file: File) => {
+    if (!isTextFile(file)) {
+      show(`Cannot open binary file (${file.name}) — Line Sorter only supports text files.`)
+      return
+    }
+    const text = await file.text()
+    if (text) setInput(text)
+  }
+
+  useNativeDrop(items => { if (items[0]) loadFile(items[0].file) })
 
   const process = (opId: string) => {
     let lines = input.split('\n')

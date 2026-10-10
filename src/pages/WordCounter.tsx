@@ -1,8 +1,23 @@
 import { useState, useMemo } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import { useNativeDrop } from '../hooks/useNativeDrop'
+import { useToast } from '../components/Toast'
+import { isTextFile } from '../lib/fileValidation'
 
 export default function WordCounter() {
   const [text, setText] = useState('')
+  const { show } = useToast()
+
+  const loadFile = async (file: File) => {
+    if (!isTextFile(file)) {
+      show(`Cannot open binary file (${file.name}) — Word Counter only supports text files.`)
+      return
+    }
+    const content = await file.text()
+    if (content) setText(content)
+  }
+
+  useNativeDrop(items => { if (items[0]) loadFile(items[0].file) })
 
   const stats = useMemo(() => {
     const words = text.trim() === '' ? 0 : text.trim().split(/\s+/).length

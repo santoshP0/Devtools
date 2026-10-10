@@ -5,6 +5,8 @@ import { useClipboardCopy } from '../hooks/useClipboardCopy'
 import { useIsDark } from '../hooks/useIsDark'
 import { useNativeDrop } from '../hooks/useNativeDrop'
 import { saveFile } from '../lib/saveFile'
+import { useToast } from '../components/Toast'
+import { isTextFile } from '../lib/fileValidation'
 import { Search, ChevronUp, ChevronDown, X, Replace } from 'lucide-react'
 
 interface Note {
@@ -89,6 +91,7 @@ export default function Notes() {
   const [findText, setFindText] = useState('')
   const [replaceText, setReplaceText] = useState('')
   const { copied: copiedNote, copy: copyNote } = useClipboardCopy(2000)
+  const { show } = useToast()
   const titleRef = useRef<HTMLInputElement>(null)
   const contentRef = useRef<HTMLTextAreaElement>(null)
   const findRef = useRef<HTMLInputElement>(null)
@@ -202,7 +205,12 @@ export default function Notes() {
 
   // Desktop: drop .md/.txt files from Finder to import them as notes.
   useNativeDrop(async items => {
-    const files = items.filter(i => /\.(md|markdown|txt)$/i.test(i.file.name))
+    const invalid = items.filter(i => !isTextFile(i.file))
+    if (invalid.length > 0 && invalid.length === items.length) {
+      show(`Cannot open binary file (${invalid[0].file.name}) — Notes only supports text and markdown files.`)
+      return
+    }
+    const files = items.filter(i => isTextFile(i.file) && /\.(md|markdown|txt)$/i.test(i.file.name))
     if (!files.length) return
     const imported: Note[] = []
     for (const f of files) {
