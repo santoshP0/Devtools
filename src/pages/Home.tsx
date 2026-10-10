@@ -13,6 +13,9 @@ import {
 import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable'
 import { useFavorites } from '../lib/storage'
 import { useSettings } from '../lib/settings'
+import { Search, X } from 'lucide-react'
+
+const isMac = typeof navigator !== 'undefined' && /mac/.test(`${navigator.userAgent} ${navigator.platform ?? ''}`.toLowerCase())
 
 const ALL_CATS = categories
 
@@ -121,9 +124,21 @@ export default function Home({ search, setSearch, activeCat, setActiveCat, editM
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
         e.preventDefault()
         searchRef.current?.focus()
+        return
+      }
+      if (e.key === '/' && document.activeElement !== searchRef.current) {
+        const tag = (document.activeElement?.tagName || '').toLowerCase()
+        if (tag !== 'input' && tag !== 'textarea') {
+          e.preventDefault()
+          searchRef.current?.focus()
+          return
+        }
+      }
+      if (e.key === 'Escape' && document.activeElement === searchRef.current) {
+        searchRef.current?.blur()
       }
     }
     window.addEventListener('keydown', handler)
@@ -198,53 +213,66 @@ export default function Home({ search, setSearch, activeCat, setActiveCat, editM
       <div style={{ width: '100%', maxWidth: 1200 }}>
 
         {/* Search Bar */}
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 28 }}>
-          <div style={{
-            display: 'flex', alignItems: 'center',
-            width: '100%', maxWidth: 800,
-            borderRadius: 4, border: '2px solid var(--sketch-text)',
-            boxShadow: searchFocused ? '4px 4px 0px var(--sketch-text)' : '3px 3px 0px var(--sketch-text)',
-            background: 'var(--surface)',
-            transform: searchFocused ? 'translate(-1px, -1px)' : 'none',
-            transition: 'all 0.15s ease-out',
-            overflow: 'hidden',
-          }}>
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'center', padding:'0 0 0 14px', flexShrink:0 }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"
-                stroke={searchFocused ? 'var(--sketch-text)' : 'var(--text-muted)'}
-                strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                style={{ transition: 'stroke 0.15s' }}>
-                <circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="22" y2="22"/>
-              </svg>
-            </div>
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 32, width: '100%' }}>
+          <div
+            className={`home-search-container ${searchFocused ? 'is-focused' : ''}`}
+            onClick={() => searchRef.current?.focus()}
+          >
+            <Search
+              size={18}
+              strokeWidth={2}
+              style={{
+                color: searchFocused ? 'var(--text)' : 'var(--text-muted)',
+                flexShrink: 0,
+                transition: 'color 0.15s ease',
+                pointerEvents: 'none',
+              }}
+            />
             <input
               ref={searchRef}
-              className="input-bare"
+              className="search-input-control input-bare home-search-input"
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
               onFocus={() => setSearchFocused(true)}
               onBlur={() => setSearchFocused(false)}
-              placeholder="search the toolbox..."
-              style={{
-                flex: 1, minWidth: 0,
-                padding: '12px 12px',
-                fontSize: 18,
-                color: 'var(--sketch-text)',
-                fontFamily: "'Architects Daughter', var(--font-sans)",
+              onKeyDown={e => {
+                if (e.key === 'Escape') {
+                  if (search) {
+                    setSearch('')
+                  } else {
+                    searchRef.current?.blur()
+                  }
+                }
               }}
+              placeholder="Search all tools..."
+              autoComplete="off"
+              spellCheck={false}
             />
-            {search && (
-              <button className="btn-icon" onClick={() => { setSearch(''); searchRef.current?.focus() }} style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                width: 32, height: 32, flexShrink: 0, marginRight: 6,
-                color: 'var(--text-muted)', borderRadius: 4,
-              }} aria-label="Clear search">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                </svg>
-              </button>
+            {search ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                <span className="home-search-badge">
+                  {filtered.length} {filtered.length === 1 ? 'tool' : 'tools'}
+                </span>
+                <button
+                  type="button"
+                  className="home-search-clear"
+                  onClick={e => {
+                    e.stopPropagation()
+                    setSearch('')
+                    searchRef.current?.focus()
+                  }}
+                  title="Clear search (Esc)"
+                  aria-label="Clear search"
+                >
+                  <X size={15} strokeWidth={2.2} />
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0, pointerEvents: 'none' }}>
+                <kbd className="home-search-kbd">{isMac ? '⌘K' : 'Ctrl+K'}</kbd>
+                <kbd className="home-search-kbd">/</kbd>
+              </div>
             )}
           </div>
         </div>
