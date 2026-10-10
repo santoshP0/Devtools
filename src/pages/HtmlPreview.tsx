@@ -131,25 +131,18 @@ export default function HtmlPreview() {
 
   const preview = (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <div style={{
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        marginBottom: 4, flexShrink: 0,
-        padding: '4px 8px', background: 'var(--surface2)', borderRadius: '6px 6px 0 0',
-        border: '1px solid var(--border)', borderBottom: 'none',
-      }}>
-        <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-sans)' }}>Preview</span>
-        <button onClick={openInTab} style={{ fontSize: 11, background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer' }}>
-          Open in new tab ↗
-        </button>
-      </div>
       <iframe
         ref={iframeRef}
         srcDoc={srcDoc}
         sandbox="allow-scripts"
         title="preview"
         style={{
-          flex: 1, border: '1px solid var(--border)', borderRadius: '0 0 6px 6px',
-          background: 'white', width: '100%',
+          flex: 1,
+          border: '2px solid var(--sketch-text)',
+          borderRadius: 6,
+          boxShadow: '3px 3px 0px var(--sketch-text)',
+          background: 'white',
+          width: '100%',
         }}
       />
     </div>
@@ -158,13 +151,22 @@ export default function HtmlPreview() {
   return (
     <ToolLayout title="HTML Preview" description="Live HTML + CSS + JS editor with sandboxed preview." fullWidth>
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 10, flexShrink: 0, alignItems: 'center' }}>
           {(['split', 'editor', 'preview'] as const).map(v => (
             <button key={v} onClick={() => setLayout(v)} className={layout === v ? 'btn-primary' : 'btn-secondary'} style={{ textTransform: 'capitalize' }}>
               {v}
             </button>
           ))}
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center' }}>
+            <button
+              type="button"
+              onClick={openInTab}
+              className="btn btn-ghost btn-sm"
+              style={{ fontSize: 12, fontFamily: 'var(--font-sans)', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              title="Open preview in new browser tab"
+            >
+              Open in new tab ↗
+            </button>
             <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--text-dim)', cursor: 'pointer', userSelect: 'none' }}>
               <input type="checkbox" checked={autoRun} onChange={e => setAutoRun(e.target.checked)} />
               Auto-run

@@ -125,60 +125,181 @@ export default function RestClientPage() {
   const statusColor = (s: number) => s < 300 ? 'var(--cat-gen)' : s < 400 ? 'var(--cat-txt)' : 'var(--cat-sec)'
 
   const KVEditor = ({ rows, setter, placeholder = ['Key','Value'] }: { rows: KV[]; setter: React.Dispatch<React.SetStateAction<KV[]>>; placeholder?: [string,string] }) => (
-    <div style={{ display:'flex', flexDirection:'column', gap:7 }}>
+    <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+      {/* Column labels */}
+      <div style={{ display:'flex', gap:8, alignItems:'center', padding:'0 8px 2px', fontSize:11, fontWeight:700, color:'var(--text-muted)', fontFamily:'var(--font-mono)', textTransform:'uppercase', letterSpacing:'0.04em' }}>
+        <span style={{ width:16, flexShrink:0 }} />
+        <span style={{ flex:1 }}>{placeholder[0]}</span>
+        <span style={{ flex:1.5 }}>{placeholder[1]}</span>
+        <span style={{ width:22, flexShrink:0 }} />
+      </div>
+
       {rows.map(r => (
-        <div key={r.id} style={{ display:'flex', gap:6, alignItems:'center' }}>
-          <input type="checkbox" checked={r.enabled} onChange={e => updateKV(setter, r.id, 'enabled', e.target.checked)} style={{ width:16, height:16, flexShrink:0 }} />
-          <input type="text" value={r.key} onChange={e => updateKV(setter, r.id, 'key', e.target.value)} placeholder={placeholder[0]} style={{ flex:1, fontSize:12 }} />
-          <input type="text" value={r.val} onChange={e => updateKV(setter, r.id, 'val', e.target.value)} placeholder={placeholder[1]} style={{ flex:1.5, fontSize:12 }} />
-          <button onClick={() => removeKV(setter, r.id)} style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:18, padding:'0 4px', lineHeight:1 }}>×</button>
+        <div key={r.id} className="kv-row">
+          <input
+            type="checkbox"
+            checked={r.enabled}
+            onChange={e => updateKV(setter, r.id, 'enabled', e.target.checked)}
+            style={{ width:15, height:15, flexShrink:0, cursor:'pointer' }}
+          />
+          <input
+            type="text"
+            value={r.key}
+            onChange={e => updateKV(setter, r.id, 'key', e.target.value)}
+            placeholder={placeholder[0]}
+            className="kv-input search-input-control input-bare"
+          />
+          <div className="kv-divider" />
+          <input
+            type="text"
+            value={r.val}
+            onChange={e => updateKV(setter, r.id, 'val', e.target.value)}
+            placeholder={placeholder[1]}
+            className="kv-input search-input-control input-bare"
+            style={{ flex:1.5 }}
+          />
+          <button
+            type="button"
+            className="btn-icon kv-del-btn"
+            onClick={() => removeKV(setter, r.id)}
+            title="Delete row"
+          >
+            ×
+          </button>
         </div>
       ))}
-      <button className="btn btn-ghost btn-sm" onClick={() => addKV(setter)} style={{ alignSelf:'flex-start' }}>+ Add</button>
+      <div style={{ marginTop: 4 }}>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          onClick={() => addKV(setter)}
+          style={{ fontFamily: 'var(--font-sans)', fontSize: 12 }}
+        >
+          + Add row
+        </button>
+      </div>
     </div>
   )
 
   return (
     <ToolLayout title="REST Client" description={NATIVE ? 'Send HTTP requests natively — no CORS limits, any endpoint or header' : 'Send HTTP requests and inspect responses right in your browser'}>
-      <div className="one-col">
-        {/* URL bar */}
-        <div style={{ display:'flex', gap:8 }}>
-          <select value={method} onChange={e => setMethod(e.target.value)} style={{ width:120, fontFamily:'var(--font-mono)', fontWeight:700, fontSize:13, color: METHOD_COLORS[method] }}>
-            {METHODS.map(m => <option key={m} value={m}>{m}</option>)}
+      <div className="one-col" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {/* Unified URL Command Bar */}
+        <div className="rest-url-bar">
+          <select
+            value={method}
+            onChange={e => setMethod(e.target.value)}
+            className="rest-method-select"
+            style={{ color: METHOD_COLORS[method] }}
+          >
+            {METHODS.map(m => (
+              <option key={m} value={m} style={{ color: METHOD_COLORS[m] || 'var(--sketch-text)', background: 'var(--surface)' }}>
+                {m}
+              </option>
+            ))}
           </select>
-          <input type="text" value={url} onChange={e => setUrl(e.target.value)} placeholder="https://api.example.com/endpoint"
-            onKeyDown={e => e.key === 'Enter' && send()} style={{ flex:1, fontSize:14 }} />
-          <button className="btn btn-primary" onClick={send} disabled={loading} style={{ minWidth:90 }}>
+          <input
+            type="text"
+            value={url}
+            onChange={e => setUrl(e.target.value)}
+            placeholder="https://api.example.com/endpoint"
+            onKeyDown={e => e.key === 'Enter' && send()}
+            className="rest-url-input search-input-control input-bare"
+            spellCheck={false}
+          />
+          <button
+            type="button"
+            className="rest-send-btn"
+            onClick={send}
+            disabled={loading}
+          >
             {loading ? '…' : 'Send'}
           </button>
         </div>
 
-        {/* Quick URLs */}
-        <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
-          {SAMPLE_URLS.map(u => (
-            <button key={u} onClick={() => setUrl(u)} style={{ fontSize:11, padding:'3px 10px', borderRadius:100, border:'1px solid var(--border)', background:'transparent', color:'var(--text-muted)', cursor:'pointer', fontFamily:'var(--font-mono)' }}>
-              {u.replace('https://','')}
-            </button>
-          ))}
-        </div>
 
         {/* Collections — save/load requests, export/import a shareable file */}
-        <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-          <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-            <button className="btn btn-ghost btn-sm" onClick={saveCurrent}>💾 Save request</button>
-            <span style={{ marginLeft:'auto', display:'flex', gap:8 }}>
-              <button className="btn btn-ghost btn-sm" onClick={exportCollection} disabled={!saved.length && env.every(e=>!e.key)}>⤓ Export</button>
-              <button className="btn btn-ghost btn-sm" onClick={() => importRef.current?.click()}>⤒ Import</button>
-              <input ref={importRef} type="file" accept="application/json,.json" style={{ display:'none' }}
-                onChange={e => { const f = e.target.files?.[0]; if (f) importCollection(f); e.target.value='' }} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={saveCurrent}
+              style={{ fontFamily: 'var(--font-sans)', fontSize: 12 }}
+            >
+              💾 Save request
+            </button>
+            <span style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={exportCollection}
+                disabled={!saved.length && env.every(e => !e.key)}
+                style={{ fontFamily: 'var(--font-sans)', fontSize: 12 }}
+              >
+                ⤓ Export
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm"
+                onClick={() => importRef.current?.click()}
+                style={{ fontFamily: 'var(--font-sans)', fontSize: 12 }}
+              >
+                ⤒ Import
+              </button>
+              <input
+                ref={importRef}
+                type="file"
+                accept="application/json,.json"
+                style={{ display: 'none' }}
+                onChange={e => {
+                  const f = e.target.files?.[0]
+                  if (f) importCollection(f)
+                  e.target.value = ''
+                }}
+              />
             </span>
           </div>
           {saved.length > 0 && (
-            <div style={{ display:'flex', gap:6, flexWrap:'wrap', alignItems:'center' }}>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
               {saved.map(s => (
-                <span key={s.id} style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 4px 2px 10px', borderRadius:100, border:'1px solid var(--border)' }}>
-                  <button onClick={() => loadReq(s.id)} title="Load request" style={{ background:'none', border:'none', color: METHOD_COLORS[s.method] || 'var(--text)', cursor:'pointer', fontSize:11, fontFamily:'var(--font-mono)', fontWeight:700, padding:0 }}>{s.name}</button>
-                  <button onClick={() => delReq(s.id)} title="Delete" style={{ background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', fontSize:15, lineHeight:1, padding:'0 2px' }}>×</button>
+                <span
+                  key={s.id}
+                  className="pill-btn"
+                  style={{ cursor: 'default', padding: '2px 6px 2px 8px' }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => loadReq(s.id)}
+                    title="Load request"
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: METHOD_COLORS[s.method] || 'var(--text)',
+                      cursor: 'pointer',
+                      fontSize: 11,
+                      fontFamily: 'var(--font-mono)',
+                      fontWeight: 700,
+                      padding: 0,
+                    }}
+                  >
+                    {s.name}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-icon"
+                    onClick={() => delReq(s.id)}
+                    title="Delete"
+                    style={{
+                      color: 'var(--text-muted)',
+                      cursor: 'pointer',
+                      fontSize: 13,
+                      lineHeight: 1,
+                      padding: '0 2px',
+                    }}
+                  >
+                    ×
+                  </button>
                 </span>
               ))}
             </div>
@@ -186,36 +307,73 @@ export default function RestClientPage() {
         </div>
 
         {/* Request tabs */}
-        <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12 }}>
-          <div style={{ display:'flex', gap:0, borderBottom:'1px solid var(--border)', padding:'0 4px' }}>
-            {(['headers','params','body','env'] as const).map(t => (
-              <button key={t} onClick={() => setActiveTab(t)} style={{
-                padding:'10px 16px', background:'none', border:'none', cursor:'pointer', fontSize:13, fontWeight:500,
-                color: activeTab === t ? 'var(--accent)' : 'var(--text-muted)',
-                borderBottom: activeTab === t ? '2px solid var(--accent)' : '2px solid transparent',
-                fontFamily:'var(--font-sans)', textTransform:'capitalize', transition:'all 0.15s',
-              }}>{t}{t === 'params' && params.filter(p=>p.enabled&&p.key).length > 0 ? ` (${params.filter(p=>p.enabled&&p.key).length})` : ''}</button>
+        <div style={{
+          background: 'var(--surface)',
+          border: '2px solid var(--sketch-text)',
+          boxShadow: '3px 3px 0px var(--sketch-text)',
+          borderRadius: 6,
+          overflow: 'hidden',
+        }}>
+          <div style={{
+            display: 'flex',
+            borderBottom: '2px solid var(--sketch-text)',
+            background: 'var(--surface2)',
+            padding: '0 4px',
+          }}>
+            {(['headers', 'params', 'body', 'env'] as const).map(t => (
+              <button
+                key={t}
+                type="button"
+                className={`tab-nav-btn ${activeTab === t ? 'active' : ''}`}
+                onClick={() => setActiveTab(t)}
+              >
+                {t}
+                {t === 'headers' && headers.filter(h => h.enabled && h.key).length > 0 && (
+                  <span className="tab-pill-count">
+                    {headers.filter(h => h.enabled && h.key).length}
+                  </span>
+                )}
+                {t === 'params' && params.filter(p => p.enabled && p.key).length > 0 && (
+                  <span className="tab-pill-count">
+                    {params.filter(p => p.enabled && p.key).length}
+                  </span>
+                )}
+              </button>
             ))}
           </div>
-          <div style={{ padding:'16px' }}>
-            {activeTab === 'headers' && <KVEditor rows={headers} setter={setHeaders} placeholder={['Header-Name','value']} />}
-            {activeTab === 'params' && <KVEditor rows={params} setter={setParams} placeholder={['param','value']} />}
+          <div style={{ padding: '16px' }}>
+            {activeTab === 'headers' && <KVEditor rows={headers} setter={setHeaders} placeholder={['Header-Name', 'value']} />}
+            {activeTab === 'params' && <KVEditor rows={params} setter={setParams} placeholder={['param', 'value']} />}
             {activeTab === 'body' && (
-              <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
-                <div style={{ display:'flex', gap:8 }}>
-                  {(['none','json','text','form'] as const).map(m => (
-                    <button key={m} className={`seg-btn ${bodyMode === m ? 'active' : ''}`} onClick={() => setBodyMode(m)}>{m}</button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {(['none', 'json', 'text', 'form'] as const).map(m => (
+                    <button
+                      key={m}
+                      type="button"
+                      className={`seg-btn ${bodyMode === m ? 'active' : ''}`}
+                      onClick={() => setBodyMode(m)}
+                    >
+                      {m}
+                    </button>
                   ))}
                 </div>
                 {bodyMode !== 'none' && (
-                  <textarea value={body} onChange={e => setBody(e.target.value)} style={{ minHeight:140, fontSize:13 }} spellCheck={false} />
+                  <textarea
+                    value={body}
+                    onChange={e => setBody(e.target.value)}
+                    style={{ minHeight: 140, fontSize: 13 }}
+                    spellCheck={false}
+                  />
                 )}
               </div>
             )}
             {activeTab === 'env' && (
-              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                <div style={{ fontSize:12, color:'var(--text-muted)' }}>Reference these anywhere with <code>{'{{name}}'}</code> — in the URL, headers, params, or body.</div>
-                <KVEditor rows={env} setter={setEnv} placeholder={['VAR','value']} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                  Reference these anywhere with <code>{'{{name}}'}</code> — in the URL, headers, params, or body.
+                </div>
+                <KVEditor rows={env} setter={setEnv} placeholder={['VAR', 'value']} />
               </div>
             )}
           </div>
@@ -225,33 +383,63 @@ export default function RestClientPage() {
 
         {/* Response */}
         {response && (
-          <div style={{ background:'var(--surface)', border:'1px solid var(--border)', borderRadius:12 }}>
+          <div style={{
+            background: 'var(--surface)',
+            border: '2px solid var(--sketch-text)',
+            boxShadow: '3px 3px 0px var(--sketch-text)',
+            borderRadius: 6,
+            overflow: 'hidden',
+          }}>
             {/* Status bar */}
-            <div style={{ display:'flex', gap:16, alignItems:'center', padding:'12px 16px', borderBottom:'1px solid var(--border)', flexWrap:'wrap' }}>
-              <span style={{ fontFamily:'var(--font-mono)', fontWeight:700, fontSize:16, color: statusColor(response.status) }}>{response.status} {response.statusText}</span>
-              <span style={{ fontSize:12, color:'var(--text-muted)' }}>⏱ {response.time}ms</span>
-              <span style={{ fontSize:12, color:'var(--text-muted)' }}>📦 {(response.size/1024).toFixed(1)} KB</span>
-              <div style={{ marginLeft:'auto' }}><CopyBtn text={response.body} /></div>
+            <div style={{
+              display: 'flex',
+              gap: 16,
+              alignItems: 'center',
+              padding: '10px 16px',
+              borderBottom: '2px solid var(--sketch-text)',
+              background: 'var(--surface2)',
+              flexWrap: 'wrap',
+            }}>
+              <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, fontSize: 15, color: statusColor(response.status) }}>
+                {response.status} {response.statusText}
+              </span>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                ⏱ {response.time}ms
+              </span>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                📦 {(response.size / 1024).toFixed(1)} KB
+              </span>
+              <div style={{ marginLeft: 'auto' }}><CopyBtn text={response.body} /></div>
             </div>
             {/* Response tabs */}
-            <div style={{ display:'flex', gap:0, borderBottom:'1px solid var(--border)', padding:'0 4px' }}>
-              {(['body','headers'] as const).map(t => (
-                <button key={t} onClick={() => setResTab(t)} style={{
-                  padding:'10px 16px', background:'none', border:'none', cursor:'pointer', fontSize:13, fontWeight:500,
-                  color: resTab === t ? 'var(--accent)' : 'var(--text-muted)',
-                  borderBottom: resTab === t ? '2px solid var(--accent)' : '2px solid transparent',
-                  fontFamily:'var(--font-sans)', textTransform:'capitalize', transition:'all 0.15s',
-                }}>{t}</button>
+            <div style={{
+              display: 'flex',
+              borderBottom: '1px solid var(--border)',
+              padding: '0 4px',
+            }}>
+              {(['body', 'headers'] as const).map(t => (
+                <button
+                  key={t}
+                  type="button"
+                  className={`tab-nav-btn ${resTab === t ? 'active' : ''}`}
+                  onClick={() => setResTab(t)}
+                >
+                  {t}
+                </button>
               ))}
             </div>
-            <div style={{ padding:'16px' }}>
-              {resTab === 'body' && <pre className="code-out" style={{ minHeight:200, maxHeight:420, overflow:'auto', fontSize:13 }}>{response.body}</pre>}
+            <div style={{ padding: '16px' }}>
+              {resTab === 'body' && (
+                <pre className="code-out" style={{ minHeight: 200, maxHeight: 420, overflow: 'auto', fontSize: 13 }}>
+                  {response.body}
+                </pre>
+              )}
               {resTab === 'headers' && (
-                <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                  {Object.entries(response.headers).map(([k,v]) => (
-                    <div key={k} style={{ display:'flex', gap:12, fontFamily:'var(--font-mono)', fontSize:12 }}>
-                      <span style={{ color:'var(--accent)', minWidth:180, flexShrink:0 }}>{k}</span>
-                      <span style={{ color:'var(--text-dim)', wordBreak:'break-all' }}>{v}</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {Object.entries(response.headers).map(([k, v]) => (
+                    <div key={k} style={{ display: 'flex', gap: 12, fontFamily: 'var(--font-mono)', fontSize: 12 }}>
+                      <span style={{ color: 'var(--accent)', minWidth: 180, flexShrink: 0 }}>{k}</span>
+                      <span style={{ color: 'var(--text-dim)', wordBreak: 'break-all' }}>{v}</span>
                     </div>
                   ))}
                 </div>

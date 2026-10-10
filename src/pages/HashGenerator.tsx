@@ -76,14 +76,22 @@ export default function HashGenerator() {
             spellCheck={false}
           />
         </div>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <button onClick={generate} disabled={!input || loading} className="btn-primary">
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={generate}
+            disabled={!input || loading}
+            className="btn-primary"
+            style={{ height: 38, padding: '0 18px', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontFamily: 'var(--font-sans)', borderRadius: 4 }}
+          >
             {loading ? 'Hashing…' : 'Hash Text'}
           </button>
           <button
+            type="button"
             onClick={() => (isTauri() ? hashFileNative() : fileRef.current?.click())}
             disabled={loading}
-            className="btn"
+            className="btn-secondary"
+            style={{ height: 38, padding: '0 18px', display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontFamily: 'var(--font-sans)', borderRadius: 4 }}
           >
             Hash a File…
           </button>
@@ -102,14 +110,27 @@ export default function HashGenerator() {
               <div className="section-label">Hashed <span style={{ fontFamily: 'var(--font-mono)' }}>{source}</span></div>
             )}
             {ORDER.filter(alg => hashes[alg]).map(alg => (
-              <div key={alg} className="bg-white border border-slate-200 rounded-lg p-4">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-xs font-semibold text-slate-500">{alg}</span>
+              <div
+                key={alg}
+                style={{
+                  background: 'var(--surface)',
+                  border: '1.5px solid var(--border)',
+                  boxShadow: '2px 2px 0px var(--sketch-text)',
+                  borderRadius: 6,
+                  padding: '12px 16px',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                  <span style={{ fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--sketch-text)' }}>
+                    {alg}
+                  </span>
                   <button onClick={() => copy(hashes[alg], alg)} className="copy-btn">
                     {copiedKey === alg ? '✓ Copied' : 'Copy'}
                   </button>
                 </div>
-                <p className="font-mono text-xs break-all text-slate-700">{hashes[alg]}</p>
+                <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12.5, wordBreak: 'break-all', margin: 0, color: 'var(--text-dim)' }}>
+                  {hashes[alg]}
+                </p>
               </div>
             ))}
           </div>

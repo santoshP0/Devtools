@@ -726,12 +726,12 @@
 
 /* Form elements — global (matching reference) */
 textarea:not(.monaco-editor *),
-input[type="text"]:not(.monaco-editor *):not(.search-input-control):not(.home-search-input):not(.input-bare),
+input[type="text"]:not(.monaco-editor *):not(.search-input-control):not(.home-search-input):not(.input-bare):not(.kv-input):not(.rest-url-input),
 input[type="number"]:not(.monaco-editor *),
 input[type="url"]:not(.monaco-editor *),
 input[type="email"]:not(.monaco-editor *),
 input[type="password"]:not(.monaco-editor *),
-select:not(.monaco-editor *) {
+select:not(.monaco-editor *):not(.rest-method-select) {
   background: var(--surface) !important;
   color: var(--sketch-text) !important;
   border: 2px solid var(--sketch-text) !important;
@@ -746,7 +746,7 @@ select:not(.monaco-editor *) {
   box-shadow: 2px 2px 0px var(--sketch-text) !important;
 }
 textarea:not(.monaco-editor *):focus,
-input[type="text"]:not(.monaco-editor *):not(.search-input-control):not(.home-search-input):not(.input-bare):focus,
+input[type="text"]:not(.monaco-editor *):not(.search-input-control):not(.home-search-input):not(.input-bare):not(.kv-input):not(.rest-url-input):focus,
 input[type="number"]:not(.monaco-editor *):focus,
 input[type="url"]:not(.monaco-editor *):focus,
 input[type="email"]:not(.monaco-editor *):focus,
@@ -972,7 +972,10 @@ input[type="range"]::-moz-range-thumb:active {
 input[type="checkbox"] { accent-color: var(--sketch-text) !important; width: 16px; height: 16px; cursor: pointer; }
 
 /* All Buttons Globally */
-button, .btn, input[type="button"], input[type="submit"] {
+button:not(.btn-icon):not(.tab-nav-btn):not(.pill-btn):not(.rest-send-btn):not(.home-search-clear):not(.notes-find-btn),
+.btn:not(.btn-icon):not(.tab-nav-btn):not(.pill-btn),
+input[type="button"],
+input[type="submit"] {
   border-radius: 4px !important;
   font-family: "'Architects Daughter', var(--font-sans)" !important;
   font-weight: 700 !important;
@@ -983,7 +986,8 @@ button, .btn, input[type="button"], input[type="submit"] {
   background: var(--surface);
   color: var(--sketch-text);
 }
-button:hover:not(.btn-primary), .btn:hover:not(.btn-primary) {
+button:hover:not(.btn-primary):not(.btn-icon):not(.tab-nav-btn):not(.pill-btn):not(.rest-send-btn):not(.home-search-clear):not(.notes-find-btn),
+.btn:hover:not(.btn-primary):not(.btn-icon):not(.tab-nav-btn):not(.pill-btn) {
   transform: translate(-1px, -1px) !important;
   box-shadow: 3px 3px 0px var(--sketch-text) !important;
   background: var(--surface2);
@@ -993,7 +997,8 @@ button.btn-primary:hover {
   transform: translate(-1px, -1px) !important;
   box-shadow: 3px 3px 0px var(--sketch-text) !important;
 }
-button:active, .btn:active {
+button:active:not(.btn-icon):not(.tab-nav-btn):not(.pill-btn):not(.rest-send-btn):not(.home-search-clear):not(.notes-find-btn),
+.btn:active:not(.btn-icon):not(.tab-nav-btn):not(.pill-btn) {
   transform: translate(1px, 1px) !important;
   box-shadow: 1px 1px 0px var(--sketch-text) !important;
 }
@@ -1759,7 +1764,7 @@ input[type="text"].search-input-control:active {
 [data-theme="dark"] button:not(.monaco-editor *),
 [data-theme="dark"] .btn,
 [data-theme="dark"] textarea:not(.monaco-editor *),
-[data-theme="dark"] input[type="text"]:not(.monaco-editor *):not(.search-input-control):not(.home-search-input):not(.input-bare),
+[data-theme="dark"] input[type="text"]:not(.monaco-editor *):not(.search-input-control):not(.home-search-input):not(.input-bare):not(.kv-input):not(.rest-url-input),
 [data-theme="dark"] input[type="number"]:not(.monaco-editor *),
 [data-theme="dark"] input[type="url"]:not(.monaco-editor *),
 [data-theme="dark"] input[type="email"]:not(.monaco-editor *),
@@ -2011,5 +2016,254 @@ input.home-search-input::placeholder {
   transform: translate(1px, 1px) !important;
   box-shadow: none !important;
 }
+
+/* ── Unified REST Client UI ────────────────────────────────────────────── */
+.rest-url-bar {
+  display: flex !important;
+  align-items: center !important;
+  width: 100% !important;
+  height: 44px !important;
+  background: var(--surface) !important;
+  border: 2px solid var(--sketch-text) !important;
+  box-shadow: 2.5px 2.5px 0px var(--sketch-text) !important;
+  border-radius: 6px !important;
+  overflow: hidden !important;
+  transition: all 0.15s ease-out !important;
+}
+
+.rest-url-bar:focus-within {
+  transform: translate(-1px, -1px) !important;
+  box-shadow: 3.5px 3.5px 0px var(--sketch-text) !important;
+}
+
+.rest-method-select {
+  height: 100% !important;
+  width: 95px !important;
+  min-width: 95px !important;
+  max-width: 95px !important;
+  flex: 0 0 95px !important;
+  padding: 0 6px 0 10px !important;
+  border: none !important;
+  border-right: 2px solid var(--sketch-text) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  transform: none !important;
+  background: transparent !important;
+  font-family: var(--font-mono) !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  outline: none !important;
+  appearance: auto !important;
+  flex-shrink: 0 !important;
+}
+
+.rest-url-input {
+  flex: 1 1 0% !important;
+  min-width: 0 !important;
+  height: 100% !important;
+  border: none !important;
+  box-shadow: none !important;
+  transform: none !important;
+  background: transparent !important;
+  outline: none !important;
+  padding: 0 14px !important;
+  font-family: var(--font-mono) !important;
+  font-size: 13px !important;
+  color: var(--sketch-text) !important;
+  border-radius: 0 !important;
+}
+
+.rest-url-input::placeholder {
+  color: var(--text-muted) !important;
+  opacity: 0.6 !important;
+}
+
+.rest-send-btn {
+  height: 100% !important;
+  padding: 0 20px !important;
+  border: none !important;
+  border-left: 2px solid var(--sketch-text) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  transform: none !important;
+  background: var(--sketch-text) !important;
+  color: var(--sketch-bg) !important;
+  font-family: var(--font-sans) !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  transition: opacity 0.15s ease !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-shrink: 0 !important;
+}
+
+.rest-send-btn:hover {
+  opacity: 0.88 !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.rest-send-btn:disabled {
+  opacity: 0.4 !important;
+  cursor: not-allowed !important;
+}
+
+/* Quick pills / tags */
+button.pill-btn, .pill-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  box-shadow: none !important;
+  transform: none !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 999px !important;
+  font-family: var(--font-mono) !important;
+  font-weight: 500 !important;
+  font-size: 11px !important;
+  padding: 3px 10px !important;
+  background: transparent !important;
+  color: var(--text-muted) !important;
+  cursor: pointer !important;
+  transition: all 0.12s ease !important;
+}
+
+button.pill-btn:hover, .pill-btn:hover {
+  transform: none !important;
+  box-shadow: none !important;
+  border-color: var(--sketch-text) !important;
+  color: var(--sketch-text) !important;
+  background: var(--surface2) !important;
+}
+
+/* Tab bar navigation */
+button.tab-nav-btn, .tab-nav-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  border: none !important;
+  border-bottom: 2.5px solid transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  font-family: var(--font-sans) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  padding: 10px 16px !important;
+  cursor: pointer !important;
+  color: var(--text-muted) !important;
+  text-transform: capitalize !important;
+  transition: color 0.12s ease, border-color 0.12s ease !important;
+}
+
+button.tab-nav-btn:hover, .tab-nav-btn:hover {
+  color: var(--sketch-text) !important;
+  transform: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+button.tab-nav-btn.active, .tab-nav-btn.active {
+  color: var(--sketch-text) !important;
+  font-weight: 700 !important;
+  border-bottom-color: var(--sketch-text) !important;
+}
+
+.tab-pill-count {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-family: var(--font-mono) !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  padding: 2px 5px !important;
+  border-radius: 999px !important;
+  background: var(--accent-bg) !important;
+  color: var(--sketch-text) !important;
+  border: 1px solid var(--sketch-text) !important;
+}
+
+/* Key-Value Editor Streamlined Row */
+.kv-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 3px 8px !important;
+  background: var(--surface2) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 5px !important;
+  transition: all 0.12s ease-out !important;
+}
+
+.kv-row:hover {
+  border-color: var(--sketch-text) !important;
+}
+
+.kv-row:focus-within {
+  border-color: var(--sketch-text) !important;
+  background: var(--surface) !important;
+  box-shadow: 1.5px 1.5px 0px var(--sketch-text) !important;
+}
+
+input.kv-input,
+input[type="text"].kv-input {
+  flex: 1 1 0% !important;
+  min-width: 0 !important;
+  border: none !important;
+  outline: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
+  padding: 5px 6px !important;
+  font-family: var(--font-mono) !important;
+  font-size: 12.5px !important;
+  color: var(--sketch-text) !important;
+  border-radius: 0 !important;
+}
+
+input.kv-input::placeholder,
+input[type="text"].kv-input::placeholder {
+  color: var(--text-muted) !important;
+  opacity: 0.6 !important;
+  font-family: var(--font-mono) !important;
+}
+
+.kv-divider {
+  width: 1px !important;
+  height: 18px !important;
+  background: var(--border) !important;
+  opacity: 0.45 !important;
+  flex-shrink: 0 !important;
+}
+
+.kv-del-btn {
+  width: 22px !important;
+  height: 22px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  transform: none !important;
+  color: var(--text-muted) !important;
+  cursor: pointer !important;
+  font-size: 16px !important;
+  line-height: 1 !important;
+  border-radius: 4px !important;
+  padding: 0 !important;
+  flex-shrink: 0 !important;
+  transition: color 0.1s, background 0.1s !important;
+}
+
+.kv-del-btn:hover {
+  color: #dc2626 !important;
+  background: rgba(220, 38, 38, 0.1) !important;
+}
+
 
 
