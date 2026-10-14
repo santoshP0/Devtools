@@ -48,9 +48,7 @@ export default function ToolLayout({ title, description, children, fullWidth = f
       boxSizing: 'border-box',
       overflowY: 'auto',
       overflowX: 'hidden',
-      background: 'var(--sketch-bg)',
-      backgroundImage: 'radial-gradient(var(--sketch-dot) 1.2px, transparent 1.2px)',
-      backgroundSize: '20px 20px',
+      background: 'transparent',
     }}>
       {/* Inner: constrains width + is a flex column so children can use flex:1.
           fullWidth: bounded to viewport height on desktop (.tool-inner-full) so

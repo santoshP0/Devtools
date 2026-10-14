@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
+import { isTauri, invoke } from '@tauri-apps/api/core'
 import ToolLayout from '../components/ToolLayout'
 
 const FLAGS = ['g', 'i', 'm', 's'] as const
@@ -104,7 +105,6 @@ export default function RegexTester() {
                 style={{ flex: 1, padding: '9px 12px', fontSize: 13, fontFamily: 'var(--font-mono)', background: 'transparent', color: 'var(--text)', outline: 'none' }}
                 spellCheck={false}
               />
-              {/* Live badge */}
               {badgeText && (
                 <span style={{
                   padding: '3px 10px', margin: '0 6px', borderRadius: 100,

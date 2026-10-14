@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { isTauri, invoke } from '@tauri-apps/api/core'
 import ToolLayout from '../components/ToolLayout'
 import { useFileDrop } from '../hooks/useFileDrop'
 
@@ -95,17 +96,55 @@ export default function DarkLightConverter() {
   const [converting, setConverting] = useState(false)
   const [fadeIn, setFadeIn] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const sourceBytesRef = useRef<Uint8Array | null>(null)
 
   useEffect(() => {
     return () => {
       if (sourceUrl) URL.revokeObjectURL(sourceUrl)
-      if (resultUrl) URL.revokeObjectURL(resultUrl)
+      if (resultUrl && !resultUrl.startsWith('data:')) URL.revokeObjectURL(resultUrl)
     }
   }, [])
 
-  const processImage = useCallback((img: HTMLImageElement, convMode: Mode, isInitial = false) => {
+  const processImage = useCallback(async (img: HTMLImageElement, convMode: Mode, isInitial = false) => {
     if (isInitial) setConverting(true)
-    // Use requestAnimationFrame to avoid blocking UI
+
+    // Desktop: use Rust native pixel engine for blazing-fast transforms
+    if (isTauri() && sourceBytesRef.current) {
+      setConverting(true)
+      try {
+        const res = await invoke<{
+          ok: boolean
+          data: string
+          width: number
+          height: number
+          time_us: number
+          error?: string
+        }>('convert_dark_light', {
+          req: {
+            bytes: Array.from(sourceBytesRef.current),
+            mode: convMode,
+            format: outputFormat,
+          },
+        })
+        if (res.ok) {
+          setFadeIn(false)
+          requestAnimationFrame(() => {
+            setResultUrl(prev => {
+              if (prev && !prev.startsWith('data:')) URL.revokeObjectURL(prev)
+              return res.data
+            })
+            setConverting(false)
+            requestAnimationFrame(() => setFadeIn(true))
+          })
+          return
+        }
+      } catch (e) {
+        console.warn('Rust convert_dark_light failed, falling back to canvas:', e)
+      }
+    }
+
+    const t0 = performance.now()
+    // Web fallback: Use requestAnimationFrame to avoid blocking UI
     requestAnimationFrame(() => {
       const canvas = canvasRef.current || document.createElement('canvas')
       canvas.width = img.width
@@ -119,24 +158,27 @@ export default function DarkLightConverter() {
       canvas.toBlob((blob) => {
         if (!blob) { setConverting(false); return }
         setFadeIn(false)
-        // Trigger fade-in on next frame after URL swap
         requestAnimationFrame(() => {
           setResultUrl(prev => {
-            if (prev) URL.revokeObjectURL(prev)
+            if (prev && !prev.startsWith('data:')) URL.revokeObjectURL(prev)
             return URL.createObjectURL(blob)
           })
           setConverting(false)
           requestAnimationFrame(() => setFadeIn(true))
         })
-      }, 'image/png')
+      }, `image/${outputFormat === 'jpeg' ? 'jpeg' : outputFormat === 'webp' ? 'webp' : 'png'}`)
     })
-  }, [])
+  }, [outputFormat])
 
   const loadFile = useCallback((file: File) => {
     if (!file.type.startsWith('image/') && !/\.(png|jpe?g|webp|bmp|gif)$/i.test(file.name)) return
     if (sourceUrl) URL.revokeObjectURL(sourceUrl)
-    if (resultUrl) URL.revokeObjectURL(resultUrl)
+    if (resultUrl && !resultUrl.startsWith('data:')) URL.revokeObjectURL(resultUrl)
     setResultUrl('')
+
+    file.arrayBuffer().then(buf => {
+      sourceBytesRef.current = new Uint8Array(buf)
+    })
 
     const url = URL.createObjectURL(file)
     setSourceUrl(url)
@@ -159,28 +201,21 @@ export default function DarkLightConverter() {
 
   const download = () => {
     if (!resultUrl || !sourceFile) return
-    // Re-export in chosen format
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const mime = outputFormat === 'jpeg' ? 'image/jpeg' : outputFormat === 'webp' ? 'image/webp' : 'image/png'
+    const a = document.createElement('a')
+    a.href = resultUrl
     const ext = outputFormat === 'jpeg' ? '.jpg' : outputFormat === 'webp' ? '.webp' : '.png'
-    canvas.toBlob((blob) => {
-      if (!blob) return
-      const a = document.createElement('a')
-      a.href = URL.createObjectURL(blob)
-      a.download = sourceFile.name.replace(/\.[^.]+$/, '') + '-converted' + ext
-      a.click()
-      URL.revokeObjectURL(a.href)
-    }, mime, 0.92)
+    a.download = sourceFile.name.replace(/\.[^.]+$/, '') + '-converted' + ext
+    a.click()
   }
 
   const reset = () => {
     if (sourceUrl) URL.revokeObjectURL(sourceUrl)
-    if (resultUrl) URL.revokeObjectURL(resultUrl)
+    if (resultUrl && !resultUrl.startsWith('data:')) URL.revokeObjectURL(resultUrl)
     setSourceUrl('')
     setResultUrl('')
     setSourceFile(null)
     setSourceImg(null)
+    sourceBytesRef.current = null
   }
 
   const cardStyle: React.CSSProperties = {
@@ -347,7 +382,9 @@ export default function DarkLightConverter() {
 
               {/* Converted */}
               <div style={cardStyle}>
-                <span style={labelStyle}>Converted</span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span style={{ ...labelStyle, marginBottom: 0 }}>Converted</span>
+                </div>
                 <div style={{
                   borderRadius: 8,
                   overflow: 'hidden',

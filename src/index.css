@@ -130,6 +130,7 @@
     background: var(--sketch-bg);
     background-image: radial-gradient(var(--sketch-dot) 1.2px, transparent 1.2px);
     background-size: 20px 20px;
+    background-attachment: fixed;
     color: var(--sketch-text);
     font-family: var(--font-sans);
     min-height: 100vh;
@@ -140,6 +141,33 @@
     -moz-osx-font-smoothing: grayscale;
   }
   * { box-sizing: border-box; }
+
+  /* Fixed, constant stationary drafting grid — never scrolls, never cuts off */
+  .fixed-dot-grid {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 0;
+    background-color: var(--sketch-bg);
+    background-image: radial-gradient(var(--sketch-dot) 1.2px, transparent 1.2px);
+    background-size: 20px 20px;
+    background-position: 0 0;
+    background-attachment: fixed;
+    transform: translateZ(0);
+    will-change: transform;
+  }
+
+  /* Monaco find match highlight */
+  .monaco-find-match-highlight {
+    background-color: rgba(234, 179, 8, 0.35) !important;
+    border-bottom: 2px solid #eab308 !important;
+    border-radius: 2px;
+  }
 
   /* Desktop app shell. In a browser the whole document scrolls, so content
      slides underneath the fixed header — fine on the web, wrong for an app.
@@ -1420,18 +1448,25 @@ button:disabled, .btn:disabled {
     border: none !important;
     box-shadow: none !important;
     background: transparent !important;
-    padding: 2px 6px !important;
+    padding: 2px 5px !important;
     border-radius: 4px !important;
     cursor: pointer !important;
     display: inline-flex !important;
     align-items: center !important;
-    gap: 4px !important;
+    gap: 3px !important;
     font-size: 11px !important;
     color: var(--text-muted) !important;
-    transition: background 0.12s ease, color 0.12s ease !important;
+    opacity: 0.35;
+    transition: opacity 0.12s ease, background 0.12s ease, color 0.12s ease !important;
     transform: none !important;
   }
+  .json-tree-row:hover .json-tree-action-btn,
+  .json-tree-action-btn:focus-visible,
+  .json-tree-action-btn.is-active {
+    opacity: 1;
+  }
   .json-tree-action-btn:hover {
+    opacity: 1;
     background: var(--surface2) !important;
     color: var(--text) !important;
     transform: none !important;

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { isTauri, invoke } from '@tauri-apps/api/core'
 import ToolLayout from '../components/ToolLayout'
 import { useNativeDrop } from '../hooks/useNativeDrop'
 import { useToast } from '../components/Toast'
@@ -71,14 +72,56 @@ export default function CsvJson() {
     if (/\.json$/i.test(it.file.name)) setJson(text); else setCsv(text)
   })
 
-  const toJson = () => {
+  const toJson = async () => {
     setError('')
-    try { setJson(csvToJson(csv)) } catch (e) { setError((e as Error).message) }
+    if (isTauri()) {
+      try {
+        const res = await invoke<{ ok: boolean; output: string; time_us: number; error?: string }>('csv_to_json', {
+          req: { data: csv },
+        })
+        if (res.ok) {
+          setJson(res.output)
+          return
+        } else if (res.error) {
+          setError(res.error)
+          return
+        }
+      } catch (e) {
+        console.warn('Rust csv_to_json error, falling back:', e)
+      }
+    }
+
+    try {
+      setJson(csvToJson(csv))
+    } catch (e) {
+      setError((e as Error).message)
+    }
   }
 
-  const toCsv = () => {
+  const toCsv = async () => {
     setError('')
-    try { setCsv(jsonToCsv(json)) } catch (e) { setError((e as Error).message) }
+    if (isTauri()) {
+      try {
+        const res = await invoke<{ ok: boolean; output: string; time_us: number; error?: string }>('json_to_csv', {
+          req: { data: json },
+        })
+        if (res.ok) {
+          setCsv(res.output)
+          return
+        } else if (res.error) {
+          setError(res.error)
+          return
+        }
+      } catch (e) {
+        console.warn('Rust json_to_csv error, falling back:', e)
+      }
+    }
+
+    try {
+      setCsv(jsonToCsv(json))
+    } catch (e) {
+      setError((e as Error).message)
+    }
   }
 
   const copy = (text: string) => navigator.clipboard.writeText(text)

@@ -199,14 +199,14 @@ export default function Home({ search, setSearch, activeCat, setActiveCat, editM
         // Desktop: the scrolling pane already starts below the fixed header, so
         // the page must not offset itself again.
         marginTop: NATIVE_SHELL ? 0 : 54,
-        background: 'var(--sketch-bg)',
-        backgroundImage: 'radial-gradient(var(--sketch-dot) 1.2px, transparent 1.2px)',
-        backgroundSize: '20px 20px',
+        background: 'transparent',
         color: 'var(--sketch-text)',
         padding: '40px 24px 80px',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
+        width: '100%',
+        boxSizing: 'border-box',
         fontFamily: "'Architects Daughter', var(--font-sans)",
       }}
     >

@@ -32,7 +32,7 @@ function MainArea({ home, children }: { home: ReactNode; children: ReactNode }) 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1, transition: { duration: 0.2, ease: [0.16, 1, 0.3, 1] } }}
             exit={{ opacity: 0, transition: { duration: 0.12, ease: [0.4, 0, 1, 1] } }}
-            style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', minHeight: 0, background: 'var(--bg)' }}
+            style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', minHeight: 0, background: 'transparent' }}
           >
             {/* Every tool page is code-split; one boundary here covers them all
                 so no single tool's bundle sits in the initial download. The
@@ -242,10 +242,14 @@ export default function App() {
   return (
     <ToastProvider>
     <BrowserRouter>
+      {/* Constant stationary dot grid backdrop — stays locked to viewport, never scrolls or cuts off */}
+      <div className="fixed-dot-grid" aria-hidden="true" />
       <div style={{
         minHeight: '100vh',
         ...(NATIVE_SHELL ? { height: '100vh', overflow: 'hidden' } : null),
-        background: 'var(--bg)',
+        position: 'relative',
+        zIndex: 1,
+        background: 'transparent',
         display: 'flex', flexDirection: 'column',
       }}>
         <MenuBridge />
@@ -259,6 +263,7 @@ export default function App() {
             the fixed 54px header so content never slides under it. */}
         <main style={{
           flex: 1, display: 'flex', flexDirection: 'column',
+          background: 'transparent',
           ...(NATIVE_SHELL ? { marginTop: NAV_H, minHeight: 0, overflowY: 'auto' } : null),
         }}>
           <MainArea home={

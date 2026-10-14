@@ -5,7 +5,7 @@ import { monaco, EDITOR_DEFAULTS } from '../lib/monacoSetup'
 import { useIsDark } from '../hooks/useIsDark'
 import { useNativeDrop } from '../hooks/useNativeDrop'
 import { useToast } from '../components/Toast'
-import { isTauri } from '@tauri-apps/api/core'
+import { isTauri, invoke } from '@tauri-apps/api/core'
 import { isTextFile, ACCEPT_TEXT } from '../lib/fileValidation'
 import { pickNativeFile, TEXT_EXTENSIONS } from '../lib/fileDialog'
 
@@ -125,56 +125,160 @@ export default function DiffChecker() {
     URL.revokeObjectURL(url)
   }
 
+  const exportPatch = async () => {
+    const m = models(); if (!m) return
+    const orig = m.orig.getValue()
+    const mod = m.mod.getValue()
+    if (!orig && !mod) return
+
+    if (isTauri()) {
+      try {
+        const res = await invoke<{ patch: string; time_us: number }>('generate_patch', {
+          req: {
+            original: orig,
+            modified: mod,
+            name_a: 'original.txt',
+            name_b: 'modified.txt',
+          },
+        })
+        const url = URL.createObjectURL(new Blob([res.patch], { type: 'text/x-patch' }))
+        const a = document.createElement('a'); a.href = url; a.download = 'changes.patch'; a.click()
+        URL.revokeObjectURL(url)
+        show(`Generated .patch with Rust in ${(res.time_us / 1000).toFixed(2)}ms`)
+        return
+      } catch (e) {
+        console.warn('Rust patch failed, falling back:', e)
+      }
+    }
+
+    // Web fallback
+    const linesA = orig.split('\n')
+    const linesB = mod.split('\n')
+    const patch = `--- a/original.txt\n+++ b/modified.txt\n@@ -1,${linesA.length} +1,${linesB.length} @@\n` +
+      linesA.map(l => `- ${l}`).join('\n') + '\n' + linesB.map(l => `+ ${l}`).join('\n')
+    const url = URL.createObjectURL(new Blob([patch], { type: 'text/x-patch' }))
+    const a = document.createElement('a'); a.href = url; a.download = 'changes.patch'; a.click()
+    URL.revokeObjectURL(url)
+  }
+
   const pillBtn: React.CSSProperties = { padding: '4px 14px', fontSize: 12, border: 'none', cursor: 'pointer', fontFamily: 'var(--font-sans)', fontWeight: 500, transition: 'background .15s,color .15s' }
 
   return (
     <ToolLayout title="Diff Checker" description="Compare two texts side by side — edit live, use the gutter arrows to merge changes." fullWidth>
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
 
-        {/* ════ TOP CONTROLS ════ */}
-        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
-          <button onClick={clear} className="btn-ghost" style={{ fontSize: 13, padding: '4px 14px' }}>Clear</button>
+        {/* ════ TOP GLOBAL TOOLBAR ════ */}
+        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            {/* Split / Unified pill */}
+            <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)', flexShrink: 0 }}>
+              {([['Split', true], ['Unified', false]] as const).map(([label, v]) => (
+                <button
+                  key={label}
+                  onClick={() => setSideBySide(v)}
+                  style={{
+                    ...pillBtn,
+                    background: sideBySide === v ? 'var(--accent)' : 'var(--surface)',
+                    color: sideBySide === v ? '#fff' : 'var(--text-muted)',
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
 
-          {/* Split / Unified pill */}
-          <div style={{ display: 'flex', borderRadius: 8, overflow: 'hidden', border: '1px solid var(--border)', flexShrink: 0 }}>
-            {([['Split', true], ['Unified', false]] as const).map(([label, v]) => (
-              <button key={label} onClick={() => setSideBySide(v)} style={{ ...pillBtn, background: sideBySide === v ? 'var(--accent)' : 'var(--surface)', color: sideBySide === v ? '#fff' : 'var(--text-muted)' }}>{label}</button>
-            ))}
+            <button onClick={swap} className="btn-ghost" style={{ fontSize: 12, padding: '4px 12px' }} title="Swap original and modified sides">
+              ⇄ Swap
+            </button>
+
+            <button
+              onClick={() => setWordWrap(w => !w)}
+              className="btn-ghost"
+              style={{
+                fontSize: 12,
+                padding: '4px 12px',
+                background: wordWrap ? 'var(--accent-bg)' : 'transparent',
+                color: wordWrap ? 'var(--accent)' : 'inherit',
+              }}
+              title="Toggle word wrap (off prevents alignment gaps)"
+            >
+              Wrap: {wordWrap ? 'On' : 'Off'}
+            </button>
+
+            {(stats.add > 0 || stats.del > 0) && (
+              <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)', display: 'flex', gap: 8, marginLeft: 4 }}>
+                <span style={{ color: 'oklch(0.62 0.18 25)', fontWeight: 600 }}>−{stats.del}</span>
+                <span style={{ color: 'oklch(0.55 0.15 145)', fontWeight: 600 }}>+{stats.add}</span>
+              </span>
+            )}
           </div>
 
-          <button
-            onClick={() => setWordWrap(w => !w)}
-            style={{
-              ...pillBtn,
-              borderRadius: 8,
-              border: '1px solid var(--border)',
-              background: wordWrap ? 'var(--accent)' : 'var(--surface)',
-              color: wordWrap ? '#fff' : 'var(--text-muted)',
-            }}
-            title="Toggle word wrap (off prevents alignment gaps)"
-          >
-            Wrap: {wordWrap ? 'On' : 'Off'}
-          </button>
-
-          <button onClick={swap} className="btn-ghost" style={{ fontSize: 13, padding: '4px 14px' }} title="Swap sides">⇄ Swap</button>
-
-          {(stats.add > 0 || stats.del > 0) && (
-            <span style={{ fontSize: 12, fontFamily: 'var(--font-sans)', display: 'flex', gap: 10 }}>
-              <span style={{ color: 'oklch(0.62 0.18 25)', fontWeight: 600 }}>−{stats.del} removals</span>
-              <span style={{ color: 'oklch(0.55 0.15 145)', fontWeight: 600 }}>+{stats.add} additions</span>
-            </span>
-          )}
-
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button onClick={() => handlePick('left')} className="btn-ghost" style={{ fontSize: 12, padding: '4px 12px' }}>Open Left…</button>
-            <button onClick={() => handlePick('right')} className="btn-ghost" style={{ fontSize: 12, padding: '4px 12px' }}>Open Right…</button>
-            <button onClick={() => copySide('left')} className="btn-ghost" style={{ fontSize: 12, padding: '4px 12px' }}>{copied === 'left' ? '✓ Copied' : 'Copy Left'}</button>
-            <button onClick={() => copySide('right')} className="btn-ghost" style={{ fontSize: 12, padding: '4px 12px' }}>{copied === 'right' ? '✓ Copied' : 'Copy Right'}</button>
-            <button onClick={exportTxt} className="btn-ghost" style={{ fontSize: 13, padding: '4px 14px', color: 'var(--accent)' }}>↓ Export .txt</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <button onClick={clear} className="btn-ghost" style={{ fontSize: 12, padding: '4px 12px' }}>
+              Clear
+            </button>
+            <button onClick={exportTxt} className="btn-ghost" style={{ fontSize: 12, padding: '4px 12px' }}>
+              Export .txt
+            </button>
+            <button onClick={exportPatch} className="btn-ghost" style={{ fontSize: 12, padding: '4px 12px' }}>
+              Export .patch
+            </button>
           </div>
           <input ref={fileLRef} type="file" accept={ACCEPT_TEXT} style={{ display: 'none' }} onChange={openFile('left')} />
           <input ref={fileRRef} type="file" accept={ACCEPT_TEXT} style={{ display: 'none' }} onChange={openFile('right')} />
         </div>
+
+        {/* ════ CONTEXTUAL PANE HEADERS ════ */}
+        {sideBySide ? (
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 8, flexShrink: 0 }}>
+            {/* Left pane header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 6px' }}>
+              <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
+                Original (Left)
+              </span>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button onClick={() => handlePick('left')} className="btn-ghost" style={{ fontSize: 11, padding: '2px 8px' }}>
+                  Open…
+                </button>
+                <button onClick={() => copySide('left')} className="btn-ghost" style={{ fontSize: 11, padding: '2px 8px' }}>
+                  {copied === 'left' ? '✓ Copied' : 'Copy'}
+                </button>
+              </div>
+            </div>
+
+            {/* Right pane header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 6px' }}>
+              <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
+                Modified (Right)
+              </span>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button onClick={() => handlePick('right')} className="btn-ghost" style={{ fontSize: 11, padding: '2px 8px' }}>
+                  Open…
+                </button>
+                <button onClick={() => copySide('right')} className="btn-ghost" style={{ fontSize: 11, padding: '2px 8px' }}>
+                  {copied === 'right' ? '✓ Copied' : 'Copy'}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 6px', marginBottom: 8, flexShrink: 0 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
+              Unified Diff View
+            </span>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button onClick={() => handlePick('left')} className="btn-ghost" style={{ fontSize: 11, padding: '2px 8px' }}>
+                Open Original…
+              </button>
+              <button onClick={() => handlePick('right')} className="btn-ghost" style={{ fontSize: 11, padding: '2px 8px' }}>
+                Open Modified…
+              </button>
+              <button onClick={() => copySide('right')} className="btn-ghost" style={{ fontSize: 11, padding: '2px 8px' }}>
+                {copied === 'right' ? '✓ Copied' : 'Copy Modified'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* ════ DIFF EDITOR ════ */}
         <div data-drop-zone="true" style={{ flex: 1, minHeight: 'min(65dvh, 560px)', border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>

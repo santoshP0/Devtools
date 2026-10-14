@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::process::Command;
 
+mod data_engine;
+
 // Native work-timer tray indicator. Tray + taskbar progress are desktop-only, so
 // on mobile targets we compile no-op commands to keep the shared handler list valid.
 #[cfg(desktop)]
@@ -1395,7 +1397,14 @@ pub fn run() {
   }
 
   builder
-    .invoke_handler(tauri::generate_handler![ffmpeg_check, ffmpeg_compress, ffmpeg_render, ffmpeg_filmstrip, http_request, close_splashscreen, parse_log_file, hash_file, image_convert, optimize_png, save_bytes, append_bytes, read_file, take_pending_files, expand_url, timer::timer_sync, timer::timer_set_tray, timer::timer_set_notify])
+    .invoke_handler(tauri::generate_handler![
+      ffmpeg_check, ffmpeg_compress, ffmpeg_render, ffmpeg_filmstrip, http_request,
+      close_splashscreen, parse_log_file, hash_file, image_convert, optimize_png,
+      save_bytes, append_bytes, read_file, take_pending_files, expand_url,
+      timer::timer_sync, timer::timer_set_tray, timer::timer_set_notify,
+      data_engine::json_process, data_engine::regex_execute, data_engine::generate_patch, data_engine::diff_files,
+      data_engine::csv_parse, data_engine::csv_to_json, data_engine::json_to_csv, data_engine::convert_dark_light
+    ])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(

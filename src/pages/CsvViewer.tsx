@@ -11,7 +11,7 @@ import ToolLayout from '../components/ToolLayout'
 import FileDropZone from '../components/FileDropZone'
 import { useNativeDrop } from '../hooks/useNativeDrop'
 import { useOpenedFile } from '../lib/openWith'
-import { isTauri } from '@tauri-apps/api/core'
+import { isTauri, invoke } from '@tauri-apps/api/core'
 import { useToast } from '../components/Toast'
 import { isCsvFile } from '../lib/fileValidation'
 import { pickNativeFile } from '../lib/fileDialog'
@@ -221,12 +221,15 @@ export default function CsvViewerPage() {
   const [sortCol, setSortCol] = useState<number | null>(null)
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [colWidths, setColWidths] = useState<number[]>([])
+  const [parsedData, setParsedData] = useState<{ headers: string[]; rows: string[][] } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const resizingRef = useRef<{ col: number; startX: number; startW: number } | null>(null)
   const { show } = useToast()
 
   /* ── Parse ── */
-  const { headers, rows } = useMemo(() => parseCSV(rawCsv), [rawCsv])
+  const fallbackParsed = useMemo(() => parseCSV(rawCsv), [rawCsv])
+  const headers = parsedData ? parsedData.headers : fallbackParsed.headers
+  const rows = parsedData ? parsedData.rows : fallbackParsed.rows
 
   /* ── Auto col widths on parse ── */
   useEffect(() => {
@@ -252,6 +255,22 @@ export default function CsvViewerPage() {
     return r
   }, [rows, search, sortCol, sortDir])
 
+  const loadNativePath = useCallback(async (path: string, name: string) => {
+    setFileName(name)
+    try {
+      const res = await invoke<{ headers: string[]; rows: string[][]; total_rows: number; time_us: number }>('csv_parse', {
+        req: { path, max_rows: 50000 },
+      })
+      setParsedData({ headers: res.headers, rows: res.rows })
+      setRawCsv('')
+      setSearch('')
+      setSortCol(null)
+      setSortDir('asc')
+    } catch (e) {
+      console.warn('Native CSV parse error, falling back:', e)
+    }
+  }, [])
+
   /* ── Load file ── */
   const loadFile = useCallback((file: File) => {
     if (!file) return
@@ -260,6 +279,7 @@ export default function CsvViewerPage() {
       return
     }
     setFileName(file.name)
+    setParsedData(null)
     const reader = new FileReader()
     reader.onload = e => {
       const text = (e.target?.result as string) ?? ''
@@ -273,8 +293,16 @@ export default function CsvViewerPage() {
 
   // Desktop: Finder drag-drop (HTML onDrop is dead in the Tauri webview), and
   // files opened with "Open with DevToolbox".
-  useNativeDrop(items => { if (items[0]) loadFile(items[0].file) })
-  useOpenedFile('/csv-viewer', loadFile)
+  useNativeDrop(items => {
+    if (items[0]) {
+      if (isTauri() && items[0].path) loadNativePath(items[0].path, items[0].file.name)
+      else loadFile(items[0].file)
+    }
+  })
+  useOpenedFile('/csv-viewer', (f, path) => {
+    if (isTauri() && path) loadNativePath(path, f.name)
+    else loadFile(f)
+  })
 
   /* ── Drag & Drop ── */
   const onDragOver = useCallback((e: React.DragEvent) => {
@@ -342,7 +370,11 @@ export default function CsvViewerPage() {
       extensions: ['csv', 'tsv', 'txt'],
     })
     if (res) {
-      loadFile(res.file)
+      if (isTauri() && res.path) {
+        loadNativePath(res.path, res.file.name)
+      } else {
+        loadFile(res.file)
+      }
       return
     }
     if (!isTauri()) {

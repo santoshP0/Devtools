@@ -284,6 +284,7 @@ export default function ResponsiveTesterPage() {
         background: 'var(--sketch-bg)',
         backgroundImage: 'radial-gradient(var(--sketch-dot) 1.2px, transparent 1.2px)',
         backgroundSize: '20px 20px',
+        backgroundAttachment: 'fixed',
         padding: '16px 24px',
         display: 'flex',
         flexDirection: 'column',
