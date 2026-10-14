@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import CopyButton from '../components/CopyButton'
 import { useNativeDrop } from '../hooks/useNativeDrop'
 import { useToast } from '../components/Toast'
 import { isJsonFile, isTextFile } from '../lib/fileValidation'
@@ -139,8 +140,6 @@ export default function JsonPathTester() {
     setResults(res)
   }, [json, path])
 
-  const copyResults = () => navigator.clipboard.writeText(JSON.stringify(results, null, 2))
-
   return (
     <ToolLayout title="JSON Path Tester" description="Query JSON data using JSONPath expressions with live results.">
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -205,7 +204,14 @@ export default function JsonPathTester() {
               <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-dim)' }}>
                 Results {results.length > 0 && <span style={{ color: 'var(--accent)' }}>({results.length})</span>}
               </span>
-              {results.length > 0 && <button onClick={copyResults} className="copy-btn">Copy JSON</button>}
+              {results.length > 0 && (
+                <CopyButton
+                  text={() => JSON.stringify(results, null, 2)}
+                  label="Copy JSON"
+                  copiedLabel="Copied JSON!"
+                  toastMessage="Results copied as JSON"
+                />
+              )}
             </div>
             <div style={{
               minHeight: 400, background: 'var(--surface)', border: '1px solid var(--border)',

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import CopyButton from '../components/CopyButton'
 
 type Format = 'binary' | 'hex' | 'octal' | 'decimal' | 'utf8codes'
 
@@ -58,7 +59,6 @@ export default function TextBinaryHex() {
   const [decoded, setDecoded] = useState('')
   const [decodeError, setDecodeError] = useState('')
   const [mode, setMode] = useState<'encode' | 'decode'>('encode')
-  const [copiedKey, setCopiedKey] = useState('')
 
   const encode = () => {
     const result = textToFormat(text, format)
@@ -73,12 +73,6 @@ export default function TextBinaryHex() {
       setDecodeError((e as Error).message)
       setDecoded('')
     }
-  }
-
-  const copy = async (key: string, val: string) => {
-    await navigator.clipboard.writeText(val)
-    setCopiedKey(key)
-    setTimeout(() => setCopiedKey(''), 1500)
   }
 
   const cardStyle: React.CSSProperties = {
@@ -149,7 +143,7 @@ export default function TextBinaryHex() {
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                 <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-dim)' }}>{FORMATS.find(f => f.id === format)?.label}</span>
-                {encoded && <button onClick={() => copy('enc', encoded)} className="copy-btn">{copiedKey === 'enc' ? '✓ Copied' : 'Copy'}</button>}
+                {encoded && <CopyButton text={encoded} />}
               </div>
               <textarea value={encoded} readOnly style={{ ...taStyle, minHeight: 140, background: 'var(--surface)' }} spellCheck={false} />
               {encoded && (
@@ -182,7 +176,7 @@ export default function TextBinaryHex() {
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
                 <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-dim)' }}>Decoded Text</span>
-                {decoded && <button onClick={() => copy('dec', decoded)} className="copy-btn">{copiedKey === 'dec' ? '✓ Copied' : 'Copy'}</button>}
+                {decoded && <CopyButton text={decoded} />}
               </div>
               <textarea value={decoded} readOnly style={{ ...taStyle, minHeight: 140, background: 'var(--surface)' }} spellCheck={false} />
             </div>
@@ -202,9 +196,7 @@ export default function TextBinaryHex() {
                   <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <span style={{ width: 140, fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', flexShrink: 0 }}>{f.label}</span>
                     <code style={{ flex: 1, fontSize: 12, color: 'var(--text)', fontFamily: 'var(--font-mono)', wordBreak: 'break-all' }}>{val}</code>
-                    <button onClick={() => copy(f.id, val)} className="copy-btn" style={{ flexShrink: 0 }}>
-                      {copiedKey === f.id ? '✓' : 'Copy'}
-                    </button>
+                    <CopyButton text={val} style={{ flexShrink: 0 }} />
                   </div>
                 )
               })}

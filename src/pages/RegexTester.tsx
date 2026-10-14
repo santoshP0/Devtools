@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { isTauri, invoke } from '@tauri-apps/api/core'
 import ToolLayout from '../components/ToolLayout'
+import CopyButton from '../components/CopyButton'
 
 const FLAGS = ['g', 'i', 'm', 's'] as const
 const escHtml = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -192,7 +193,7 @@ export default function RegexTester() {
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
               <label className="label" style={{ margin: 0 }}>Replace result</label>
-              <button onClick={() => navigator.clipboard.writeText(replaced)} className="copy-btn">Copy</button>
+              <CopyButton text={replaced} />
             </div>
             <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', fontSize: 13, fontFamily: 'var(--font-mono)', whiteSpace: 'pre-wrap', color: 'var(--text)' }}>{replaced}</div>
           </div>

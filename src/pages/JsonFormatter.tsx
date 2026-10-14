@@ -3,9 +3,9 @@ import { isTauri, invoke } from '@tauri-apps/api/core'
 import ToolLayout from '../components/ToolLayout'
 import CodeEditor from '../components/CodeEditor'
 import SearchInput from '../components/SearchInput'
+import CopyButton from '../components/CopyButton'
 import { monaco } from '../lib/monacoSetup'
 import type { OnMount } from '@monaco-editor/react'
-import { useClipboardCopy } from '../hooks/useClipboardCopy'
 import { useIsDark } from '../hooks/useIsDark'
 import { useNativeDrop } from '../hooks/useNativeDrop'
 import { useOpenedFile } from '../lib/openWith'
@@ -189,8 +189,6 @@ const JsonNode = memo(function JsonNode({
 }: JsonNodeProps) {
   // Collapsed by default for children (depth > 0) to avoid rendering tens of thousands of DOM elements
   const [collapsed, setCollapsed] = useState(() => depth > 0)
-  const [copied, setCopied] = useState(false)
-  const [copiedPath, setCopiedPath] = useState(false)
   const [displayLimit, setDisplayLimit] = useState(CHUNK_SIZE)
 
   // Current JSON path representation
@@ -204,21 +202,6 @@ const JsonNode = memo(function JsonNode({
       }
     }
   }, [filterQuery, val, k])
-
-  const copyVal = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    const str = typeof val === 'object' ? JSON.stringify(val, null, 2) : String(val)
-    navigator.clipboard.writeText(str)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
-  }
-
-  const copyPath = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    navigator.clipboard.writeText(currentPath)
-    setCopiedPath(true)
-    setTimeout(() => setCopiedPath(false), 1500)
-  }
 
   const comma = last ? '' : ','
   const isExpandable = val !== null && typeof val === 'object'
@@ -256,33 +239,22 @@ const JsonNode = memo(function JsonNode({
   ) : null
 
   const copyBtn = (
-    <button
-      type="button"
-      onClick={copyVal}
-      title={copied ? 'Copied!' : isExpandable ? 'Copy JSON' : 'Copy value'}
-      className={`json-tree-action-btn ${copied ? 'is-active' : ''}`}
-      style={{
-        marginLeft: 6,
-        color: copied ? 'var(--accent)' : undefined,
-      }}
-    >
-      {copied ? <Check size={11} /> : <Copy size={11} />}
-    </button>
+    <CopyButton
+      text={() => (typeof val === 'object' ? JSON.stringify(val, null, 2) : String(val))}
+      variant="icon"
+      title={isExpandable ? 'Copy JSON' : 'Copy value'}
+      toastMessage={isExpandable ? 'JSON copied to clipboard' : 'Value copied to clipboard'}
+    />
   )
 
   const copyPathBtn = (
-    <button
-      type="button"
-      onClick={copyPath}
-      title={copiedPath ? `Copied: ${currentPath}` : `Copy path: ${currentPath}`}
-      className={`json-tree-action-btn ${copiedPath ? 'is-active' : ''}`}
-      style={{
-        marginLeft: 2,
-        color: copiedPath ? 'var(--accent)' : undefined,
-      }}
-    >
-      {copiedPath ? <Check size={11} /> : <Route size={11} />}
-    </button>
+    <CopyButton
+      text={currentPath}
+      variant="icon"
+      customIcon={<Route size={11} />}
+      title={`Copy path: ${currentPath}`}
+      toastMessage={`Path copied: ${currentPath}`}
+    />
   )
 
   // Primitive Values
@@ -536,7 +508,6 @@ export default function JsonFormatter() {
   const [errors, setErrors] = useState<JsonIssue[] | null>(null)
   const [status, setStatus] = useState<'idle' | 'valid' | 'error'>('idle')
   const [indent, setIndent] = useState<number | string>(2)
-  const { copied, copy } = useClipboardCopy()
   const { show } = useToast()
 
   // Desktop: Finder drag-drop and "Open with DevToolbox" on a .json file.
@@ -958,20 +929,22 @@ export default function JsonFormatter() {
               )}
               {isValid && (
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                  {/* Search Bar with match count & prev/next cycling */}
+                  {/* Search Bar - Unified single clean box */}
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
-                    background: 'var(--surface2)',
-                    border: '1px solid var(--border)',
+                    background: 'var(--surface)',
+                    border: '1.5px solid var(--sketch-text, var(--border))',
                     borderRadius: 6,
-                    padding: '0 4px',
+                    padding: '2px 8px',
                     height: 28,
-                    gap: 2,
+                    gap: 4,
+                    boxShadow: '1.5px 1.5px 0px var(--sketch-text, var(--border))',
                   }}>
-                    <Search size={13} style={{ color: 'var(--text-muted)', marginLeft: 4 }} />
+                    <Search size={13} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
                     <input
                       ref={searchInputRef}
+                      className="input-bare"
                       value={searchQuery}
                       onChange={e => setSearchQuery(e.target.value)}
                       onKeyDown={e => {
@@ -991,8 +964,9 @@ export default function JsonFormatter() {
                         fontSize: 12,
                         fontFamily: 'var(--font-sans)',
                         color: 'var(--text)',
-                        width: 120,
-                        padding: '0 4px',
+                        width: 130,
+                        padding: '0 2px',
+                        margin: 0,
                       }}
                     />
                     {searchQuery && (
@@ -1000,7 +974,7 @@ export default function JsonFormatter() {
                         fontSize: 11,
                         fontFamily: 'var(--font-mono)',
                         color: matchCount > 0 ? 'var(--text-muted)' : '#ef4444',
-                        padding: '0 4px',
+                        padding: '0 2px',
                         whiteSpace: 'nowrap',
                       }}>
                         {matchCount > 0 ? `${currentMatchIndex} of ${matchCount}` : '0 matches'}
@@ -1012,7 +986,7 @@ export default function JsonFormatter() {
                           type="button"
                           onClick={prevMatch}
                           title="Previous match (Shift+Enter)"
-                          style={{ padding: '2px 3px', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--text-muted)' }}
+                          style={{ padding: '2px', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--text-muted)' }}
                         >
                           <ChevronUp size={13} />
                         </button>
@@ -1020,7 +994,7 @@ export default function JsonFormatter() {
                           type="button"
                           onClick={nextMatch}
                           title="Next match (Enter)"
-                          style={{ padding: '2px 3px', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--text-muted)' }}
+                          style={{ padding: '2px', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--text-muted)' }}
                         >
                           <ChevronDown size={13} />
                         </button>
@@ -1031,7 +1005,7 @@ export default function JsonFormatter() {
                         type="button"
                         onClick={() => setSearchQuery('')}
                         title="Clear (Esc)"
-                        style={{ padding: '2px 4px', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--text-muted)' }}
+                        style={{ padding: '2px', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--text-muted)' }}
                       >
                         <X size={12} />
                       </button>
@@ -1042,9 +1016,7 @@ export default function JsonFormatter() {
                     <Download size={12} style={{ display: 'inline', marginRight: 4, verticalAlign: 'middle' }} />
                     Download
                   </button>
-                  <button onClick={() => copy(output)} className="copy-btn">
-                    {copied ? '✓ Copied' : 'Copy'}
-                  </button>
+                  <CopyButton text={output} toastMessage="Formatted JSON copied to clipboard" />
                 </div>
               )}
             </div>

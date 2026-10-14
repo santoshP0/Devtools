@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react'
 import { encode, decode } from 'blurhash'
 import ToolLayout from '../components/ToolLayout'
 import FileDropZone from '../components/FileDropZone'
-import { useClipboardCopy } from '../hooks/useClipboardCopy'
+import CopyButton from '../components/CopyButton'
 import { useNativeDrop } from '../hooks/useNativeDrop'
 import { useToast } from '../components/Toast'
 import { isImageFile } from '../lib/fileValidation'
@@ -45,7 +45,6 @@ export default function BlurHashGenerator() {
   const [fileSize, setFileSize] = useState<number | undefined>(undefined)
   const [hash, setHash] = useState('')
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const { copied, copy: copyToClipboard } = useClipboardCopy()
   const [imgDimensions, setImgDimensions] = useState({ w: 0, h: 0 })
   const { show } = useToast()
 
@@ -104,11 +103,6 @@ export default function BlurHashGenerator() {
   }, [show])
 
   useNativeDrop(items => { if (items[0]) handleFile(items[0].file) })
-
-  const copyHash = useCallback(() => {
-    if (!hash) return
-    copyToClipboard(hash)
-  }, [hash, copyToClipboard])
 
   const decodeHash = useCallback(() => {
     const input = decodeInput.trim()
@@ -179,9 +173,7 @@ export default function BlurHashGenerator() {
                 }}>
                   {hash}
                 </code>
-                <button className="btn btn-ghost btn-sm" onClick={copyHash}>
-                  {copied ? '✓ Copied' : 'Copy'}
-                </button>
+                <CopyButton text={hash} variant="ghost" />
               </div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6, fontFamily: 'var(--font-sans)' }}>
                 {imgDimensions.w}×{imgDimensions.h} → {hash.length} chars

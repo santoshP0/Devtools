@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react'
 import ToolLayout from '../components/ToolLayout'
 import FileDropZone from '../components/FileDropZone'
-import { useClipboardCopy } from '../hooks/useClipboardCopy'
+import CopyButton from '../components/CopyButton'
 import { useNativeDrop } from '../hooks/useNativeDrop'
 import { useToast } from '../components/Toast'
 import { isExifSupportedFile, isImageFile } from '../lib/fileValidation'
@@ -554,7 +554,6 @@ export default function ExifViewer() {
   const [isDragging, setIsDragging] = useState(false)
   const [imgNaturalW, setImgNaturalW] = useState(0)
   const [imgNaturalH, setImgNaturalH] = useState(0)
-  const { copied: copiedJson, copy: copyJson } = useClipboardCopy()
   const bufferRef = useRef<ArrayBuffer | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { show } = useToast()
@@ -637,14 +636,6 @@ export default function ExifViewer() {
     } catch { /* silent */ }
   }
 
-  const handleCopyJson = () => {
-    const simplified: Record<string, any> = {}
-    for (const [key, tag] of Object.entries(tags)) {
-      simplified[key] = tag.value
-    }
-    copyJson(JSON.stringify(simplified, null, 2))
-  }
-
   const fmtSize = (b: number) => b > 1e6 ? `${(b / 1e6).toFixed(1)} MB` : `${(b / 1024).toFixed(0)} KB`
 
   const removableCount = Object.values(tags).filter(t => t.removable).length
@@ -690,9 +681,20 @@ export default function ExifViewer() {
                 <button className="btn btn-ghost btn-sm" onClick={() => fileInputRef.current?.click()} style={{ justifyContent: 'center' }}>
                   Open Another
                 </button>
-                <button className="btn btn-ghost btn-sm" onClick={handleCopyJson} style={{ justifyContent: 'center' }}>
-                  {copiedJson ? '✓ Copied' : 'Copy as JSON'}
-                </button>
+                <CopyButton
+                  text={() => {
+                    const simplified: Record<string, any> = {}
+                    for (const [key, tag] of Object.entries(tags)) {
+                      simplified[key] = tag.value
+                    }
+                    return JSON.stringify(simplified, null, 2)
+                  }}
+                  label="Copy as JSON"
+                  copiedLabel="Copied JSON!"
+                  toastMessage="EXIF metadata copied as JSON"
+                  variant="ghost"
+                  style={{ justifyContent: 'center' }}
+                />
                 <button className="btn btn-ghost btn-sm" onClick={handleStripExif} style={{ justifyContent: 'center' }}>
                   Strip EXIF & Download
                 </button>

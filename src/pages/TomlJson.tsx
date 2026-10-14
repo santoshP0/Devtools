@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import CopyButton from '../components/CopyButton'
 import { parse } from 'smol-toml'
 import { useNativeDrop } from '../hooks/useNativeDrop'
 import { useToast } from '../components/Toast'
@@ -97,7 +98,6 @@ export default function TomlJson() {
     if (/\.json$/i.test(file.name)) setJson(text); else setToml(text)
   }
   useNativeDrop(items => { if (items[0]) loadFile(items[0].file) })
-  const [copied, setCopied] = useState<'toml' | 'json' | null>(null)
 
   const tomlToJson = () => {
     setError('')
@@ -117,12 +117,6 @@ export default function TomlJson() {
     } catch (e) {
       setError('Conversion error: ' + (e as Error).message)
     }
-  }
-
-  const copy = async (which: 'toml' | 'json') => {
-    await navigator.clipboard.writeText(which === 'toml' ? toml : json)
-    setCopied(which)
-    setTimeout(() => setCopied(null), 1500)
   }
 
   const panelStyle: React.CSSProperties = {
@@ -152,14 +146,14 @@ export default function TomlJson() {
           <div style={panelStyle}>
             <div style={labelStyle}>
               <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-dim)' }}>TOML</span>
-              <button onClick={() => copy('toml')} className="copy-btn">{copied === 'toml' ? '✓ Copied' : 'Copy'}</button>
+              <CopyButton text={toml} />
             </div>
             <textarea value={toml} onChange={e => setToml(e.target.value)} spellCheck={false} style={taStyle} />
           </div>
           <div style={panelStyle}>
             <div style={labelStyle}>
               <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-dim)' }}>JSON</span>
-              <button onClick={() => copy('json')} className="copy-btn">{copied === 'json' ? '✓ Copied' : 'Copy'}</button>
+              <CopyButton text={json} />
             </div>
             <textarea value={json} onChange={e => setJson(e.target.value)} spellCheck={false} style={taStyle} />
           </div>

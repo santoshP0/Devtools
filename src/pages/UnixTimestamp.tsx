@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import CopyButton from '../components/CopyButton'
 
 function toLocal(ts: number) {
   const d = new Date(ts * 1000)
@@ -49,8 +50,6 @@ export default function UnixTimestamp() {
     setDateResult({ ts: Math.floor(d.getTime() / 1000) })
   }
 
-  const copy = (val: string) => navigator.clipboard.writeText(val)
-
   return (
     <ToolLayout title="Unix Timestamp" description="Convert between Unix timestamps and human-readable dates.">
       <div className="flex flex-col gap-6 flex-1">
@@ -61,7 +60,7 @@ export default function UnixTimestamp() {
             <div className="text-3xl font-mono font-bold text-slate-900">{now}</div>
             <div className="text-sm text-slate-500 mt-1">{toLocal(now)} · {toIso(now)}</div>
           </div>
-          <button onClick={() => copy(String(now))} className="copy-btn">Copy</button>
+          <CopyButton text={String(now)} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -93,7 +92,7 @@ export default function UnixTimestamp() {
                       <div className="text-xs text-slate-500">{label}</div>
                       <div className="font-mono text-sm text-slate-800">{value}</div>
                     </div>
-                    <button onClick={() => copy(value)} className="copy-btn">Copy</button>
+                    <CopyButton text={value} />
                   </div>
                 ))}
               </div>
@@ -128,7 +127,7 @@ export default function UnixTimestamp() {
                       <div className="text-xs text-slate-500">{label}</div>
                       <div className="font-mono text-sm text-slate-800">{value}</div>
                     </div>
-                    <button onClick={() => copy(value)} className="copy-btn">Copy</button>
+                    <CopyButton text={value} />
                   </div>
                 ))}
               </div>

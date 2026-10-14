@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import CopyButton from '../components/CopyButton'
 import { useNativeDrop } from '../hooks/useNativeDrop'
 import { useToast } from '../components/Toast'
 import { isTextFile } from '../lib/fileValidation'
@@ -62,7 +63,7 @@ export default function WordCounter() {
         {text && (
           <div className="flex gap-2">
             <button onClick={() => setText('')} className="btn-secondary">Clear</button>
-            <button onClick={() => navigator.clipboard.writeText(text)} className="btn-secondary">Copy</button>
+            <CopyButton text={text} className="btn-secondary" />
           </div>
         )}
       </div>

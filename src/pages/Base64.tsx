@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import CopyButton from '../components/CopyButton'
 
 export default function Base64() {
   const [input, setInput] = useState('')
@@ -37,7 +38,6 @@ export default function Base64() {
     reader.readAsDataURL(file)
   }
 
-  const copy = () => navigator.clipboard.writeText(output)
   const clear = () => { setInput(''); setOutput(''); setError('') }
 
   return (
@@ -85,7 +85,7 @@ export default function Base64() {
           <div>
             <div className="flex justify-between items-center mb-1">
               <label className="label">Output</label>
-              <button onClick={copy} className="copy-btn">Copy</button>
+              <CopyButton text={output} />
             </div>
             <textarea value={output} readOnly className="tool-textarea h-40 bg-slate-50" spellCheck={false} />
           </div>

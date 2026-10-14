@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import CopyButton from '../components/CopyButton'
 import { XMLParser, XMLBuilder } from 'fast-xml-parser'
 import { useNativeDrop } from '../hooks/useNativeDrop'
 import { useToast } from '../components/Toast'
@@ -57,8 +58,6 @@ export default function JsonXml() {
     }
   }
 
-  const copy = (text: string) => navigator.clipboard.writeText(text)
-
   return (
     <ToolLayout title="JSON ↔ XML Converter" description="Convert between JSON and XML formats instantly.">
       <div className="flex flex-col gap-4 flex-1">
@@ -72,7 +71,7 @@ export default function JsonXml() {
           <div className="flex flex-col">
             <div className="flex justify-between items-center mb-1.5">
               <label className="label mb-0">JSON</label>
-              <button onClick={() => copy(json)} className="copy-btn">Copy</button>
+              <CopyButton text={json} />
             </div>
             <textarea
               value={json}
@@ -85,7 +84,7 @@ export default function JsonXml() {
           <div className="flex flex-col">
             <div className="flex justify-between items-center mb-1.5">
               <label className="label mb-0">XML</label>
-              <button onClick={() => copy(xml)} className="copy-btn">Copy</button>
+              <CopyButton text={xml} />
             </div>
             <textarea
               value={xml}

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { isTauri, invoke } from '@tauri-apps/api/core'
 import ToolLayout from '../components/ToolLayout'
+import CopyButton from '../components/CopyButton'
 import { useNativeDrop } from '../hooks/useNativeDrop'
 import { useToast } from '../components/Toast'
 import { isCsvFile, isJsonFile } from '../lib/fileValidation'
@@ -124,8 +125,6 @@ export default function CsvJson() {
     }
   }
 
-  const copy = (text: string) => navigator.clipboard.writeText(text)
-
   return (
     <ToolLayout title="CSV ↔ JSON Converter" description="Convert between CSV and JSON formats.">
       <div className="flex flex-col gap-4 flex-1">
@@ -137,14 +136,14 @@ export default function CsvJson() {
           <div className="flex flex-col">
             <div className="flex justify-between items-center mb-1.5">
               <label className="label mb-0">CSV</label>
-              <button onClick={() => copy(csv)} className="copy-btn">Copy</button>
+              <CopyButton text={csv} />
             </div>
             <textarea value={csv} onChange={e => setCsv(e.target.value)} className="tool-textarea flex-1" spellCheck={false} placeholder="name,age&#10;Alice,30" />
           </div>
           <div className="flex flex-col">
             <div className="flex justify-between items-center mb-1.5">
               <label className="label mb-0">JSON</label>
-              <button onClick={() => copy(json)} className="copy-btn">Copy</button>
+              <CopyButton text={json} />
             </div>
             <textarea value={json} onChange={e => setJson(e.target.value)} className="tool-textarea flex-1" spellCheck={false} placeholder='[{"name":"Alice","age":"30"}]' />
           </div>

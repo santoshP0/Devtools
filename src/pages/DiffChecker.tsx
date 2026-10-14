@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import CopyButton from '../components/CopyButton'
 import { DiffEditor, type DiffOnMount } from '@monaco-editor/react'
 import { monaco, EDITOR_DEFAULTS } from '../lib/monacoSetup'
 import { useIsDark } from '../hooks/useIsDark'
@@ -20,7 +21,6 @@ export default function DiffChecker() {
   const editorRef = useRef<monaco.editor.IStandaloneDiffEditor | null>(null)
   const fileLRef = useRef<HTMLInputElement>(null)
   const fileRRef = useRef<HTMLInputElement>(null)
-  const [copied, setCopied] = useState<'left' | 'right' | null>(null)
 
   const applyWrapOptions = (wrap: boolean) => {
     if (!editorRef.current) return
@@ -60,13 +60,6 @@ export default function DiffChecker() {
   const swap = () => {
     const m = models(); if (!m) return
     const a = m.orig.getValue(); m.orig.setValue(m.mod.getValue()); m.mod.setValue(a)
-  }
-
-  const copySide = (side: 'left' | 'right') => {
-    const m = models(); if (!m) return
-    navigator.clipboard.writeText(side === 'left' ? m.orig.getValue() : m.mod.getValue())
-    setCopied(side)
-    setTimeout(() => setCopied(null), 1500)
   }
 
   const handlePick = async (side: 'left' | 'right') => {
@@ -240,9 +233,12 @@ export default function DiffChecker() {
                 <button onClick={() => handlePick('left')} className="btn-ghost" style={{ fontSize: 11, padding: '2px 8px' }}>
                   Open…
                 </button>
-                <button onClick={() => copySide('left')} className="btn-ghost" style={{ fontSize: 11, padding: '2px 8px' }}>
-                  {copied === 'left' ? '✓ Copied' : 'Copy'}
-                </button>
+                <CopyButton
+                  text={() => models()?.orig.getValue() ?? ''}
+                  variant="ghost"
+                  style={{ fontSize: 11, padding: '2px 8px' }}
+                  toastMessage="Original text copied to clipboard"
+                />
               </div>
             </div>
 
@@ -255,9 +251,12 @@ export default function DiffChecker() {
                 <button onClick={() => handlePick('right')} className="btn-ghost" style={{ fontSize: 11, padding: '2px 8px' }}>
                   Open…
                 </button>
-                <button onClick={() => copySide('right')} className="btn-ghost" style={{ fontSize: 11, padding: '2px 8px' }}>
-                  {copied === 'right' ? '✓ Copied' : 'Copy'}
-                </button>
+                <CopyButton
+                  text={() => models()?.mod.getValue() ?? ''}
+                  variant="ghost"
+                  style={{ fontSize: 11, padding: '2px 8px' }}
+                  toastMessage="Modified text copied to clipboard"
+                />
               </div>
             </div>
           </div>
@@ -273,9 +272,14 @@ export default function DiffChecker() {
               <button onClick={() => handlePick('right')} className="btn-ghost" style={{ fontSize: 11, padding: '2px 8px' }}>
                 Open Modified…
               </button>
-              <button onClick={() => copySide('right')} className="btn-ghost" style={{ fontSize: 11, padding: '2px 8px' }}>
-                {copied === 'right' ? '✓ Copied' : 'Copy Modified'}
-              </button>
+              <CopyButton
+                text={() => models()?.mod.getValue() ?? ''}
+                label="Copy Modified"
+                copiedLabel="Copied!"
+                variant="ghost"
+                style={{ fontSize: 11, padding: '2px 8px' }}
+                toastMessage="Modified text copied to clipboard"
+              />
             </div>
           </div>
         )}

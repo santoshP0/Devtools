@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import CopyButton from '../components/CopyButton'
 
 interface Keyframe {
   id: number
@@ -88,18 +89,6 @@ function PropSlider({
         style={{ width: '100%', accentColor: 'var(--accent)' }}
       />
     </div>
-  )
-}
-
-function CopyBtn({ text }: { text: string }) {
-  const [done, setDone] = useState(false)
-  return (
-    <button
-      className="btn btn-ghost btn-sm"
-      onClick={() => { navigator.clipboard.writeText(text).then(() => { setDone(true); setTimeout(() => setDone(false), 1600) }) }}
-    >
-      {done ? '✓ Copied' : 'Copy CSS'}
-    </button>
   )
 }
 
@@ -647,7 +636,7 @@ export default function KeyframeBuilder() {
               <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)' }}>
                 CSS Code
               </span>
-              <CopyBtn text={exportCss} />
+              <CopyButton text={exportCss} label="Copy CSS" copiedLabel="Copied CSS!" variant="ghost" />
             </div>
             <pre style={{
               background: 'var(--bg)', border: '1px solid var(--border)',

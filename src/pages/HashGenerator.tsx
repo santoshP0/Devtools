@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { isTauri } from '@tauri-apps/api/core'
 import ToolLayout from '../components/ToolLayout'
-import { useClipboardCopy } from '../hooks/useClipboardCopy'
+import CopyButton from '../components/CopyButton'
 import { useNativeDrop } from '../hooks/useNativeDrop'
 
 const ALGORITHMS = ['SHA-1', 'SHA-256', 'SHA-384', 'SHA-512'] as const
@@ -21,7 +21,6 @@ export default function HashGenerator() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
-  const { copied: copiedKey, copy } = useClipboardCopy()
 
   const generate = async () => {
     if (!input) return
@@ -124,9 +123,7 @@ export default function HashGenerator() {
                   <span style={{ fontSize: 12, fontWeight: 700, fontFamily: 'var(--font-mono)', color: 'var(--sketch-text)' }}>
                     {alg}
                   </span>
-                  <button onClick={() => copy(hashes[alg], alg)} className="copy-btn">
-                    {copiedKey === alg ? '✓ Copied' : 'Copy'}
-                  </button>
+                  <CopyButton text={hashes[alg]} />
                 </div>
                 <p style={{ fontFamily: 'var(--font-mono)', fontSize: 12.5, wordBreak: 'break-all', margin: 0, color: 'var(--text-dim)' }}>
                   {hashes[alg]}

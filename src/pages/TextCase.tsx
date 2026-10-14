@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import ToolLayout from '../components/ToolLayout'
-import { useClipboardCopy } from '../hooks/useClipboardCopy'
+import CopyButton from '../components/CopyButton'
 
 const conversions = [
   { label: 'UPPER CASE', fn: (s: string) => s.toUpperCase() },
@@ -58,7 +58,6 @@ const conversions = [
 
 export default function TextCase() {
   const [input, setInput] = useState('')
-  const { copied: copiedLabel, copy } = useClipboardCopy()
 
   return (
     <ToolLayout title="Text Case Converter" description="Convert text between camelCase, snake_case, kebab-case, and more.">
@@ -81,9 +80,7 @@ export default function TextCase() {
                 <div key={label} className="bg-white border border-slate-200 rounded-lg p-3">
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-xs font-semibold text-slate-500">{label}</span>
-                    <button onClick={() => copy(result, label)} className="copy-btn">
-                      {copiedLabel === label ? '✓ Copied' : 'Copy'}
-                    </button>
+                    <CopyButton text={result} />
                   </div>
                   <p className="text-sm font-mono text-slate-800 break-all">{result}</p>
                 </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import ToolLayout from '../components/ToolLayout'
-import { useClipboardCopy } from '../hooks/useClipboardCopy'
+import CopyButton from '../components/CopyButton'
 import { useNativeDrop } from '../hooks/useNativeDrop'
 import { useOpenedFile } from '../lib/openWith'
 import { marked, Renderer } from 'marked'
@@ -285,8 +285,6 @@ export default function MarkdownPreview() {
   const [markdown, setMarkdown] = useState(SAMPLE)
   const [sanitizedHtml, setSanitizedHtml] = useState('')
   const [view, setView] = useState<'split' | 'editor' | 'preview'>('split')
-  const { copied: copiedMd, copy: copyMd } = useClipboardCopy(2000)
-  const { copied: copiedHtml, copy: copyHtml } = useClipboardCopy(2000)
   const [fileName, setFileName] = useState<string | null>(null)
   const { show } = useToast()
 
@@ -435,7 +433,7 @@ export default function MarkdownPreview() {
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
           <button onClick={openPicker} className="copy-btn">Open File</button>
-          <button onClick={() => copyMd(markdown)} className="copy-btn">{copiedMd ? '✓ Copied' : 'Copy MD'}</button>
+          <CopyButton text={markdown} label="Copy MD" copiedLabel="Copied MD!" />
         </div>
       </div>
       <textarea
@@ -462,7 +460,7 @@ export default function MarkdownPreview() {
     <div style={{ display: 'flex', flexDirection: 'column', flex: view === 'split' ? 1 : 1, minHeight: 0 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexShrink: 0 }}>
         <label className="label" style={{ margin: 0 }}>Preview</label>
-        <button onClick={() => copyHtml(sanitizedHtml)} className="copy-btn">{copiedHtml ? '✓ Copied' : 'Copy HTML'}</button>
+        <CopyButton text={sanitizedHtml} label="Copy HTML" copiedLabel="Copied HTML!" />
       </div>
       {/* sanitizedHtml is DOMPurify-sanitized before being set — XSS-safe */}
       <div

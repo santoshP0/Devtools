@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import CopyButton from '../components/CopyButton'
 
 const HTTP_CODES = [
   { code:100, name:'Continue',                      desc:'Request received, continue.' },
@@ -75,19 +76,24 @@ export default function HttpStatusCodesPage() {
             const g = Math.floor(c.code/100)
             return (
               <div key={c.code}
-                onClick={() => navigator.clipboard.writeText(String(c.code))}
                 style={{
                   display:'flex', gap:14, alignItems:'flex-start',
                   background:'var(--surface)', border:'1px solid var(--border)', borderRadius:10,
-                  padding:'13px 16px', cursor:'pointer', transition:'all 0.15s',
+                  padding:'13px 16px', transition:'all 0.15s',
                 }}
                 onMouseEnter={e=>{(e.currentTarget as HTMLDivElement).style.borderColor=STATUS_COLORS[g]+'66';(e.currentTarget as HTMLDivElement).style.background='var(--surface2)'}}
                 onMouseLeave={e=>{(e.currentTarget as HTMLDivElement).style.borderColor='var(--border)';(e.currentTarget as HTMLDivElement).style.background='var(--surface)'}}>
                 <span style={{ fontFamily:'var(--font-mono)', fontWeight:700, fontSize:18, color: STATUS_COLORS[g], minWidth:44, flexShrink:0 }}>{c.code}</span>
-                <div>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight:600, fontSize:14, marginBottom:3 }}>{c.name}</div>
                   <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.5 }}>{c.desc}</div>
                 </div>
+                <CopyButton
+                  text={String(c.code)}
+                  variant="icon"
+                  toastMessage={`HTTP ${c.code} copied to clipboard`}
+                  title={`Copy HTTP ${c.code}`}
+                />
               </div>
             )
           })}

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import ToolLayout from '../components/ToolLayout'
-import { useClipboardCopy } from '../hooks/useClipboardCopy'
+import CopyButton from '../components/CopyButton'
 
 function hexToRgb(hex: string): [number, number, number] {
   const h = hex.replace('#', '')
@@ -49,7 +49,6 @@ export default function ColorConverter() {
   const [hex, setHex] = useState('#2563eb')
   const [rgb, setRgb] = useState<[number, number, number]>([37, 99, 235])
   const [hsl, setHsl] = useState<[number, number, number]>([221, 83, 53])
-  const { copied, copy } = useClipboardCopy()
 
   const fromHex = useCallback((h: string) => {
     if (!isValidHex(h)) return
@@ -88,7 +87,7 @@ export default function ColorConverter() {
           <div className="bg-white border border-slate-200 rounded-xl p-4">
             <div className="flex justify-between items-center mb-2">
               <span className="text-xs font-semibold text-slate-500">HEX</span>
-              <button onClick={() => copy(hexStr, 'hex')} className="copy-btn">{copied === 'hex' ? '✓ Copied' : 'Copy'}</button>
+              <CopyButton text={hexStr} />
             </div>
             <div className="flex items-center gap-3">
               <input type="color" value={hex} onChange={e => fromHex(e.target.value)} className="h-9 w-12 rounded border border-slate-200 cursor-pointer" />
@@ -107,7 +106,7 @@ export default function ColorConverter() {
           <div className="bg-white border border-slate-200 rounded-xl p-4">
             <div className="flex justify-between items-center mb-2">
               <span className="text-xs font-semibold text-slate-500">RGB</span>
-              <button onClick={() => copy(rgbStr, 'rgb')} className="copy-btn">{copied === 'rgb' ? '✓ Copied' : 'Copy'}</button>
+              <CopyButton text={rgbStr} />
             </div>
             <div className="grid grid-cols-3 gap-3">
               {(['R', 'G', 'B'] as const).map((c, i) => (
@@ -129,7 +128,7 @@ export default function ColorConverter() {
           <div className="bg-white border border-slate-200 rounded-xl p-4">
             <div className="flex justify-between items-center mb-2">
               <span className="text-xs font-semibold text-slate-500">HSL</span>
-              <button onClick={() => copy(hslStr, 'hsl')} className="copy-btn">{copied === 'hsl' ? '✓ Copied' : 'Copy'}</button>
+              <CopyButton text={hslStr} />
             </div>
             <div className="grid grid-cols-3 gap-3">
               {[['H', 0, 360], ['S', 0, 100], ['L', 0, 100]] .map(([c, min, max], i) => (

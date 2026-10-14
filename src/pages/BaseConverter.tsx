@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import CopyButton from '../components/CopyButton'
 
 type Base = 'dec' | 'hex' | 'bin' | 'oct'
 
@@ -36,8 +37,6 @@ export default function BaseConverter() {
     })
   }
 
-  const copy = (val: string) => navigator.clipboard.writeText(val)
-
   return (
     <ToolLayout title="Number Base Converter" description="Convert numbers between decimal, hexadecimal, binary, and octal.">
       <div className="flex flex-col gap-6 flex-1">
@@ -50,7 +49,7 @@ export default function BaseConverter() {
             <div key={key} className="tool-panel flex flex-col gap-2">
               <div className="flex justify-between items-center">
                 <label className="label mb-0">{label}</label>
-                {values[key] && <button onClick={() => copy(values[key])} className="copy-btn">Copy</button>}
+                {values[key] && <CopyButton text={values[key]} />}
               </div>
               <div className="flex items-center gap-2">
                 {prefix && <span className="text-xs font-mono text-slate-400 bg-slate-100 px-2 py-1.5 rounded-lg border border-slate-200">{prefix}</span>}

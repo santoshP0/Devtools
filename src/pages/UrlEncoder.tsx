@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import CopyButton from '../components/CopyButton'
 
 export default function UrlEncoder() {
   const [input, setInput] = useState('')
@@ -25,7 +26,6 @@ export default function UrlEncoder() {
     }
   }
 
-  const copy = () => navigator.clipboard.writeText(output)
   const swap = () => { setInput(output); setOutput('') }
   const clear = () => { setInput(''); setOutput(''); setError('') }
 
@@ -70,7 +70,7 @@ export default function UrlEncoder() {
               <label className="label">Output</label>
               <div className="flex gap-3">
                 <button onClick={swap} className="copy-btn">Use as input</button>
-                <button onClick={copy} className="copy-btn">Copy</button>
+                <CopyButton text={output} />
               </div>
             </div>
             <textarea value={output} readOnly className="tool-textarea h-36 bg-slate-50" spellCheck={false} />

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import CopyButton from '../components/CopyButton'
 
 function b64decode(str: string) {
   const padded = str.replace(/-/g, '+').replace(/_/g, '/').padEnd(str.length + (4 - str.length % 4) % 4, '=')
@@ -58,7 +59,7 @@ export default function JwtDecoder() {
               <div key={part}>
                 <div className="flex justify-between items-center mb-1">
                   <label className="label capitalize">{part}</label>
-                  <button onClick={() => navigator.clipboard.writeText(JSON.stringify(result[part], null, 2))} className="copy-btn">Copy</button>
+                  <CopyButton text={JSON.stringify(result[part], null, 2)} />
                 </div>
                 <pre className="bg-white border border-slate-200 rounded-lg p-3 text-xs font-mono overflow-x-auto text-slate-700">
                   {JSON.stringify(result[part], null, 2)}

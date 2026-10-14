@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ToolLayout from '../components/ToolLayout'
+import CopyButton from '../components/CopyButton'
 
 export default function GlassmorphismBuilder() {
   const [blur, setBlur] = useState(10)
@@ -63,7 +64,7 @@ box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);`
           <div className="tool-panel">
             <div className="flex justify-between items-center mb-3">
               <label className="label">CSS Snippet</label>
-              <button className="btn btn-ghost btn-sm" onClick={() => { navigator.clipboard.writeText(cssCode); alert('Copied!') }}>Copy CSS</button>
+              <CopyButton text={cssCode} label="Copy CSS" copiedLabel="Copied CSS!" variant="ghost" />
             </div>
             <pre className="code-out text-xs">{cssCode}</pre>
           </div>

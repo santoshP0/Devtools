@@ -1,12 +1,10 @@
 import { useState } from 'react'
 import ToolLayout from '../components/ToolLayout'
-import { useClipboardCopy } from '../hooks/useClipboardCopy'
+import CopyButton from '../components/CopyButton'
 
 export default function UuidGenerator() {
   const [uuids, setUuids] = useState<string[]>([])
   const [count, setCount] = useState(5)
-  const { copied, copy: copyOne } = useClipboardCopy()
-  const { copied: copiedAll, copy: copyAll } = useClipboardCopy()
 
   const generate = () => {
     setUuids(Array.from({ length: count }, () => crypto.randomUUID()))
@@ -33,15 +31,13 @@ export default function UuidGenerator() {
           <div>
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm text-slate-500">{uuids.length} UUIDs generated</span>
-              <button onClick={() => copyAll(uuids.join('\n'))} className="copy-btn">{copiedAll ? '✓ Copied all' : 'Copy all'}</button>
+              <CopyButton text={uuids.join('\n')} label="Copy all" copiedLabel="Copied all!" />
             </div>
             <div className="space-y-1.5">
               {uuids.map(id => (
                 <div key={id} className="flex items-center justify-between bg-white border border-slate-200 rounded-lg px-4 py-2.5 group">
                   <span className="font-mono text-sm text-slate-700">{id}</span>
-                  <button onClick={() => copyOne(id, id)} className="copy-btn ml-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {copied === id ? '✓' : 'Copy'}
-                  </button>
+                  <CopyButton text={id} className="ml-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
               ))}
             </div>
