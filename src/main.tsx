@@ -52,12 +52,18 @@ if (isTauri()) {
 
   // Prevent keyboard back shortcuts from kicking user to home
   window.addEventListener('keydown', (e: KeyboardEvent) => {
+    const target = e.target as HTMLElement | null
+    const isEditable = Boolean(target && (
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.tagName === 'SELECT' ||
+      target.isContentEditable
+    ))
+
     if (e.key === 'Backspace') {
-      const target = e.target as HTMLElement | null
-      const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
-      if (!isInput) e.preventDefault()
+      if (!isEditable) e.preventDefault()
     }
-    if ((e.altKey && e.key === 'ArrowLeft') || ((e.metaKey || e.ctrlKey) && e.key === '[')) {
+    if (!isEditable && ((e.altKey && e.key === 'ArrowLeft') || ((e.metaKey || e.ctrlKey) && e.key === '['))) {
       e.preventDefault()
     }
   }, true)
