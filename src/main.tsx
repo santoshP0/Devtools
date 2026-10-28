@@ -52,12 +52,18 @@ if (isTauri()) {
 
   // Prevent keyboard back shortcuts from kicking user to home
   window.addEventListener('keydown', (e: KeyboardEvent) => {
+    const target = e.target as HTMLElement | null
+    const isEditable = Boolean(target && (
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.tagName === 'SELECT' ||
+      target.isContentEditable
+    ))
+
     if (e.key === 'Backspace') {
-      const target = e.target as HTMLElement | null
-      const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)
-      if (!isInput) e.preventDefault()
+      if (!isEditable) e.preventDefault()
     }
-    if ((e.altKey && e.key === 'ArrowLeft') || ((e.metaKey || e.ctrlKey) && e.key === '[')) {
+    if (!isEditable && ((e.altKey && e.key === 'ArrowLeft') || ((e.metaKey || e.ctrlKey) && e.key === '['))) {
       e.preventDefault()
     }
   }, true)
@@ -74,3 +80,20 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <App />
   </React.StrictMode>,
 )
+
+// Browser/PWA only: the desktop app uses the compact support button in the
+// navbar instead of loading Buy Me a Coffee's floating web widget.
+if (!isTauri()) {
+  const buyMeACoffeeWidget = document.createElement('script')
+  buyMeACoffeeWidget.src = 'https://cdnjs.buymeacoffee.com/1.0.0/widget.prod.min.js'
+  buyMeACoffeeWidget.setAttribute('data-name', 'BMC-Widget')
+  buyMeACoffeeWidget.setAttribute('data-cfasync', 'false')
+  buyMeACoffeeWidget.setAttribute('data-id', 'santosh.pk')
+  buyMeACoffeeWidget.setAttribute('data-description', 'Support me on Buy me a coffee!')
+  buyMeACoffeeWidget.setAttribute('data-message', '')
+  buyMeACoffeeWidget.setAttribute('data-color', '#5F7FFF')
+  buyMeACoffeeWidget.setAttribute('data-position', 'Right')
+  buyMeACoffeeWidget.setAttribute('data-x_margin', '18')
+  buyMeACoffeeWidget.setAttribute('data-y_margin', '18')
+  document.body.appendChild(buyMeACoffeeWidget)
+}

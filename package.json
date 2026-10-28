@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx",
     "test:search": "tsx scripts/toolSearch.test.ts",
+    "test:notes": "tsx scripts/textSearch.test.ts",
     "tauri": "tauri"
   },
   "dependencies": {

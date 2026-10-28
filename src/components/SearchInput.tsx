@@ -1,12 +1,14 @@
-import React, { forwardRef } from 'react'
+import React, { forwardRef, useRef } from 'react'
 import { Search, X } from 'lucide-react'
 
-export interface SearchInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value'> {
+export interface SearchInputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value' | 'size'> {
   value: string
   onChange: (value: string) => void
   onClear?: () => void
   placeholder?: string
   iconSize?: number
+  icon?: React.ReactNode | false
+  size?: 'small' | 'medium'
   showClear?: boolean
   badge?: React.ReactNode
   rightSlot?: React.ReactNode
@@ -21,6 +23,8 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(functi
     onClear,
     placeholder = 'Search…',
     iconSize = 13,
+    icon,
+    size = 'medium',
     showClear = true,
     badge,
     rightSlot,
@@ -32,67 +36,54 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(functi
     autoFocus,
     ...rest
   },
-  ref
+  forwardedRef
 ) {
+  const inputRef = useRef<HTMLInputElement | null>(null)
+
+  const setInputRef = (node: HTMLInputElement | null) => {
+    inputRef.current = node
+    if (typeof forwardedRef === 'function') forwardedRef(node)
+    else if (forwardedRef) forwardedRef.current = node
+  }
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Escape' && onClear && value) {
+    if (e.key === 'Escape' && value) {
+      e.preventDefault()
       e.stopPropagation()
-      onClear()
+      onChange('')
+      onClear?.()
+      return
     }
     onKeyDown?.(e)
   }
 
-  const handleClear = (e: React.MouseEvent) => {
+  const handleClear = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()
     onChange('')
     onClear?.()
+    inputRef.current?.focus()
   }
 
   return (
     <div
-      className={`search-input-wrapper ${containerClassName || ''}`}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 7,
-        padding: '5px 8px',
-        borderRadius: 6,
-        background: 'var(--surface)',
-        border: '1px solid var(--border)',
-        boxSizing: 'border-box',
-        transition: 'border-color 0.15s, box-shadow 0.15s',
-        ...containerStyle,
-      }}
+      className={`search-input-wrapper search-input-${size} ${containerClassName || ''}`}
+      style={containerStyle}
     >
-      <Search
-        size={iconSize}
-        style={{ color: 'var(--text-muted)', flexShrink: 0, pointerEvents: 'none' }}
-      />
+      {icon !== false && (
+        <span className="search-input-leading" aria-hidden="true">
+          {icon ?? <Search size={iconSize} />}
+        </span>
+      )}
       <input
-        ref={ref}
-        type="text"
+        ref={setInputRef}
+        type="search"
         autoFocus={autoFocus}
         placeholder={placeholder}
         value={value}
         onChange={e => onChange(e.target.value)}
         onKeyDown={handleKeyDown}
         className={`search-input-control input-bare ${className || ''}`}
-        style={{
-          flex: 1,
-          minWidth: 0,
-          border: 'none',
-          outline: 'none',
-          background: 'transparent',
-          color: 'inherit',
-          fontSize: 12,
-          padding: 0,
-          margin: 0,
-          boxShadow: 'none',
-          transform: 'none',
-          fontFamily: 'inherit',
-          lineHeight: '1.4',
-          ...style,
-        }}
+        style={style}
         {...rest}
       />
       {badge && (
@@ -101,25 +92,15 @@ export const SearchInput = forwardRef<HTMLInputElement, SearchInputProps>(functi
         </div>
       )}
       {showClear && value && (
-        <span
-          role="button"
-          tabIndex={0}
+        <button
+          type="button"
           onClick={handleClear}
-          title="Clear"
-          style={{
-            cursor: 'pointer',
-            color: 'var(--text-muted)',
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '1px 2px',
-            borderRadius: 3,
-            flexShrink: 0,
-            userSelect: 'none',
-          }}
+          className="search-input-clear btn-icon"
+          title="Clear search"
+          aria-label="Clear search"
         >
           <X size={iconSize} />
-        </span>
+        </button>
       )}
       {rightSlot && (
         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center' }}>

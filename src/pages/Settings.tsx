@@ -8,6 +8,8 @@ import { playBeep } from '../lib/beep'
 
 const REPO_URL = 'https://github.com/santoshP0/Devtools'
 const RELEASES_URL = `${REPO_URL}/releases/latest`
+const BUY_ME_A_COFFEE_URL = 'https://buymeacoffee.com/santosh.pk'
+const BUY_ME_A_COFFEE_LOGO = 'https://cdn.buymeacoffee.com/buttons/bmc-new-btn-logo.svg'
 
 interface Asset { os: 'mac' | 'windows' | 'linux'; label: string; url: string }
 function assetInfo(name: string): { os: Asset['os']; label: string } | null {
@@ -149,6 +151,44 @@ export default function Settings() {
               {assets && assets.length === 0 && (
                 <a href={RELEASES_URL} target="_blank" rel="noreferrer" style={linkBtn}>See all downloads →</a>
               )}
+            </div>
+          </Section>
+        )}
+
+        {/* ── Support — desktop only; the web app uses the floating widget ── */}
+        {inDesktopApp && (
+          <Section title="Buy me a coffee">
+            <div style={{
+              display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 14,
+              padding: '14px 0', borderTop: '1px dashed var(--sketch-text)',
+            }}>
+              <div style={{ flex: '1 1 260px', minWidth: 0 }}>
+                <div style={{ fontSize: 15, fontWeight: 700 }}>A small request</div>
+                <div style={{ fontSize: 13, opacity: 0.7, marginTop: 2, lineHeight: 1.5, fontFamily: 'var(--font-sans)' }}>
+                  DevToolbox is free and independently maintained. If it saves you time, buying me a coffee would mean a lot and help me keep improving it. No pressure — thank you for using the app.
+                </div>
+              </div>
+              <a
+                href={BUY_ME_A_COFFEE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Support DevToolbox on Buy Me a Coffee"
+                style={{
+                  ...linkBtn,
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  background: '#FFDD00', color: '#111', whiteSpace: 'nowrap',
+                }}
+              >
+                <img
+                  src={BUY_ME_A_COFFEE_LOGO}
+                  alt=""
+                  aria-hidden="true"
+                  width="14"
+                  height="20"
+                  style={{ display: 'block', width: 14, height: 20, objectFit: 'contain' }}
+                />
+                Buy me a coffee
+              </a>
             </div>
           </Section>
         )}
