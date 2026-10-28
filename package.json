@@ -11,6 +11,7 @@
     "lint": "eslint . --ext ts,tsx",
     "test:search": "tsx scripts/toolSearch.test.ts",
     "test:notes": "tsx scripts/textSearch.test.ts",
+    "release": "sh scripts/release.sh",
     "tauri": "tauri"
   },
   "dependencies": {

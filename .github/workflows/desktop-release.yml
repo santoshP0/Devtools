@@ -120,9 +120,8 @@ jobs:
           releaseDraft: false
           args: ${{ matrix.args }}
 
-  # Compose the final release notes from commit messages (one line per change,
-  # only what changed since the previous tag) so notes are accurate and never
-  # stale. Runs after all builds so it wins over the fallback body above.
+  # Compose the final release notes from WHATS_NEW.txt in the tagged commit.
+  # Runs after all builds so it wins over the fallback body above.
   notes:
     needs: build
     runs-on: ubuntu-latest
@@ -138,11 +137,13 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${GITHUB_REF_NAME}"
-          PREV=$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)
-          if [ -n "$PREV" ]; then RANGE="${PREV}..${TAG}"; else RANGE="${TAG}"; fi
           {
-            echo "## What's changed"
-            git log --no-merges --pretty='- %s' "$RANGE" | grep -viE '^- (bump|merge|wip|revert)' || echo "- Maintenance and improvements"
+            if [ -s WHATS_NEW.txt ]; then
+              cat WHATS_NEW.txt
+            else
+              echo "## What's changed"
+              echo "- Maintenance and improvements"
+            fi
             echo ""
             echo "## Install"
             echo "- **macOS** — .dmg: Apple Silicon, Intel, or Universal"
