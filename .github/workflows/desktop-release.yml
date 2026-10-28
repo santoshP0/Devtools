@@ -124,6 +124,7 @@ jobs:
   # Runs after all builds so it wins over the fallback body above.
   notes:
     needs: build
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
