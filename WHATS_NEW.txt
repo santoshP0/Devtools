@@ -1,6 +1,0 @@
-WHAT'S NEW
-
-Notes
-
-- Release pages now show only the What's New notes, without repeated download or macOS instructions.
-- What's New notes are now published even if one platform build fails.
