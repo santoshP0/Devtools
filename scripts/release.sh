@@ -49,6 +49,11 @@ npm run test:search
 npm run test:notes
 npm run build
 
+# The production build refreshes sitemap dates. The release command starts from
+# a clean tree, so discard that generated-only change instead of leaving it
+# behind after publishing.
+git restore public/sitemap.xml
+
 git add package.json package-lock.json src-tauri/tauri.conf.json
 git commit -m "chore: release $VERSION"
 git tag -a "$TAG" -m "DevToolbox $TAG"
