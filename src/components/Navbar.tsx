@@ -78,15 +78,51 @@ export default function Navbar({ editMode, setEditMode }: NavbarProps) {
       {/* Right side — instant theme toggle + settings (theme also lives in
           Settings, but a nav toggle is faster for a quick flip). */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {(pathname === '/' || pathname === '/settings') && inApp && (
+          <a
+            href="https://buymeacoffee.com/santosh.pk"
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Support DevToolbox — Buy me a coffee"
+            aria-label="Buy me a coffee"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              height: 32, padding: '0 12px', borderRadius: 4,
+              background: 'var(--accent-bg)', color: 'var(--sketch-text)',
+              border: '2px solid var(--sketch-text)',
+              boxShadow: '2px 2px 0px var(--sketch-text)',
+              textDecoration: 'none', fontSize: 13, fontWeight: 700,
+              fontFamily: "'Architects Daughter', var(--font-sans)",
+              transition: 'all 0.1s ease-out',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translate(-1px,-1px)'; e.currentTarget.style.boxShadow = '3px 3px 0px var(--sketch-text)' }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'translate(0,0)'; e.currentTarget.style.boxShadow = '2px 2px 0px var(--sketch-text)' }}
+          >
+            <img
+              src="https://cdn.buymeacoffee.com/buttons/bmc-new-btn-logo.svg"
+              alt=""
+              aria-hidden="true"
+              width="14"
+              height="20"
+              style={{
+                display: 'block', width: 14, height: 20, objectFit: 'contain',
+                filter: dark ? 'brightness(0) invert(1)' : 'none',
+              }}
+            />
+            <span className="hidden sm:inline">buy me a coffee</span>
+          </a>
+        )}
+
         {/* Rearrange the tool grid — only meaningful on the home grid itself */}
         {pathname === '/' && setEditMode && (
           <button
             onClick={() => setEditMode(!editMode)}
             title={editMode ? 'Done rearranging' : 'Rearrange tools'}
+            aria-label={editMode ? 'Done rearranging' : 'Rearrange tools'}
             aria-pressed={editMode}
             style={{
-              display: 'flex', alignItems: 'center', gap: 6,
-              height: 32, padding: '0 12px', borderRadius: 4,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 34, height: 32, padding: 0, borderRadius: 4,
               background: editMode ? 'var(--sketch-text)' : 'var(--surface)',
               color: editMode ? 'var(--sketch-bg)' : 'var(--sketch-text)',
               border: '2px solid var(--sketch-text)',
@@ -99,19 +135,18 @@ export default function Navbar({ editMode, setEditMode }: NavbarProps) {
             onMouseLeave={e => { e.currentTarget.style.transform = 'translate(0,0)'; e.currentTarget.style.boxShadow = '2px 2px 0px var(--sketch-text)' }}
           >
             {editMode ? (
-              <>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M20 6 9 17l-5-5" />
-                </svg>
-                done
-              </>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
             ) : (
-              <>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20" />
-                </svg>
-                arrange
-              </>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <circle cx="8" cy="6" r="1.6" />
+                <circle cx="16" cy="6" r="1.6" />
+                <circle cx="8" cy="12" r="1.6" />
+                <circle cx="16" cy="12" r="1.6" />
+                <circle cx="8" cy="18" r="1.6" />
+                <circle cx="16" cy="18" r="1.6" />
+              </svg>
             )}
           </button>
         )}
