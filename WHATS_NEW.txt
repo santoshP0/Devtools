@@ -1,9 +1,0 @@
-WHAT'S NEW
-
-Notes
-
-- Enjoy a cleaner, full-width Notes layout with more room to write.
-- Find and replace text quickly with clear highlights and match navigation.
-- Write more smoothly with familiar text-selection and keyboard shortcuts.
-- Improved note actions, delete confirmation, status messages, and scrolling.
-- You can now support DevToolbox with Buy Me a Coffee — thank you for helping the project grow!
